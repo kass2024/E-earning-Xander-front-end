@@ -3,6 +3,7 @@ import DailyIframe, { type DailyCall, type DailyParticipant } from "@daily-co/da
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
+  BarChart3,
   Check,
   ChevronUp,
   Circle,
@@ -18,6 +19,7 @@ import {
   MonitorUp,
   RefreshCw,
   Square,
+  Timer,
   Users,
   Video,
   VideoOff,
@@ -28,6 +30,12 @@ import { ZoomPrejoinLobby } from "@/components/live/ZoomPrejoinLobby";
 import { MeetingProfileAvatar } from "@/components/live/MeetingProfileAvatar";
 import { SpeakingWaveOverlay } from "@/components/live/SpeakingWaveOverlay";
 import { AudioLevelIndicator } from "@/components/live/AudioLevelIndicator";
+import { MeetingEngagementPanel } from "@/components/live/MeetingEngagementPanel";
+import {
+  expireSpeakingTimers,
+  fetchSpeakingTimer,
+  type StageMember,
+} from "@/lib/meetingEngagementApi";
 import type { MediaDevicePreferences } from "@/hooks/useMediaDevices";
 import { resolvePublicJoinUrl } from "@/lib/publicJoinUrl";
 import { resolveZoomBrandingLogoUrl } from "@/lib/zoomAvatars";
@@ -415,7 +423,7 @@ export function DailyMeetingRoom({
   const [remoteScreen, setRemoteScreen] = useState<{ sessionId: string; name: string } | null>(null);
   const [recordingOn, setRecordingOn] = useState(recording);
   const [remotes, setRemotes] = useState<DailyParticipant[]>([]);
-  const [panel, setPanel] = useState<"none" | "people" | "chat" | "info" | "hands">("none");
+  const [panel, setPanel] = useState<"none" | "people" | "chat" | "info" | "hands" | "engage">("none");
   const [chatInput, setChatInput] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [localAudioLevel, setLocalAudioLevel] = useState(0);
@@ -434,6 +442,9 @@ export function DailyMeetingRoom({
   const [pendingHands, setPendingHands] = useState<HandRaiseRow[]>([]);
   const [localSessionId, setLocalSessionId] = useState<string | null>(null);
   const [approvalBanner, setApprovalBanner] = useState<string | null>(null);
+  const [speakingSecondsLeft, setSpeakingSecondsLeft] = useState<number | null>(null);
+  const [speakDurationSec, setSpeakDurationSec] = useState(120);
+  const [stageOrder, setStageOrder] = useState<StageMember[]>([]);
   const desiredMicRef = useRef(false);
   const desiredCamRef = useRef(false);
 
@@ -883,7 +894,14 @@ export function DailyMeetingRoom({
             }
             if (type === "speaking-approved") {
               setSpeakingState("approved");
-              setApprovalBanner("You may now speak. Press Unmute when ready.");
+              const dur = Number(data.duration_seconds || 0);
+              if (dur > 0) {
+                setSpeakingSecondsLeft(dur);
+                setApprovalBanner(`You may speak for ${Math.ceil(dur / 60)} min. Press Unmute when ready.`);
+              } else {
+                setSpeakingSecondsLeft(null);
+                setApprovalBanner("You may now speak. Press Unmute when ready.");
+              }
               setLocalPermissions((prev) => ({
                 ...(prev || {}),
                 canSend: Array.isArray(data.canSend)
@@ -892,13 +910,14 @@ export function DailyMeetingRoom({
               }));
               toast({
                 title: "Speaking approved",
-                description: "The host allowed you to unmute.",
+                description: dur > 0 ? `Timer: ${Math.ceil(dur / 60)} minutes.` : "The host allowed you to unmute.",
               });
               return;
             }
             if (type === "speaking-revoked") {
               setSpeakingState("revoked");
               setApprovalBanner(null);
+              setSpeakingSecondsLeft(null);
               setLocalPermissions((prev) => ({ ...(prev || {}), canSend: false }));
               void call.setLocalAudio(false);
               void call.setLocalVideo(false);
@@ -1070,9 +1089,13 @@ export function DailyMeetingRoom({
     }
   };
 
-  const hostApproveHand = async (hand: HandRaiseRow, opts?: { video?: boolean; stage?: boolean }) => {
+  const hostApproveHand = async (
+    hand: HandRaiseRow,
+    opts?: { video?: boolean; stage?: boolean; duration?: number },
+  ) => {
     const call = callRef.current;
     if (!call || !meetingKey) return;
+    const duration = opts?.duration ?? speakDurationSec;
     try {
       const res = await approveMeetingSpeaking({
         meeting_key: meetingKey,
@@ -1081,6 +1104,7 @@ export function DailyMeetingRoom({
         audio: true,
         video: Boolean(opts?.video),
         invite_to_stage: Boolean(opts?.stage) || meetingMode === "webinar",
+        duration_seconds: duration > 0 ? duration : undefined,
       });
       const canSend = res.daily_permissions?.canSend ?? ["audio"];
       call.updateParticipant(hand.daily_session_id, {
@@ -1091,10 +1115,21 @@ export function DailyMeetingRoom({
         },
       });
       call.sendAppMessage(
-        { type: "speaking-approved", sessionId: hand.daily_session_id, canSend },
+        {
+          type: "speaking-approved",
+          sessionId: hand.daily_session_id,
+          canSend,
+          duration_seconds: duration > 0 ? duration : null,
+        },
         "*",
       );
-      toast({ title: "Speaking approved", description: `${hand.participant_name} may unmute.` });
+      toast({
+        title: "Speaking approved",
+        description:
+          duration > 0
+            ? `${hand.participant_name} may speak for ${Math.round(duration / 60)} min.`
+            : `${hand.participant_name} may unmute.`,
+      });
       await refreshHands();
     } catch {
       toast({
@@ -1157,6 +1192,111 @@ export function DailyMeetingRoom({
     const timer = window.setInterval(() => void refreshHands(), 8000);
     return () => window.clearInterval(timer);
   }, [phase, trustedHost, meetingKey]);
+
+  // Speaking timer countdown + auto-revoke when expired
+  useEffect(() => {
+    if (phase !== "meeting" || !meetingKey || !localSessionId || trustedHost) return;
+    let cancelled = false;
+
+    const sync = async () => {
+      try {
+        const res = await fetchSpeakingTimer(meetingKey, localSessionId);
+        if (cancelled) return;
+        if (res.grant?.remaining_seconds != null) {
+          setSpeakingSecondsLeft(Math.max(0, Number(res.grant.remaining_seconds)));
+        }
+        if (!res.grant && (speakingState === "approved" || speakingState === "speaking")) {
+          setSpeakingSecondsLeft(null);
+        }
+      } catch {
+        // ignore
+      }
+    };
+
+    void sync();
+    const poll = window.setInterval(() => void sync(), 5000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(poll);
+    };
+  }, [phase, meetingKey, localSessionId, trustedHost, speakingState]);
+
+  useEffect(() => {
+    if (speakingSecondsLeft == null || speakingSecondsLeft <= 0) return;
+    const tick = window.setInterval(() => {
+      setSpeakingSecondsLeft((prev) => {
+        if (prev == null) return null;
+        if (prev <= 1) return 0;
+        return prev - 1;
+      });
+    }, 1000);
+    return () => window.clearInterval(tick);
+  }, [speakingSecondsLeft != null]);
+
+  useEffect(() => {
+    if (speakingSecondsLeft !== 0 || trustedHost || !meetingKey) return;
+    const call = callRef.current;
+    void (async () => {
+      try {
+        if (trustedHost && meetingKey) {
+          await expireSpeakingTimers(meetingKey);
+        }
+      } catch {
+        // ignore
+      }
+      if (call && localSessionId) {
+        void call.setLocalAudio(false);
+        void call.setLocalVideo(false);
+        setMicOn(false);
+        setCamOn(false);
+        desiredMicRef.current = false;
+        desiredCamRef.current = false;
+        setSpeakingState("revoked");
+        setSpeakingSecondsLeft(null);
+        setLocalPermissions((prev) => ({ ...(prev || {}), canSend: false }));
+        setApprovalBanner(null);
+        toast({
+          variant: "destructive",
+          title: "Speaking time ended",
+          description: "Your speaking timer expired.",
+        });
+      }
+    })();
+  }, [speakingSecondsLeft, trustedHost, meetingKey, localSessionId, toast]);
+
+  // Host: sweep expired timers and revoke Daily permissions
+  useEffect(() => {
+    if (phase !== "meeting" || !trustedHost || !meetingKey) return;
+    const sweep = async () => {
+      try {
+        const res = await expireSpeakingTimers(meetingKey);
+        const call = callRef.current;
+        if (!call || !res.expired?.length) return;
+        for (const row of res.expired) {
+          call.updateParticipant(row.daily_session_id, {
+            setAudio: false,
+            setVideo: false,
+            updatePermissions: { canSend: false },
+          });
+          call.sendAppMessage({ type: "speaking-revoked", sessionId: row.daily_session_id }, "*");
+        }
+      } catch {
+        // ignore
+      }
+    };
+    const timer = window.setInterval(() => void sweep(), 10000);
+    return () => window.clearInterval(timer);
+  }, [phase, trustedHost, meetingKey]);
+
+  const orderedRemotes = useMemo(() => {
+    if (stageOrder.length === 0) return remotes;
+    const rank = new Map(stageOrder.map((m, i) => [m.daily_session_id, i]));
+    return [...remotes].sort((a, b) => {
+      const ai = rank.has(a.session_id) ? (rank.get(a.session_id) as number) : 9999;
+      const bi = rank.has(b.session_id) ? (rank.get(b.session_id) as number) : 9999;
+      return ai - bi;
+    });
+  }, [remotes, stageOrder]);
 
   const toggleCam = async () => {
     const call = callRef.current;
@@ -1549,7 +1689,7 @@ export function DailyMeetingRoom({
                     </span>
                   </div>
 
-                  {remotes.map((p) => {
+                  {orderedRemotes.map((p) => {
                     const name = String(p.user_name || "Participant");
                     const videoOn = Boolean(p.video);
                     const speaking = Boolean(p.audio) && activeSpeakerId === p.session_id;
@@ -1601,7 +1741,9 @@ export function DailyMeetingRoom({
                           ? "Chat"
                           : panel === "hands"
                             ? "Raised hands"
-                            : "Meeting info"}
+                            : panel === "engage"
+                              ? "Engage"
+                              : "Meeting info"}
                     </p>
                     <button type="button" className="rounded p-1 text-zinc-400 hover:bg-white/10" onClick={() => setPanel("none")}>
                       <X className="h-4 w-4" />
@@ -1676,6 +1818,23 @@ export function DailyMeetingRoom({
 
                   {panel === "hands" ? (
                     <div className="flex-1 space-y-2 overflow-y-auto p-3">
+                      {trustedHost ? (
+                        <div className="mb-2 flex items-center gap-2 rounded-lg bg-black/25 px-2 py-2">
+                          <Timer className="h-3.5 w-3.5 text-zinc-400" />
+                          <p className="text-[11px] text-zinc-400">Speak timer</p>
+                          <select
+                            value={speakDurationSec}
+                            onChange={(e) => setSpeakDurationSec(Number(e.target.value))}
+                            className="ml-auto h-7 rounded border border-white/10 bg-[#1a1a1a] px-2 text-[11px] text-white"
+                          >
+                            <option value={60}>1 min</option>
+                            <option value={120}>2 min</option>
+                            <option value={300}>5 min</option>
+                            <option value={600}>10 min</option>
+                            <option value={0}>No limit</option>
+                          </select>
+                        </div>
+                      ) : null}
                       {pendingHands.length === 0 ? (
                         <p className="text-center text-xs text-zinc-500">No raised hands.</p>
                       ) : (
@@ -1713,6 +1872,28 @@ export function DailyMeetingRoom({
                         ))
                       )}
                     </div>
+                  ) : null}
+
+                  {panel === "engage" && meetingKey ? (
+                    <MeetingEngagementPanel
+                      meetingKey={meetingKey}
+                      trustedHost={trustedHost}
+                      isWebinar={meetingMode === "webinar"}
+                      sessionId={localSessionId}
+                      displayName={displayName}
+                      participants={remotes.map((p) => ({
+                        session_id: p.session_id,
+                        user_name: p.user_name,
+                      }))}
+                      onStageOrderChange={setStageOrder}
+                      onBreakoutJoin={(url, name) => {
+                        toast({
+                          title: `Breakout: ${name}`,
+                          description: "Opening breakout room in a new tab.",
+                        });
+                        window.open(url, "_blank", "noopener,noreferrer");
+                      }}
+                    />
                   ) : null}
 
                   {panel === "chat" ? (
@@ -1800,6 +1981,19 @@ export function DailyMeetingRoom({
               className="absolute inset-x-0 top-12 z-20 mx-auto w-[min(92vw,420px)] rounded-xl border border-emerald-400/40 bg-emerald-950/90 px-4 py-3 text-center text-sm text-emerald-50 shadow-lg"
             >
               {approvalBanner}
+              {speakingSecondsLeft != null && speakingSecondsLeft > 0 ? (
+                <p className="mt-1 text-xs text-emerald-200/90">
+                  Time left: {Math.floor(speakingSecondsLeft / 60)}:
+                  {String(speakingSecondsLeft % 60).padStart(2, "0")}
+                </p>
+              ) : null}
+            </div>
+          ) : null}
+
+          {speakingSecondsLeft != null && speakingSecondsLeft > 0 && !approvalBanner ? (
+            <div className="absolute inset-x-0 top-12 z-20 mx-auto flex w-fit items-center gap-2 rounded-full border border-amber-400/40 bg-amber-950/90 px-3 py-1.5 text-xs text-amber-50">
+              <Timer className="h-3.5 w-3.5" />
+              Speaking {Math.floor(speakingSecondsLeft / 60)}:{String(speakingSecondsLeft % 60).padStart(2, "0")}
             </div>
           ) : null}
 
@@ -1906,6 +2100,13 @@ export function DailyMeetingRoom({
               onClick={() => setPanel((p) => (p === "chat" ? "none" : "chat"))}
             >
               <MessageSquare className="h-4 w-4" />
+            </ControlButton>
+            <ControlButton
+              label="Engage"
+              active={panel === "engage"}
+              onClick={() => setPanel((p) => (p === "engage" ? "none" : "engage"))}
+            >
+              <BarChart3 className="h-4 w-4" />
             </ControlButton>
             <ControlButton
               label="Info"

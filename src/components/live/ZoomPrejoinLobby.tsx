@@ -51,8 +51,16 @@ export function ZoomPrejoinLobby({
   const headerLabel = institutionName?.trim() || meetingTitle;
 
   return (
-    <div className="flex h-full min-h-0 flex-1 flex-col overflow-y-auto bg-[#1a1a1a] text-white">
-      <div className="flex shrink-0 items-center gap-2 border-b border-white/10 bg-[#232323]/95 px-4 py-2.5 backdrop-blur-sm pt-[max(0.625rem,env(safe-area-inset-top))]">
+    <div className="flex h-full min-h-0 flex-1 flex-col overflow-y-auto bg-[#121212] text-white">
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 opacity-30"
+        style={{
+          background:
+            "radial-gradient(ellipse 70% 40% at 50% 0%, rgba(14,114,237,0.28), transparent 55%)",
+        }}
+      />
+      <div className="relative z-10 flex shrink-0 items-center gap-2 border-b border-white/10 bg-[#1f1f1f]/95 px-4 py-2.5 backdrop-blur-sm pt-[max(0.625rem,env(safe-area-inset-top))]">
         {resolvedLogo ? (
           <img
             className="h-7 w-7 shrink-0 rounded-full object-cover bg-[#2d2d2d]"
@@ -63,10 +71,15 @@ export function ZoomPrejoinLobby({
         ) : (
           <span className="flex h-6 w-6 items-center justify-center rounded bg-[#0e72ed] text-[10px] font-bold">zm</span>
         )}
-        <span className="truncate text-sm font-medium">{headerLabel}</span>
+        <div className="min-w-0 flex-1">
+          <span className="block truncate text-sm font-medium">{headerLabel}</span>
+          <span className="block text-[10px] uppercase tracking-[0.16em] text-zinc-500">
+            {isHost ? "Host prejoin" : "Waiting room · check mic & camera"}
+          </span>
+        </div>
       </div>
 
-      <div className="flex min-h-0 flex-1 flex-col items-center justify-center p-3 sm:p-8">
+      <div className="relative z-10 flex min-h-0 flex-1 flex-col items-center justify-center p-3 sm:p-8">
         <div className="w-full max-w-3xl">
           <div className="relative overflow-hidden rounded-xl bg-[#2d2d2d] shadow-2xl sm:rounded-2xl">
             <div className="relative flex aspect-video w-full items-center justify-center bg-[#1f1f1f]">
