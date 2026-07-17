@@ -516,33 +516,58 @@ export function DailyMeetingRoom({
     return () => navigator.mediaDevices?.removeEventListener?.("devicechange", onChange);
   }, [phase]);
 
-  // Local mic level — Zoom-style live RMS metering from the Daily audio track.
+  // Local mic level — prefer Daily's observer (works for guests who unmute mid-call).
+  // Web Audio analyser is a fallback when the Daily track is already live.
   useEffect(() => {
     if (phase !== "meeting" || !micOn) {
       setLocalAudioLevel(0);
+      const call = callRef.current;
+      try {
+        if (call?.isLocalAudioLevelObserverRunning?.()) call.stopLocalAudioLevelObserver();
+      } catch {
+        // ignore
+      }
       return;
     }
 
     let raf = 0;
     let ctx: AudioContext | null = null;
     let stopped = false;
-    let retry = 0;
+    let retryTimer: number | null = null;
+    let usingDailyObserver = false;
+    const call = callRef.current;
 
-    const localAudioTrack = (): MediaStreamTrack | null => {
-      const call = callRef.current;
-      const track = call?.participants()?.local?.tracks?.audio?.persistentTrack;
-      return track && track.readyState === "live" ? track : null;
+    const onDailyLevel = (ev: { audioLevel?: number }) => {
+      if (stopped) return;
+      const raw = Number(ev?.audioLevel ?? 0);
+      // Daily levels are already 0–1; amplify slightly so quiet speech still moves bars.
+      setLocalAudioLevel(Math.min(1, Math.max(0, raw) * 1.35));
     };
 
-    const beginMetering = (track: MediaStreamTrack) => {
+    const stopWebAudio = () => {
+      if (raf) cancelAnimationFrame(raf);
+      raf = 0;
+      if (ctx) {
+        void ctx.close();
+        ctx = null;
+      }
+    };
+
+    const localAudioTrack = (): MediaStreamTrack | null => {
+      const audio = callRef.current?.participants()?.local?.tracks?.audio as
+        | { persistentTrack?: MediaStreamTrack; track?: MediaStreamTrack }
+        | undefined;
+      const track = audio?.persistentTrack || audio?.track || null;
+      return track && track.readyState !== "ended" ? track : null;
+    };
+
+    const beginWebAudioMetering = (track: MediaStreamTrack) => {
       try {
         const Ctor =
           window.AudioContext ||
           (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-        if (!Ctor) return;
+        if (!Ctor) return false;
         ctx = new Ctor();
-        // Browsers often create the context "suspended" until a user gesture;
-        // without resuming, the analyser reads pure silence and bars never move.
         if (ctx.state === "suspended") void ctx.resume().catch(() => undefined);
 
         const source = ctx.createMediaStreamSource(new MediaStream([track]));
@@ -553,7 +578,7 @@ export function DailyMeetingRoom({
         const data = new Uint8Array(analyser.fftSize);
 
         const tick = () => {
-          if (stopped) return;
+          if (stopped || usingDailyObserver) return;
           if (ctx && ctx.state === "suspended") void ctx.resume().catch(() => undefined);
           analyser.getByteTimeDomainData(data);
           let sum = 0;
@@ -562,41 +587,64 @@ export function DailyMeetingRoom({
             sum += v * v;
           }
           const rms = Math.sqrt(sum / data.length);
-          // Amplify so quiet speech still moves bars like Zoom.
-          const level = Math.min(1, rms * 4.2);
-          setLocalAudioLevel(level);
+          setLocalAudioLevel(Math.min(1, rms * 4.2));
           raf = requestAnimationFrame(tick);
         };
         raf = requestAnimationFrame(tick);
+        return true;
       } catch {
-        setLocalAudioLevel(0);
+        return false;
       }
     };
 
-    const start = () => {
-      if (stopped) return;
+    const startWebAudioWithRetry = (attempt = 0) => {
+      if (stopped || usingDailyObserver) return;
       const track = localAudioTrack();
-      if (track) {
-        beginMetering(track);
+      if (track && beginWebAudioMetering(track)) return;
+      // Guests who unmute after raise-hand may need several seconds for the track.
+      if (attempt < 80) {
+        retryTimer = window.setTimeout(() => startWebAudioWithRetry(attempt + 1), 125);
+      }
+    };
+
+    void (async () => {
+      if (!call?.startLocalAudioLevelObserver) {
+        startWebAudioWithRetry();
         return;
       }
-      // The persistent track may not be live the instant the mic turns on;
-      // poll briefly instead of giving up so the meter always attaches.
-      if (retry < 40) {
-        retry += 1;
-        setLocalAudioLevel(0);
-        raf = requestAnimationFrame(start);
-      } else {
-        setLocalAudioLevel(0);
+      try {
+        if (!call.isLocalAudioLevelObserverRunning?.()) {
+          await call.startLocalAudioLevelObserver(100);
+        }
+        if (stopped) return;
+        usingDailyObserver = true;
+        call.on("local-audio-level", onDailyLevel);
+        // Seed immediately in case the first event is delayed.
+        try {
+          const seed = Number(call.getLocalAudioLevel?.() ?? 0);
+          if (seed > 0) setLocalAudioLevel(Math.min(1, seed * 1.35));
+        } catch {
+          // ignore
+        }
+      } catch {
+        usingDailyObserver = false;
+        startWebAudioWithRetry();
       }
-    };
-
-    start();
+    })();
 
     return () => {
       stopped = true;
-      if (raf) cancelAnimationFrame(raf);
-      if (ctx) void ctx.close();
+      if (retryTimer != null) window.clearTimeout(retryTimer);
+      stopWebAudio();
+      try {
+        (call as { off?: (event: string, handler: (ev: { audioLevel?: number }) => void) => void })?.off?.(
+          "local-audio-level",
+          onDailyLevel,
+        );
+        if (call?.isLocalAudioLevelObserverRunning?.()) call.stopLocalAudioLevelObserver();
+      } catch {
+        // ignore
+      }
     };
   }, [phase, micOn, audioTrackEpoch, selectedAudioId]);
 
