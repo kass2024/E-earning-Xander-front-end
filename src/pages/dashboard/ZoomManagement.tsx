@@ -111,7 +111,7 @@ function meetingStatusBadge(status?: ZoomItem["session_status"]) {
 const ZoomManagement = ({ initialMeetingType = "meeting" }: ZoomManagementProps) => {
   const { toast } = useToast();
 
-  // Locked by sidebar route: Daily Meetings → meeting, Webinars → webinar
+  // Locked by sidebar route: Meeting → meeting, Webinars → webinar
   const meetingType: MeetingType = initialMeetingType;
   const [meetingTimezone, setMeetingTimezone] = useState(resolveDefaultTimezone);
   const [requireRegistration, setRequireRegistration] = useState(false);
@@ -384,7 +384,7 @@ const ZoomManagement = ({ initialMeetingType = "meeting" }: ZoomManagementProps)
   return (
     <div className="space-y-6">
       <AdminPageHeader
-        title={meetingType === "webinar" ? "Webinars" : "Daily Meetings"}
+        title={meetingType === "webinar" ? "Webinars" : "Meeting"}
         description={`Schedule sessions and manage recordings. Host: ${hostDisplayName ?? hostDisplayEmail ?? "Admin"}. Provider defaults are managed in Settings → Live meetings.`}
       />
 
@@ -401,12 +401,12 @@ const ZoomManagement = ({ initialMeetingType = "meeting" }: ZoomManagementProps)
           <CardHeader className="pb-4">
             <CardTitle className="flex items-center gap-2 text-[#012F6B]">
               <Video className="h-5 w-5" />
-              {meetingType === "webinar" ? "Schedule a webinar" : "Schedule a Daily meeting"}
+              {meetingType === "webinar" ? "Schedule a webinar" : "Schedule a meeting"}
             </CardTitle>
             <CardDescription>
               {meetingType === "webinar"
                 ? "Create a broadcast-style webinar. Audience joins muted with camera off until you invite them to speak."
-                : "Create an interactive Daily meeting. Attendees join muted; they raise a hand before speaking."}
+                : "Create an interactive meeting. Attendees join muted; they raise a hand before speaking."}
             </CardDescription>
           </CardHeader>
 

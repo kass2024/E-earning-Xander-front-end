@@ -151,7 +151,7 @@ const AdminDashboard = () => {
             ["/dashboard/courses", "Courses"],
             ["/dashboard/instructors", "Instructors"],
             ["/dashboard/classes", "Live Classes"],
-            ["/dashboard/zoom-meetings", "Daily Meetings"],
+            ["/dashboard/zoom-meetings", "Meeting"],
             ["/dashboard/zoom-webinars", "Webinars"],
             ["/dashboard/meeting-registrations", "Booked Appointments"],
             ["/dashboard/materials", "Materials"],
