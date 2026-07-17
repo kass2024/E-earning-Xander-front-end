@@ -58,7 +58,6 @@ const InstitutionBrandingSettings = () => {
       form.append("name", name);
       form.append("website", website);
       form.append("address", address);
-      form.append("meeting_provider", meetingProvider);
       if (logoFile) form.append("logo", logoFile);
 
       const res = await updateMyInstitutionBranding(form);
@@ -91,44 +90,17 @@ const InstitutionBrandingSettings = () => {
             Live meeting platform
           </CardTitle>
           <CardDescription>
-            Choose Daily or Zoom for this institution&apos;s live cohorts, live classes, and webinars. New sessions follow
-            this setting when you click Start.
+            Your institution uses the main platform setting controlled by the full admin
+            (Settings → Live meetings). Daily is the system priority.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-3 sm:grid-cols-2 max-w-xl">
-            <button
-              type="button"
-              onClick={() => setMeetingProvider("daily")}
-              className={`rounded-xl border p-4 text-left transition ${
-                meetingProvider === "daily"
-                  ? "border-sky-600 bg-sky-600 text-white shadow-sm"
-                  : "border-border bg-background hover:bg-muted/40"
-              }`}
-            >
-              <p className="font-semibold text-sm">Daily</p>
-              <p className={`text-[11px] mt-0.5 ${meetingProvider === "daily" ? "text-white/80" : "text-muted-foreground"}`}>
-                In-app cloud video (recommended)
-              </p>
-            </button>
-            <button
-              type="button"
-              onClick={() => setMeetingProvider("zoom")}
-              className={`rounded-xl border p-4 text-left transition ${
-                meetingProvider === "zoom"
-                  ? "border-emerald-700 bg-emerald-700 text-white shadow-sm"
-                  : "border-border bg-background hover:bg-muted/40"
-              }`}
-            >
-              <p className="font-semibold text-sm">Zoom Meeting SDK</p>
-              <p className={`text-[11px] mt-0.5 ${meetingProvider === "zoom" ? "text-white/80" : "text-muted-foreground"}`}>
-                In-app Zoom embed
-              </p>
-            </button>
+          <div className="rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-950">
+            Current platform: <span className="font-semibold capitalize">{meetingProvider}</span>
+            <p className="mt-1 text-xs text-sky-800/80">
+              Partner institutions cannot override this. Contact the main platform admin to switch Daily or Zoom.
+            </p>
           </div>
-          <p className="text-xs text-muted-foreground mt-3 max-w-xl">
-            Save below to apply. Then end any live Zoom session and Start again so the host studio uses the new provider.
-          </p>
         </CardContent>
       </Card>
 

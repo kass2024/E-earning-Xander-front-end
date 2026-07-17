@@ -45,6 +45,7 @@ import {
   endLiveZoomCohortSession,
   getLiveZoomCohortZoomDetails,
   getMyInstitutionSettings,
+  getPlatformMeetingSettings,
   type AvailableScheduleRow,
   type LiveZoomCohortZoomDetails,
   type MeetingCalendarConfig,
@@ -85,14 +86,14 @@ const COMMON_TIMEZONES: CommonTimezone[] = [
     name: "Coordinated Universal Time",
     offset: "UTC+0",
     iana: "Etc/UTC",
-    label: "UTC â€“ Coordinated Universal Time (UTC+0)",
+    label: "UTC - Coordinated Universal Time (UTC+0)",
   },
   {
     code: "GMT",
     name: "Greenwich Mean Time",
     offset: "UTC+0",
     iana: "Europe/London",
-    label: "GMT â€“ Greenwich Mean Time (UTC+0)",
+    label: "GMT - Greenwich Mean Time (UTC+0)",
   },
   {
     code: "CAT-RW",
@@ -106,112 +107,112 @@ const COMMON_TIMEZONES: CommonTimezone[] = [
     name: "East Africa Time",
     offset: "UTC+3",
     iana: "Africa/Nairobi",
-    label: "EAT â€“ East Africa Time (UTC+3)",
+    label: "EAT - East Africa Time (UTC+3)",
   },
   {
     code: "CAT",
     name: "Central Africa Time",
     offset: "UTC+2",
     iana: "Africa/Harare",
-    label: "CAT â€“ Central Africa Time (UTC+2)",
+    label: "CAT - Central Africa Time (UTC+2)",
   },
   {
     code: "WAT",
     name: "West Africa Time",
     offset: "UTC+1",
     iana: "Africa/Lagos",
-    label: "WAT â€“ West Africa Time (UTC+1)",
+    label: "WAT - West Africa Time (UTC+1)",
   },
   {
     code: "CET",
     name: "Central European Time",
     offset: "UTC+1",
     iana: "Europe/Berlin",
-    label: "CET â€“ Central European Time (UTC+1)",
+    label: "CET - Central European Time (UTC+1)",
   },
   {
     code: "EET",
     name: "Eastern European Time",
     offset: "UTC+2",
     iana: "Europe/Athens",
-    label: "EET â€“ Eastern European Time (UTC+2)",
+    label: "EET - Eastern European Time (UTC+2)",
   },
   {
     code: "BST",
     name: "British Summer Time",
     offset: "UTC+1",
     iana: "Europe/London",
-    label: "BST â€“ British Summer Time (UTC+1)",
+    label: "BST - British Summer Time (UTC+1)",
   },
   {
     code: "IST",
     name: "India Standard Time",
     offset: "UTC+5:30",
     iana: "Asia/Kolkata",
-    label: "IST â€“ India Standard Time (UTC+5:30)",
+    label: "IST - India Standard Time (UTC+5:30)",
   },
   {
     code: "GST",
     name: "Gulf Standard Time",
     offset: "UTC+4",
     iana: "Asia/Dubai",
-    label: "GST â€“ Gulf Standard Time (UTC+4)",
+    label: "GST - Gulf Standard Time (UTC+4)",
   },
   {
     code: "MSK",
     name: "Moscow Standard Time",
     offset: "UTC+3",
     iana: "Europe/Moscow",
-    label: "MSK â€“ Moscow Standard Time (UTC+3)",
+    label: "MSK - Moscow Standard Time (UTC+3)",
   },
   {
     code: "CST",
     name: "Central Standard Time",
-    offset: "UTCâˆ’6",
+    offset: "UTC-6",
     iana: "America/Chicago",
-    label: "CST â€“ Central Standard Time (UTCâˆ’6)",
+    label: "CST - Central Standard Time (UTC-6)",
   },
   {
     code: "EST",
     name: "Eastern Standard Time",
-    offset: "UTCâˆ’5",
+    offset: "UTC-5",
     iana: "America/New_York",
-    label: "EST â€“ Eastern Standard Time (UTCâˆ’5)",
+    label: "EST - Eastern Standard Time (UTC-5)",
   },
   {
     code: "MST",
     name: "Mountain Standard Time",
-    offset: "UTCâˆ’7",
+    offset: "UTC-7",
     iana: "America/Denver",
-    label: "MST â€“ Mountain Standard Time (UTCâˆ’7)",
+    label: "MST - Mountain Standard Time (UTC-7)",
   },
   {
     code: "PST",
     name: "Pacific Standard Time",
-    offset: "UTCâˆ’8",
+    offset: "UTC-8",
     iana: "America/Los_Angeles",
-    label: "PST â€“ Pacific Standard Time (UTCâˆ’8)",
+    label: "PST - Pacific Standard Time (UTC-8)",
   },
   {
     code: "JST",
     name: "Japan Standard Time",
     offset: "UTC+9",
     iana: "Asia/Tokyo",
-    label: "JST â€“ Japan Standard Time (UTC+9)",
+    label: "JST - Japan Standard Time (UTC+9)",
   },
   {
     code: "KST",
     name: "Korea Standard Time",
     offset: "UTC+9",
     iana: "Asia/Seoul",
-    label: "KST â€“ Korea Standard Time (UTC+9)",
+    label: "KST - Korea Standard Time (UTC+9)",
   },
   {
     code: "AEST",
     name: "Australian Eastern Standard Time",
     offset: "UTC+10",
     iana: "Australia/Sydney",
-    label: "AEST â€“ Australian Eastern Standard Time (UTC+10)",
+    label: "AEST - Australian Eastern Standard Time (UTC+10)",
   },
 ];
 
@@ -335,7 +336,7 @@ const AvailableSchedules = ({ mode = "available" }: AvailableSchedulesProps) => 
       applyLoadedData(cached);
       setLoading(false);
     } else if (rows.length === 0) {
-      // Only show full-page skeleton on first load — keep UI interactive during refresh.
+      // Only show full-page skeleton on first load - keep UI interactive during refresh.
       setLoading(true);
     }
 
@@ -373,6 +374,10 @@ const AvailableSchedules = ({ mode = "available" }: AvailableSchedulesProps) => 
         setMeetingProvider(provider);
       }
     };
+    // Prefer main admin setting; institution payload also inherits it.
+    void getPlatformMeetingSettings()
+      .then((data) => apply(data.main_platform_meeting_provider))
+      .catch(() => undefined);
     const stored = getStoredInstitution() as { meeting_provider?: string } | null;
     if (stored?.meeting_provider) {
       apply(stored.meeting_provider);
@@ -958,7 +963,7 @@ const AvailableSchedules = ({ mode = "available" }: AvailableSchedulesProps) => 
                               onClick={() => removeBlockedMonth(month)}
                               aria-label={`Remove ${month}`}
                             >
-                              Ã—
+                              Ã - 
                             </button>
                           </Badge>
                         ))}
@@ -990,7 +995,7 @@ const AvailableSchedules = ({ mode = "available" }: AvailableSchedulesProps) => 
                               onClick={() => removeBlockedDate(date)}
                               aria-label={`Remove ${date}`}
                             >
-                              Ã—
+                              Ã - 
                             </button>
                           </Badge>
                         ))}
@@ -1345,7 +1350,7 @@ const AvailableSchedules = ({ mode = "available" }: AvailableSchedulesProps) => 
               <div className="space-y-2 md:col-span-2">
                 <Label>Zoom meeting</Label>
                 <div className="rounded-md border bg-muted/20 px-3 py-2 text-sm space-y-2">
-                  <p>Meeting ID: {editing.zoom_meeting_id || "â€”"}</p>
+                  <p>Meeting ID: {editing.zoom_meeting_id || "-"}</p>
                   <p className="truncate">Join: {editing.zoom_link}</p>
                   <Button type="button" size="sm" variant="outline" onClick={() => void openZoomDetails(editing)}>
                     View copy / share options

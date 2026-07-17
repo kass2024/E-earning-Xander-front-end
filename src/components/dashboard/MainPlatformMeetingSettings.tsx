@@ -90,8 +90,8 @@ export default function MainPlatformMeetingSettings() {
           Live meeting platform
         </CardTitle>
         <CardDescription>
-          System-wide default for courses on the main platform. Daily is the priority provider.
-          Partner institutions keep their own setting under Partner Institutions.
+          System-wide default for the main platform and all partner institutions. Daily is the
+        priority provider. Only full admins can change this.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -156,8 +156,8 @@ export default function MainPlatformMeetingSettings() {
                 <p className="text-xs text-emerald-700">Daily configured ({dailyDomain})</p>
               ) : null}
               <p className="text-xs text-muted-foreground">
-                Applies everywhere for newly scheduled live classes, meetings, webinars, and cohorts on
-                the main platform. Existing sessions keep their original provider.
+                Applies everywhere for newly scheduled live classes, meetings, webinars, and cohorts —
+                including partner institutions. Existing sessions keep their original provider.
               </p>
               {!canManage ? (
                 <p className="text-xs text-amber-700">

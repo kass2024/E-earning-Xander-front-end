@@ -197,7 +197,6 @@ const InstitutionAdminEditDialog = ({ institutionId, open, onOpenChange, onSaved
         mail_from_name: mailFromName,
         mail_ehlo_domain: mailEhloDomain,
         zoom_host_user_id: zoomHostUserId.trim() || null,
-        meeting_provider: meetingProvider,
       };
       if (mailPassword.trim()) payload.mail_password = mailPassword;
 
@@ -325,45 +324,12 @@ const InstitutionAdminEditDialog = ({ institutionId, open, onOpenChange, onSaved
                   <Label>Admin notes (internal)</Label>
                   <Input className="rounded-xl" value={adminNotes} onChange={(e) => setAdminNotes(e.target.value)} placeholder="Visible only to platform admins" />
                 </div>
-                <div className="rounded-xl border border-[#012F6B]/15 bg-[#012F6B]/[0.03] p-4 space-y-3">
+                <div className="rounded-xl border border-[#012F6B]/15 bg-[#012F6B]/[0.03] p-4 space-y-2">
                   <p className="text-sm font-medium text-[#012F6B]">Meeting platform</p>
                   <p className="text-xs text-muted-foreground">
-                    Switch between Daily (default) and Zoom. Changing affects newly created live sessions only.
+                    Partner institutions inherit the main admin setting from Settings → Live meetings.
+                    Current: <span className="font-semibold capitalize">{meetingProvider}</span>
                   </p>
-                  <div className="grid grid-cols-2 gap-2">
-                    <button
-                      type="button"
-                      disabled={!dailyConfigured}
-                      onClick={() => setMeetingProvider("daily")}
-                      className={`rounded-xl border px-3 py-2.5 text-left transition-colors ${
-                        meetingProvider === "daily"
-                          ? "border-[#012F6B] bg-[#012F6B] text-white"
-                          : "border-input bg-background hover:border-[#012F6B]/40"
-                      } ${!dailyConfigured ? "cursor-not-allowed opacity-50" : ""}`}
-                    >
-                      <p className="text-sm font-semibold">Daily</p>
-                      <p className={`text-[11px] mt-0.5 ${meetingProvider === "daily" ? "text-white/80" : "text-muted-foreground"}`}>
-                        Default
-                      </p>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setMeetingProvider("zoom")}
-                      className={`rounded-xl border px-3 py-2.5 text-left transition-colors ${
-                        meetingProvider === "zoom"
-                          ? "border-[#012F6B] bg-[#012F6B] text-white"
-                          : "border-input bg-background hover:border-[#012F6B]/40"
-                      }`}
-                    >
-                      <p className="text-sm font-semibold">Zoom</p>
-                      <p className={`text-[11px] mt-0.5 ${meetingProvider === "zoom" ? "text-white/80" : "text-muted-foreground"}`}>
-                        Licensed hosts
-                      </p>
-                    </button>
-                  </div>
-                  {meetingProvider === "daily" && dailyConfigured && dailyDomain ? (
-                    <p className="text-xs text-emerald-700">Daily configured ({dailyDomain})</p>
-                  ) : null}
                 </div>
                 <div className="rounded-xl border border-[#012F6B]/15 bg-[#012F6B]/[0.03] p-4 space-y-3">
                   <div className="flex items-center gap-2">
@@ -372,7 +338,7 @@ const InstitutionAdminEditDialog = ({ institutionId, open, onOpenChange, onSaved
                   </div>
                   {meetingProvider === "daily" ? (
                     <p className="text-xs text-muted-foreground">
-                      Zoom host assignment applies only when this institution uses Zoom.
+                      Zoom host assignment applies only when the main platform uses Zoom.
                     </p>
                   ) : null}
                   {zoomUsersDiscovered > 0 ? (
