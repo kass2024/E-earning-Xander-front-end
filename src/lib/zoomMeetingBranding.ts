@@ -31,7 +31,7 @@ type BuildBrandingOptions = {
 function enrichAuth(auth: ZoomMeetingBranding | null | undefined): ZoomMeetingBranding | null | undefined {
   if (!auth) return auth;
 
-  if (isMainPlatformZoomHost(auth)) {
+  if (isMainPlatformZoomHost(auth) || auth.use_hub_branding || auth.is_main_platform_host) {
     const hubName = getAppDisplayName();
     const zoomAvatar = resolveMainZoomProfile(auth);
     return {
@@ -55,8 +55,14 @@ function enrichAuth(auth: ZoomMeetingBranding | null | undefined): ZoomMeetingBr
 
   let next = auth;
 
-  // Never hydrate partner branding from localStorage for main platform operators.
-  if (auth.use_institution_logo && !auth.institution && !isStoredMainAdmin() && !showsPlatformHubBranding()) {
+  // Never hydrate partner branding from localStorage for hub sessions or main operators.
+  // Guests joining hub webinars often still have a leftover parrot_institution (e.g. Prime Gateway).
+  if (
+    auth.use_institution_logo &&
+    !auth.institution &&
+    !isStoredMainAdmin() &&
+    !showsPlatformHubBranding()
+  ) {
     const stored = getStoredInstitution();
     if (stored) {
       next = { ...next, institution: stored };

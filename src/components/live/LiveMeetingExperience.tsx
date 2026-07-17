@@ -56,13 +56,17 @@ export function LiveMeetingExperience(props: Props) {
 
   if (provider === "daily" && isDailySdk(props.sdk)) {
     const logoUrl =
-      props.clientBranding?.logoUrl ??
-      props.hostBranding?.avatarUrl ??
-      props.participantBranding?.hostAvatarUrl;
+      props.isHost || props.clientBranding?.institutionMode
+        ? props.clientBranding?.logoUrl ??
+          props.hostBranding?.avatarUrl ??
+          props.participantBranding?.hostAvatarUrl
+        : props.clientBranding?.logoUrl ?? null;
     const institutionName =
-      props.clientBranding?.companyName ??
-      props.hostBranding?.companyName ??
-      props.participantBranding?.companyName;
+      props.isHost || props.clientBranding?.institutionMode
+        ? props.clientBranding?.companyName ??
+          props.hostBranding?.companyName ??
+          props.participantBranding?.companyName
+        : props.clientBranding?.companyName ?? undefined;
 
     return (
       <DailyMeetingRoom

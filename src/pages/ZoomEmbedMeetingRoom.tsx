@@ -178,6 +178,26 @@ const ZoomEmbedMeetingRoom = () => {
     meetingNumber?.startsWith("admin-meet-main-") ||
     meetingNumber?.startsWith("admin-webinar-main-");
 
+  // Preparing spinner runs before auth — never show a leftover partner institution
+  // (e.g. Prime Gateway) when joining a main-platform admin meeting/webinar.
+  const preparingUsesHubBrand =
+    isHubAdminRoom || isStoredMainAdmin() || showsPlatformHubBranding();
+
+  const preparingInstitutionName = preparingUsesHubBrand
+    ? getAppDisplayName()
+    : (clientBranding?.companyName ??
+      hostBranding?.companyName ??
+      participantBranding?.companyName ??
+      institutionBrandingName() ??
+      HUB.company);
+
+  const preparingLogoUrl = preparingUsesHubBrand
+    ? (clientBranding?.logoUrl ?? hostBranding?.avatarUrl ?? null)
+    : (clientBranding?.logoUrl ??
+      hostBranding?.avatarUrl ??
+      participantBranding?.hostAvatarUrl ??
+      institutionLogoUrl());
+
   const defaultAdminRoomTitle = useMemo(() => {
     if (materialId || webinarHost) return null;
     const mode =
@@ -630,23 +650,8 @@ const ZoomEmbedMeetingRoom = () => {
           phase="preparing"
           isHost={isHost}
           meetingTitle={meetingTitle}
-          institutionName={
-            isStoredMainAdmin() || showsPlatformHubBranding()
-              ? getAppDisplayName()
-              : (clientBranding?.companyName ??
-                hostBranding?.companyName ??
-                participantBranding?.companyName ??
-                institutionBrandingName() ??
-                HUB.company)
-          }
-          logoUrl={
-            isStoredMainAdmin() || showsPlatformHubBranding()
-              ? (clientBranding?.logoUrl ?? hostBranding?.avatarUrl ?? null)
-              : (clientBranding?.logoUrl ??
-                hostBranding?.avatarUrl ??
-                participantBranding?.hostAvatarUrl ??
-                institutionLogoUrl())
-          }
+          institutionName={preparingInstitutionName}
+          logoUrl={preparingLogoUrl}
           fullscreen
         />
 
