@@ -321,8 +321,8 @@ export function CohortJoinQueuePanel({
           mode="waiting"
           message={
             isLive
-              ? "Enter the waiting room. The host will admit you when it's your turn."
-              : "The session hasn't started yet — you can still join the waiting room. The host can admit you manually at any time."
+              ? "Enter the waiting room. The first guest joins automatically when the session is live; others wait with a queue number until the host admits them."
+              : "The session hasn't started yet — you can still join the waiting room. The host can admit you at any time."
           }
         />
       )}
@@ -332,7 +332,7 @@ export function CohortJoinQueuePanel({
           <div>
             <h2 className="text-lg font-semibold text-white">Join waiting room</h2>
             <p className="mt-1 text-sm text-zinc-400">
-              One participant at a time. Enter your details to request access from the host.
+              Enter your details to join. If you are first while the session is live, you enter automatically. Otherwise you receive a queue number and the host admits you.
             </p>
           </div>
 
@@ -451,7 +451,7 @@ export function CohortJoinQueuePanel({
               Join meeting
             </Button>
             <Button variant="ghost" className="text-zinc-400 hover:text-white" onClick={() => void handleDone()} disabled={loading}>
-              I'm done — release my spot
+              Leave meeting
             </Button>
           </div>
         </>
@@ -465,7 +465,7 @@ export function CohortJoinQueuePanel({
               Rejoin meeting
             </Button>
             <Button variant="outline" className="border-white/10 bg-[#232323] text-zinc-200" onClick={() => void handleDone()} disabled={loading}>
-              I'm done — next person
+              Leave meeting
             </Button>
           </div>
         </div>

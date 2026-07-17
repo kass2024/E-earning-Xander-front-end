@@ -1,10 +1,14 @@
+import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
+  CheckSquare,
   Loader2,
   Radio,
+  Square,
   UserCheck,
   UserPlus,
+  Users,
   X,
 } from "lucide-react";
 import type { LiveZoomCohortQueueEntry } from "@/api/axios";
@@ -22,6 +26,7 @@ type Props = {
   open: boolean;
   onClose: () => void;
   current: LiveZoomCohortQueueEntry | null;
+  inSession?: LiveZoomCohortQueueEntry[];
   waiting: LiveZoomCohortQueueEntry[];
   admittedReady: LiveZoomCohortQueueEntry[];
   recording: boolean;
@@ -29,6 +34,7 @@ type Props = {
   sdkReady: boolean;
   onAdmitNext: () => void;
   onAdmitAll: () => void;
+  onAdmitSelected?: (entryIds: number[]) => void;
   onRelease: () => void;
   onAdmitEntry: (entryId: number) => void;
   onToggleRecording: (action: "start" | "stop", meta?: { clientHandled?: boolean }) => void;
@@ -38,6 +44,7 @@ export function HostQueuePanel({
   open,
   onClose,
   current,
+  inSession = [],
   waiting,
   admittedReady,
   recording,
@@ -45,12 +52,41 @@ export function HostQueuePanel({
   sdkReady,
   onAdmitNext,
   onAdmitAll,
+  onAdmitSelected,
   onRelease,
   onAdmitEntry,
   onToggleRecording,
 }: Props) {
-  const hasCurrent = Boolean(current);
+  const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const totalWaiting = waiting.length;
+  const sessionPeople = useMemo(() => {
+    if (inSession.length > 0) return inSession;
+    return current ? [current] : [];
+  }, [inSession, current]);
+  const inSessionCount = sessionPeople.length;
+  const selectedWaiting = selectedIds.filter((id) => waiting.some((w) => w.id === id));
+
+  const toggleSelected = (id: number) => {
+    setSelectedIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  };
+
+  const toggleSelectAllWaiting = () => {
+    if (selectedWaiting.length === waiting.length) {
+      setSelectedIds([]);
+      return;
+    }
+    setSelectedIds(waiting.map((w) => w.id));
+  };
+
+  const handleAdmitSelected = () => {
+    if (selectedWaiting.length === 0) return;
+    if (onAdmitSelected) {
+      onAdmitSelected(selectedWaiting);
+    } else {
+      selectedWaiting.forEach((id) => onAdmitEntry(id));
+    }
+    setSelectedIds([]);
+  };
 
   return (
     <>
@@ -70,7 +106,7 @@ export function HostQueuePanel({
       >
         <div className="flex h-12 shrink-0 items-center justify-between border-b border-white/10 px-4">
           <div className="flex items-center gap-2">
-            <h2 className="text-sm font-semibold text-white">Join queue</h2>
+            <h2 className="text-sm font-semibold text-white">Waiting room</h2>
             {totalWaiting > 0 && (
               <Badge className="h-5 bg-[#0e72ed] px-1.5 text-[10px] hover:bg-[#0e72ed]">
                 {totalWaiting}
@@ -90,34 +126,38 @@ export function HostQueuePanel({
         <div className="shrink-0 space-y-3 border-b border-white/10 p-4">
           <div
             className={`rounded-lg border p-3 ${
-              hasCurrent ? "border-emerald-500/30 bg-emerald-950/20" : "border-white/10 bg-[#2d2d2d]"
+              inSessionCount > 0 ? "border-emerald-500/30 bg-emerald-950/20" : "border-white/10 bg-[#2d2d2d]"
             }`}
           >
             <p className="mb-1.5 flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-wider text-zinc-500">
               <UserCheck className="h-3 w-3" />
-              In session
+              In session ({inSessionCount})
             </p>
-            {current ? (
-              <div>
-                <p className="truncate font-medium text-white">{current.display_name}</p>
-                <div className="mt-1.5 flex flex-wrap gap-1.5">
-                  <Badge className="h-5 bg-emerald-600 capitalize text-[10px] hover:bg-emerald-600">
-                    {current.status}
-                  </Badge>
-                  {current.is_guest && (
-                    <Badge variant="outline" className="h-5 border-white/20 text-[10px] text-zinc-300">
-                      Guest
-                    </Badge>
-                  )}
-                </div>
-              </div>
+            {sessionPeople.length > 0 ? (
+              <ul className="space-y-2">
+                {sessionPeople.map((person) => (
+                  <li key={person.id} className="min-w-0">
+                    <p className="truncate font-medium text-white">{person.display_name}</p>
+                    <div className="mt-1 flex flex-wrap gap-1.5">
+                      <Badge className="h-5 bg-emerald-600 capitalize text-[10px] hover:bg-emerald-600">
+                        {person.status}
+                      </Badge>
+                      {person.is_guest && (
+                        <Badge variant="outline" className="h-5 border-white/20 text-[10px] text-zinc-300">
+                          Guest
+                        </Badge>
+                      )}
+                    </div>
+                  </li>
+                ))}
+              </ul>
             ) : (
-              <p className="text-xs text-zinc-500">No active participant</p>
+              <p className="text-xs text-zinc-500">No participants in the room yet</p>
             )}
           </div>
 
           <div className="grid grid-cols-1 gap-1.5">
-            {!hasCurrent && totalWaiting > 0 && (
+            {totalWaiting > 0 && (
               <>
                 <Button
                   size="sm"
@@ -126,7 +166,17 @@ export function HostQueuePanel({
                   onClick={onAdmitNext}
                 >
                   <UserPlus className="mr-1.5 h-3.5 w-3.5" />
-                  Admit next in line
+                  Admit next (#1)
+                </Button>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  className="h-9 bg-[#2d2d2d] text-xs text-zinc-200 hover:bg-[#3a3a3a]"
+                  disabled={actionLoading || selectedWaiting.length === 0}
+                  onClick={handleAdmitSelected}
+                >
+                  <Users className="mr-1.5 h-3.5 w-3.5" />
+                  Admit selected ({selectedWaiting.length})
                 </Button>
                 <Button
                   size="sm"
@@ -139,14 +189,15 @@ export function HostQueuePanel({
                 </Button>
               </>
             )}
-            {hasCurrent && (
+            {inSessionCount > 0 && (
               <Button
                 size="sm"
-                className="h-9 bg-[#0e72ed] text-xs hover:bg-[#0b5fc7]"
+                variant="outline"
+                className="h-9 border-white/15 text-xs text-zinc-200 hover:bg-white/5"
                 disabled={actionLoading}
                 onClick={onRelease}
               >
-                Release → admit next
+                Release one → admit next
               </Button>
             )}
             <Button
@@ -167,11 +218,27 @@ export function HostQueuePanel({
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto p-4">
-          <p className="mb-2 px-0.5 text-[10px] font-medium uppercase tracking-wider text-zinc-500">
-            Waiting — first come, first served
-          </p>
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <p className="px-0.5 text-[10px] font-medium uppercase tracking-wider text-zinc-500">
+              Waiting room — queue order
+            </p>
+            {waiting.length > 0 && (
+              <button
+                type="button"
+                className="inline-flex items-center gap-1 text-[10px] text-[#6db3ff] hover:underline"
+                onClick={toggleSelectAllWaiting}
+              >
+                {selectedWaiting.length === waiting.length ? (
+                  <CheckSquare className="h-3 w-3" />
+                ) : (
+                  <Square className="h-3 w-3" />
+                )}
+                Select all
+              </button>
+            )}
+          </div>
           <p className="mb-3 text-[11px] text-zinc-500">
-            You can admit joiners manually at any time, even before the scheduled start.
+            First guest enters automatically when the session is live. Admit more one-by-one, as a selection, or all at once.
           </p>
           {waiting.length === 0 ? (
             <p className="rounded-lg border border-dashed border-white/10 py-10 text-center text-xs text-zinc-500">
@@ -179,46 +246,63 @@ export function HostQueuePanel({
             </p>
           ) : (
             <div className="space-y-2">
-              {waiting.map((entry) => (
-                <div
-                  key={entry.id}
-                  className="flex items-start justify-between gap-2 rounded-lg border border-white/10 bg-[#2d2d2d] p-3"
-                >
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className="font-mono text-[10px] text-zinc-500">#{entry.queue_position}</span>
-                      <p className="truncate text-sm font-medium text-white">{entry.display_name}</p>
-                    </div>
-                    {entry.is_guest && (entry.guest_email || entry.guest_phone) && (
-                      <p className="mt-0.5 truncate text-[10px] text-zinc-500">
-                        {[entry.guest_email, entry.guest_phone].filter(Boolean).join(" · ")}
-                      </p>
-                    )}
-                    {entry.joined_at && (
-                      <p className="mt-0.5 text-[10px] text-zinc-600">
-                        Requested {formatJoinedAt(entry.joined_at)}
-                      </p>
-                    )}
-                  </div>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="h-7 shrink-0 border-[#0e72ed]/50 text-[10px] text-[#6db3ff] hover:bg-[#0e72ed]/10"
-                    disabled={actionLoading || hasCurrent}
-                    onClick={() => onAdmitEntry(entry.id)}
-                    title={hasCurrent ? "Release current participant first" : "Admit this person"}
+              {waiting.map((entry) => {
+                const selected = selectedIds.includes(entry.id);
+                return (
+                  <div
+                    key={entry.id}
+                    className={`flex items-start justify-between gap-2 rounded-lg border p-3 ${
+                      selected ? "border-[#0e72ed]/60 bg-[#0e72ed]/10" : "border-white/10 bg-[#2d2d2d]"
+                    }`}
                   >
-                    Admit
-                  </Button>
-                </div>
-              ))}
+                    <div className="flex min-w-0 flex-1 items-start gap-2">
+                      <button
+                        type="button"
+                        className="mt-0.5 shrink-0 text-zinc-400 hover:text-white"
+                        aria-label={selected ? "Deselect" : "Select"}
+                        onClick={() => toggleSelected(entry.id)}
+                      >
+                        {selected ? <CheckSquare className="h-4 w-4 text-[#6db3ff]" /> : <Square className="h-4 w-4" />}
+                      </button>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="rounded bg-white/10 px-1.5 py-0.5 font-mono text-[10px] text-zinc-200">
+                            #{entry.queue_position}
+                          </span>
+                          <p className="truncate text-sm font-medium text-white">{entry.display_name}</p>
+                        </div>
+                        {entry.is_guest && (entry.guest_email || entry.guest_phone) && (
+                          <p className="mt-0.5 truncate text-[10px] text-zinc-500">
+                            {[entry.guest_email, entry.guest_phone].filter(Boolean).join(" · ")}
+                          </p>
+                        )}
+                        {entry.joined_at && (
+                          <p className="mt-0.5 text-[10px] text-zinc-600">
+                            Requested {formatJoinedAt(entry.joined_at)}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-7 shrink-0 border-[#0e72ed]/50 text-[10px] text-[#6db3ff] hover:bg-[#0e72ed]/10"
+                      disabled={actionLoading}
+                      onClick={() => onAdmitEntry(entry.id)}
+                      title="Admit this person into the meeting"
+                    >
+                      Admit
+                    </Button>
+                  </div>
+                );
+              })}
             </div>
           )}
 
           {admittedReady.length > 0 && (
             <>
               <p className="mb-2 mt-4 px-0.5 text-[10px] font-medium uppercase tracking-wider text-zinc-500">
-                Ready to join
+                Admitted — joining
               </p>
               <div className="space-y-2">
                 {admittedReady.map((entry) => (

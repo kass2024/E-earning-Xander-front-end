@@ -67,9 +67,9 @@ export function LiveCohortQueueAdminDialog({ open, onOpenChange, cohort }: Props
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Queue — {cohort?.notes || "Live cohort"}</DialogTitle>
+          <DialogTitle>Waiting room — {cohort?.notes || "Live cohort"}</DialogTitle>
           <DialogDescription>
-            One participant at a time. Release the current person to admit the next joiner.
+            First guest enters automatically when the session is live. Others wait with a queue number until you admit them from the host studio.
           </DialogDescription>
         </DialogHeader>
 
@@ -77,7 +77,7 @@ export function LiveCohortQueueAdminDialog({ open, onOpenChange, cohort }: Props
           <div className="rounded-lg border p-4 space-y-2">
             <div className="flex items-center gap-2 text-sm font-medium">
               <UserCheck className="h-4 w-4" />
-              Current participant
+              In session
             </div>
             {current ? (
               <div className="flex items-center justify-between gap-3">
@@ -85,7 +85,7 @@ export function LiveCohortQueueAdminDialog({ open, onOpenChange, cohort }: Props
                 <Badge>{current.status}</Badge>
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground">No one is in the Zoom room right now.</p>
+              <p className="text-sm text-muted-foreground">No one is in the room right now.</p>
             )}
           </div>
 

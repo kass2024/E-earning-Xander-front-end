@@ -519,10 +519,12 @@ export type LiveZoomCohortSessionInfo = {
   session_ended_at?: string | null;
   is_live: boolean;
   waiting_count: number;
+  in_session_count?: number;
   has_active_participant: boolean;
   current_participant?: string | null;
   host_in_meeting?: boolean;
   queue_enabled?: boolean;
+  waiting_room_mode?: string;
   my_entry?: LiveZoomCohortQueueEntry | null;
 };
 
@@ -826,6 +828,8 @@ export const getLiveZoomCohortQueue = async (id: number) => {
   return response.data as {
     session: LiveZoomCohortSessionInfo;
     current: LiveZoomCohortQueueEntry | null;
+    in_session?: LiveZoomCohortQueueEntry[];
+    in_session_count?: number;
     waiting: LiveZoomCohortQueueEntry[];
     waiting_count: number;
     admitted_ready?: LiveZoomCohortQueueEntry[];

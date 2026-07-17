@@ -57,6 +57,7 @@ const LiveCohortHostStudio = () => {
   const [hostBranding, setHostBranding] = useState<HostBranding | null>(null);
   const [clientBranding, setClientBranding] = useState<ZoomClientBranding | null>(null);
   const [current, setCurrent] = useState<LiveZoomCohortQueueEntry | null>(null);
+  const [inSession, setInSession] = useState<LiveZoomCohortQueueEntry[]>([]);
   const [waiting, setWaiting] = useState<LiveZoomCohortQueueEntry[]>([]);
   const [admittedReady, setAdmittedReady] = useState<LiveZoomCohortQueueEntry[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -75,10 +76,12 @@ const LiveCohortHostStudio = () => {
     current: LiveZoomCohortQueueEntry | null;
     waiting: LiveZoomCohortQueueEntry[];
     admitted_ready?: LiveZoomCohortQueueEntry[];
+    in_session?: LiveZoomCohortQueueEntry[];
   }) => {
     setCurrent(data.current);
     setWaiting(data.waiting ?? []);
     setAdmittedReady(data.admitted_ready ?? []);
+    setInSession(data.in_session ?? (data.current ? [data.current] : []));
   };
 
   const loadQueue = useCallback(
@@ -232,7 +235,7 @@ const LiveCohortHostStudio = () => {
     try {
       await releaseLiveZoomCohortParticipant(id);
       await loadQueue(true);
-      toast({ title: "Released", description: "The next person in the queue can join." });
+      toast({ title: "Released", description: "Participant released. Next in line was admitted if anyone was waiting." });
     } catch (err: unknown) {
       const message = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
       toast({ variant: "destructive", title: "Release failed", description: message || "Could not release participant." });
@@ -250,6 +253,32 @@ const LiveCohortHostStudio = () => {
     } catch (err: unknown) {
       const message = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
       toast({ variant: "destructive", title: "Admit failed", description: message || "Could not admit participant." });
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleAdmitSelected = async (entryIds: number[]) => {
+    if (entryIds.length === 0) return;
+    setActionLoading(true);
+    try {
+      let lastQueue: Parameters<typeof applyQueue>[0] | null = null;
+      let admitted = 0;
+      for (const entryId of entryIds) {
+        const res = await admitLiveZoomCohortEntry(id, entryId);
+        lastQueue = res.queue;
+        admitted += 1;
+      }
+      if (lastQueue) applyQueue(lastQueue);
+      else await loadQueue(true);
+      toast({
+        title: "Admitted",
+        description: admitted === 1 ? "1 participant admitted." : `${admitted} participants admitted.`,
+      });
+    } catch (err: unknown) {
+      const message = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      await loadQueue(true);
+      toast({ variant: "destructive", title: "Admit failed", description: message || "Could not admit selected participants." });
     } finally {
       setActionLoading(false);
     }
@@ -336,9 +365,7 @@ const LiveCohortHostStudio = () => {
     try {
       const res = await markLiveCohortHostInMeeting(id);
       if (res.queue) {
-        setCurrent(res.queue.current);
-        setWaiting(res.queue.waiting ?? []);
-        setAdmittedReady(res.queue.admitted_ready ?? []);
+        applyQueue(res.queue);
       }
     } catch {
       // non-blocking — queue poll will catch up
@@ -529,6 +556,7 @@ const LiveCohortHostStudio = () => {
         open={queuePanelOpen}
         onClose={() => setQueuePanelOpen(false)}
         current={current}
+        inSession={inSession}
         waiting={waiting}
         admittedReady={admittedReady}
         recording={recording}
@@ -536,6 +564,7 @@ const LiveCohortHostStudio = () => {
         sdkReady={meetingReady}
         onAdmitNext={() => void handleAdmitNext()}
         onAdmitAll={() => void handleAdmitAll()}
+        onAdmitSelected={(ids) => void handleAdmitSelected(ids)}
         onRelease={() => void handleRelease()}
         onAdmitEntry={(entryId) => void handleAdmitEntry(entryId)}
         onToggleRecording={(action, meta) => void handleRecording(action, meta)}
