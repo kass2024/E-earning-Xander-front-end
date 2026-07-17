@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { format } from "date-fns";
 import { CalendarIcon, Clock3 } from "lucide-react";
 import { DateTime } from "luxon";
@@ -18,6 +18,7 @@ import {
   parseTime24,
   scheduleValidationMessage,
   splitDatetimeLocal,
+  type Time12Parts,
 } from "@/lib/scheduledDateTime";
 import { cn } from "@/lib/utils";
 
@@ -40,20 +41,27 @@ function startOfTodayInZone(timezone: string): Date {
 type TimePickerPanelProps = {
   time24: string;
   onChange: (time24: string) => void;
+  /** Close the popover after hour/minute pick — reopen via the time button. */
+  onComplete?: () => void;
 };
 
-function TimePickerPanel({ time24, onChange }: TimePickerPanelProps) {
+function TimePickerPanel({ time24, onChange, onComplete }: TimePickerPanelProps) {
   const parts = parseTime24(time24);
 
-  const setParts = (next: Partial<typeof parts>) => {
+  const setParts = (next: Partial<Time12Parts>, complete = false) => {
     onChange(formatTime24({ ...parts, ...next }));
+    if (complete) onComplete?.();
   };
 
   return (
-    <div className="w-[280px] space-y-4 p-1">
+    <div className="w-[min(100%,280px)] max-w-[calc(100vw-2.5rem)] space-y-3 sm:space-y-4 p-0.5 sm:p-1">
       <div className="rounded-lg bg-[#012F6B]/5 px-3 py-2 text-center">
-        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Selected time</p>
-        <p className="text-2xl font-semibold tabular-nums text-[#012F6B]">{formatTime12Label(time24)}</p>
+        <p className="text-[10px] sm:text-xs font-medium uppercase tracking-wide text-muted-foreground">
+          Selected time
+        </p>
+        <p className="text-xl sm:text-2xl font-semibold tabular-nums text-[#012F6B] transition-colors">
+          {formatTime12Label(time24)}
+        </p>
       </div>
 
       <div className="flex gap-2">
@@ -63,9 +71,9 @@ function TimePickerPanel({ time24, onChange }: TimePickerPanelProps) {
             type="button"
             onClick={() => setParts({ period })}
             className={cn(
-              "flex-1 rounded-lg border py-2 text-sm font-semibold transition-colors",
+              "flex-1 rounded-lg border py-2 text-sm font-semibold transition-all duration-150 active:scale-[0.98]",
               parts.period === period
-                ? "border-[#012F6B] bg-[#012F6B] text-white"
+                ? "border-[#012F6B] bg-[#012F6B] text-white shadow-sm"
                 : "border-[#012F6B]/20 bg-white text-[#012F6B] hover:bg-[#012F6B]/5",
             )}
           >
@@ -75,17 +83,19 @@ function TimePickerPanel({ time24, onChange }: TimePickerPanelProps) {
       </div>
 
       <div>
-        <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">Hour</p>
+        <p className="mb-2 text-[10px] sm:text-xs font-medium uppercase tracking-wide text-muted-foreground">
+          Hour
+        </p>
         <div className="grid grid-cols-4 gap-1.5">
           {HOURS_12.map((hour) => (
             <button
               key={hour}
               type="button"
-              onClick={() => setParts({ hour12: hour })}
+              onClick={() => setParts({ hour12: hour }, true)}
               className={cn(
-                "rounded-md py-2 text-sm font-medium tabular-nums transition-colors",
+                "rounded-md py-2 text-sm font-medium tabular-nums transition-all duration-150 active:scale-[0.96]",
                 parts.hour12 === hour
-                  ? "bg-[#012F6B] text-white"
+                  ? "bg-[#012F6B] text-white shadow-sm"
                   : "bg-muted/60 text-foreground hover:bg-[#012F6B]/10 hover:text-[#012F6B]",
               )}
             >
@@ -96,17 +106,19 @@ function TimePickerPanel({ time24, onChange }: TimePickerPanelProps) {
       </div>
 
       <div>
-        <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">Minute</p>
+        <p className="mb-2 text-[10px] sm:text-xs font-medium uppercase tracking-wide text-muted-foreground">
+          Minute
+        </p>
         <div className="grid grid-cols-4 gap-1.5">
           {MINUTE_STEPS.map((minute) => (
             <button
               key={minute}
               type="button"
-              onClick={() => setParts({ minute })}
+              onClick={() => setParts({ minute }, true)}
               className={cn(
-                "rounded-md py-2 text-sm font-medium tabular-nums transition-colors",
+                "rounded-md py-2 text-sm font-medium tabular-nums transition-all duration-150 active:scale-[0.96]",
                 parts.minute === minute
-                  ? "bg-[#012F6B] text-white"
+                  ? "bg-[#012F6B] text-white shadow-sm"
                   : "bg-muted/60 text-foreground hover:bg-[#012F6B]/10 hover:text-[#012F6B]",
               )}
             >
@@ -115,6 +127,10 @@ function TimePickerPanel({ time24, onChange }: TimePickerPanelProps) {
           ))}
         </div>
       </div>
+
+      <p className="text-[11px] text-center text-muted-foreground">
+        Pick hour or minute to confirm — tap Time again to change.
+      </p>
     </div>
   );
 }
@@ -127,6 +143,9 @@ export function SmartDateTimePicker({
   idPrefix = "schedule",
   className,
 }: SmartDateTimePickerProps) {
+  const [dateOpen, setDateOpen] = useState(false);
+  const [timeOpen, setTimeOpen] = useState(false);
+
   const { date: selectedDate, time: selectedTime } = splitDatetimeLocal(value, timezone);
 
   const preview = useMemo(() => {
@@ -152,6 +171,7 @@ export function SmartDateTimePicker({
     if (!date) return;
     const next = combineDatetimeLocal(date, selectedTime || "09:00", timezone);
     commitValue(next);
+    setDateOpen(false);
   };
 
   const updateTime = (time: string) => {
@@ -174,7 +194,7 @@ export function SmartDateTimePicker({
   return (
     <div
       className={cn(
-        "rounded-xl border border-[#012F6B]/15 bg-gradient-to-br from-[#012F6B]/[0.04] to-transparent p-4 space-y-4",
+        "rounded-xl border border-[#012F6B]/15 bg-gradient-to-br from-[#012F6B]/[0.04] to-transparent p-3 sm:p-4 space-y-4",
         className,
       )}
     >
@@ -191,9 +211,9 @@ export function SmartDateTimePicker({
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2">
-        <div className="space-y-1.5">
+        <div className="space-y-1.5 min-w-0">
           <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Date</Label>
-          <Popover>
+          <Popover open={dateOpen} onOpenChange={setDateOpen}>
             <PopoverTrigger asChild>
               <Button
                 type="button"
@@ -204,10 +224,12 @@ export function SmartDateTimePicker({
                 )}
               >
                 <CalendarIcon className="h-4 w-4 shrink-0 text-[#012F6B]" />
-                {selectedDate ? format(selectedDate, "EEE, MMM d, yyyy") : "Select date"}
+                <span className="truncate">
+                  {selectedDate ? format(selectedDate, "EEE, MMM d, yyyy") : "Select date"}
+                </span>
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
+            <PopoverContent className="w-auto p-0 max-w-[calc(100vw-1.5rem)]" align="start" sideOffset={6}>
               <Calendar
                 mode="single"
                 selected={selectedDate}
@@ -223,9 +245,9 @@ export function SmartDateTimePicker({
           </Popover>
         </div>
 
-        <div className="space-y-1.5">
+        <div className="space-y-1.5 min-w-0">
           <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Time</Label>
-          <Popover>
+          <Popover open={timeOpen} onOpenChange={setTimeOpen}>
             <PopoverTrigger asChild>
               <Button
                 type="button"
@@ -236,8 +258,17 @@ export function SmartDateTimePicker({
                 {formatTime12Label(selectedTime || "09:00")}
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-auto p-3" align="start">
-              <TimePickerPanel time24={selectedTime || "09:00"} onChange={updateTime} />
+            <PopoverContent
+              className="w-auto p-3 max-w-[calc(100vw-1.5rem)]"
+              align="start"
+              sideOffset={6}
+              collisionPadding={12}
+            >
+              <TimePickerPanel
+                time24={selectedTime || "09:00"}
+                onChange={updateTime}
+                onComplete={() => setTimeOpen(false)}
+              />
             </PopoverContent>
           </Popover>
         </div>
