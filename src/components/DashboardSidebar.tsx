@@ -58,7 +58,8 @@ const isNavGroup = (item: NavItem): item is NavGroupItem => "children" in item;
 
 const ZOOM_MEETING_LINKS: NavLinkItem[] = [
   { to: "/dashboard/classes", label: "Live Classes", icon: Calendar },
-  { to: "/dashboard/zoom", label: "Live Meetings", icon: Video },
+  { to: "/dashboard/zoom-meetings", label: "Daily Meetings", icon: Video },
+  { to: "/dashboard/zoom-webinars", label: "Webinars", icon: Video },
   { to: "/dashboard/zoom-recordings", label: "Recordings", icon: Video },
   { to: "/dashboard/meeting-registrations", label: "Webinar Signups", icon: ClipboardList },
   { to: "/dashboard/available-schedules", label: "Schedules", icon: CalendarClock },

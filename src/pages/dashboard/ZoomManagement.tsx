@@ -77,6 +77,12 @@ type StaffUser = {
   role?: string;
 };
 
+type MeetingType = "meeting" | "webinar";
+
+interface ZoomManagementProps {
+  initialMeetingType?: MeetingType;
+}
+
 function formatMeetingStartTime(value?: string) {
   if (!value) return "—";
   const parsed = Date.parse(value);
@@ -104,10 +110,10 @@ function meetingStatusBadge(status?: ZoomItem["session_status"]) {
   return <Badge variant="outline">Unknown</Badge>;
 }
 
-const ZoomManagement = () => {
+const ZoomManagement = ({ initialMeetingType = "meeting" }: ZoomManagementProps) => {
   const { toast } = useToast();
 
-  const [meetingType, setMeetingType] = useState("meeting");
+  const [meetingType, setMeetingType] = useState<MeetingType>(initialMeetingType);
   const [meetingTimezone, setMeetingTimezone] = useState(resolveDefaultTimezone);
   const [requireRegistration, setRequireRegistration] = useState(false);
   const [recurrence, setRecurrence] = useState("none");
@@ -150,6 +156,10 @@ const ZoomManagement = () => {
   const [dailyDomain, setDailyDomain] = useState<string | null>(null);
   const [availableMeetingProviders, setAvailableMeetingProviders] = useState<string[]>(["zoom"]);
   const [canManageMainPlatformSettings, setCanManageMainPlatformSettings] = useState(true);
+
+  useEffect(() => {
+    setMeetingType(initialMeetingType);
+  }, [initialMeetingType]);
 
   const mergeMeetingRecordings = (current: ZoomItem[], withRecordings: ZoomItem[]) => {
     const byId = new Map(
@@ -424,7 +434,7 @@ const ZoomManagement = () => {
   return (
     <div className="space-y-6">
       <AdminPageHeader
-        title="Live Meetings"
+        title={meetingType === "webinar" ? "Webinars" : "Daily Meetings"}
         description={`Schedule sessions and manage recordings. Host: ${hostDisplayName ?? hostDisplayEmail ?? "Admin"}. Main platform uses ${platformProvider === "daily" ? "Daily" : "Zoom"}.`}
       />
 
@@ -534,10 +544,10 @@ const ZoomManagement = () => {
           <CardHeader className="pb-4">
             <CardTitle className="flex items-center gap-2 text-[#012F6B]">
               <Video className="h-5 w-5" />
-              Schedule a session
+              {meetingType === "webinar" ? "Schedule a webinar" : "Schedule a Daily meeting"}
             </CardTitle>
             <CardDescription>
-              Create a meeting with invites and smart scheduling. Ad-hoc sessions here still use Zoom; course live classes follow the platform setting above.
+              Create sessions with invites and smart scheduling. Course live classes follow the Daily platform setting above.
             </CardDescription>
           </CardHeader>
 
@@ -547,15 +557,15 @@ const ZoomManagement = () => {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Meeting type</Label>
-                    <Select value={meetingType} onValueChange={setMeetingType}>
+                    <Select value={meetingType} onValueChange={(value) => setMeetingType(value as MeetingType)}>
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="meeting">
-                          {platformProvider === "daily" ? "Live meeting (Zoom host)" : "Zoom meeting"}
+                          {platformProvider === "daily" ? "Daily meeting" : "Zoom meeting"}
                         </SelectItem>
-                        <SelectItem value="webinar">Zoom webinar</SelectItem>
+                        <SelectItem value="webinar">Webinar</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>

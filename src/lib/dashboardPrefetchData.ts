@@ -726,6 +726,18 @@ export function prefetchDashboardData(path: string): void {
 
     },
 
+    "/dashboard/zoom-meetings": () => {
+
+      tasks["/dashboard/zoom"]();
+
+    },
+
+    "/dashboard/zoom-webinars": () => {
+
+      tasks["/dashboard/zoom"]();
+
+    },
+
   };
 
 

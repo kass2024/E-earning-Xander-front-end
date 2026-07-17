@@ -43,7 +43,8 @@ export function warmupDashboardAfterLogin(role: string): void {
     [
       "/dashboard/live-zoom-cohort",
       "/dashboard/available-schedules",
-      "/dashboard/zoom",
+      "/dashboard/zoom-meetings",
+      "/dashboard/zoom-webinars",
       "/dashboard/courses",
       "/dashboard/students",
       "/dashboard/analytics",

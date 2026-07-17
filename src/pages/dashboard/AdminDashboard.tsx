@@ -151,7 +151,8 @@ const AdminDashboard = () => {
             ["/dashboard/courses", "Courses"],
             ["/dashboard/instructors", "Instructors"],
             ["/dashboard/classes", "Live Classes"],
-            ["/dashboard/zoom", "Live Meetings"],
+            ["/dashboard/zoom-meetings", "Daily Meetings"],
+            ["/dashboard/zoom-webinars", "Webinars"],
             ["/dashboard/meeting-registrations", "Webinar Signups"],
             ["/dashboard/materials", "Materials"],
           ].map(([path, label]) => (
