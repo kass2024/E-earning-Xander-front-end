@@ -3645,10 +3645,11 @@ export type ZoomWebinarPayload = {
 };
 
 export const getZoomMeetings = async (options?: { include_recordings?: boolean; platform_institution_id?: number }) => {
+  const institutionId = options?.platform_institution_id ?? getStoredInstitution()?.id;
   const response = await api.get(`/zoom/meetings`, {
     params: {
       include_recordings: options?.include_recordings ? 1 : undefined,
-      platform_institution_id: options?.platform_institution_id,
+      platform_institution_id: institutionId || undefined,
     },
   });
   return response.data;
