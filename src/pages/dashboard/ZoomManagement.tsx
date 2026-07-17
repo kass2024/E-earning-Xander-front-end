@@ -547,7 +547,9 @@ const ZoomManagement = ({ initialMeetingType = "meeting" }: ZoomManagementProps)
               {meetingType === "webinar" ? "Schedule a webinar" : "Schedule a Daily meeting"}
             </CardTitle>
             <CardDescription>
-              Create sessions with invites and smart scheduling. Course live classes follow the Daily platform setting above.
+              {meetingType === "webinar"
+                ? "Create a broadcast-style webinar. Audience joins muted with camera off until you invite them to speak."
+                : "Create an interactive Daily meeting. Attendees join muted; they raise a hand before speaking."}
             </CardDescription>
           </CardHeader>
 

@@ -7,9 +7,11 @@ import {
   ChevronUp,
   Circle,
   Copy,
+  Hand,
   Info,
   LayoutDashboard,
   Loader2,
+  Lock,
   MessageSquare,
   Mic,
   MicOff,
@@ -31,6 +33,26 @@ import { resolvePublicJoinUrl } from "@/lib/publicJoinUrl";
 import { resolveZoomBrandingLogoUrl } from "@/lib/zoomAvatars";
 import { LOGO, logoUrl } from "@/lib/brandLogo";
 import { HUB } from "@/lib/hubConfig";
+import {
+  canAdminParticipants,
+  canSendMedia,
+  resolveMeetingMode,
+  resolveMeetingRole,
+  type DailySdkPermissions,
+  type MeetingMode,
+  type MeetingRole,
+  type SpeakingState,
+} from "@/lib/meetingPermissions";
+import {
+  approveMeetingSpeaking,
+  cancelMeetingHand,
+  denyMeetingHand,
+  fetchPendingHands,
+  leaveMeetingModeration,
+  raiseMeetingHand,
+  revokeMeetingSpeaking,
+  type HandRaiseRow,
+} from "@/lib/meetingModerationApi";
 
 export type DailyMeetingSdkAuth = {
   join_url?: string | null;
@@ -39,6 +61,9 @@ export type DailyMeetingSdkAuth = {
   room_name?: string | null;
   role?: number;
   user_name?: string | null;
+  meeting_role?: MeetingRole | string | null;
+  meeting_mode?: MeetingMode | string | null;
+  permissions?: DailySdkPermissions | null;
 };
 
 type ChatMessage = {
@@ -369,6 +394,10 @@ export function DailyMeetingRoom({
     (isHost ? String(institutionName || HUB.name).trim() || "Host" : "Participant");
   const brandLogo = resolveZoomBrandingLogoUrl(logoUrlProp || avatarUrl) || logoUrl(LOGO.src);
   const roomName = String(sdk.room_name || "").trim();
+  const meetingRole = resolveMeetingRole(sdk);
+  const meetingMode = resolveMeetingMode(sdk);
+  const trustedHost = isHost || meetingRole === "host" || meetingRole === "moderator";
+  const meetingKey = roomName || joinUrl;
 
   const copyTarget = useMemo(() => {
     const preferred = resolvePublicJoinUrl(shareUrl);
@@ -381,12 +410,12 @@ export function DailyMeetingRoom({
   const [error, setError] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
   const [camOn, setCamOn] = useState(false);
-  const [micOn, setMicOn] = useState(true);
+  const [micOn, setMicOn] = useState(false);
   const [sharing, setSharing] = useState(false);
   const [remoteScreen, setRemoteScreen] = useState<{ sessionId: string; name: string } | null>(null);
   const [recordingOn, setRecordingOn] = useState(recording);
   const [remotes, setRemotes] = useState<DailyParticipant[]>([]);
-  const [panel, setPanel] = useState<"none" | "people" | "chat" | "info">("none");
+  const [panel, setPanel] = useState<"none" | "people" | "chat" | "info" | "hands">("none");
   const [chatInput, setChatInput] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [localAudioLevel, setLocalAudioLevel] = useState(0);
@@ -396,8 +425,24 @@ export function DailyMeetingRoom({
   const [videoInputs, setVideoInputs] = useState<MediaDeviceInfo[]>([]);
   const [selectedAudioId, setSelectedAudioId] = useState("");
   const [selectedVideoId, setSelectedVideoId] = useState("");
-  const desiredMicRef = useRef(true);
+  const [localPermissions, setLocalPermissions] = useState<DailySdkPermissions | null>(
+    sdk.permissions ?? null,
+  );
+  const [speakingState, setSpeakingState] = useState<SpeakingState>(
+    trustedHost ? "approved" : "listening",
+  );
+  const [pendingHands, setPendingHands] = useState<HandRaiseRow[]>([]);
+  const [localSessionId, setLocalSessionId] = useState<string | null>(null);
+  const [approvalBanner, setApprovalBanner] = useState<string | null>(null);
+  const desiredMicRef = useRef(false);
   const desiredCamRef = useRef(false);
+
+  const audioAllowed = trustedHost || canSendMedia(localPermissions, "audio") || speakingState === "approved" || speakingState === "speaking";
+  const videoAllowed = trustedHost || canSendMedia(localPermissions, "video");
+  const screenAllowed = trustedHost || canSendMedia(localPermissions, "screenVideo");
+  const micLocked = !trustedHost && !audioAllowed;
+  const camLocked = !trustedHost && !videoAllowed;
+  const handRaised = speakingState === "hand_raised";
 
   const hasMicrophone = audioInputs.length > 0;
   const hasCamera = videoInputs.length > 0;
@@ -563,6 +608,13 @@ export function DailyMeetingRoom({
   const leaveMeeting = async () => {
     intentionalLeaveRef.current = true;
     const call = callRef.current;
+    const sessionId = localSessionId || call?.participants()?.local?.session_id;
+    if (meetingKey && sessionId) {
+      void leaveMeetingModeration({
+        meeting_key: meetingKey,
+        daily_session_id: String(sessionId),
+      }).catch(() => undefined);
+    }
     callRef.current = null;
     if (call) {
       try {
@@ -622,6 +674,22 @@ export function DailyMeetingRoom({
       const local = all.local;
       if (local) {
         setSharing(Boolean(local.screen));
+        if (local.session_id) setLocalSessionId(String(local.session_id));
+        const perms = (local as { permissions?: DailySdkPermissions }).permissions;
+        if (perms) {
+          setLocalPermissions(perms);
+          const maySendAudio = canSendMedia(perms, "audio") || canAdminParticipants(perms);
+          if (!maySendAudio && !trustedHost) {
+            setSpeakingState((prev) => (prev === "hand_raised" ? prev : "listening"));
+            if (local.audio) {
+              void call.setLocalAudio(false);
+              setMicOn(false);
+              desiredMicRef.current = false;
+            }
+          } else if (maySendAudio && !trustedHost) {
+            setSpeakingState((prev) => (prev === "speaking" || prev === "approved" ? prev : "approved"));
+          }
+        }
       }
 
       const sharer = list.find((p) => p.screen);
@@ -798,17 +866,56 @@ export function DailyMeetingRoom({
           });
 
           call.on("app-message", (ev) => {
-            const data = (ev as { data?: { type?: string; text?: string; from?: string } })?.data;
-            if (!data || data.type !== "chat" || !data.text) return;
-            setMessages((prev) => [
-              ...prev,
-              {
-                id: `${Date.now()}-${Math.random()}`,
-                from: String(data.from || "Participant"),
-                text: String(data.text),
-                at: Date.now(),
-              },
-            ]);
+            const data = (ev as { data?: Record<string, unknown> })?.data;
+            if (!data) return;
+            const type = String(data.type || "");
+            if (type === "chat" && data.text) {
+              setMessages((prev) => [
+                ...prev,
+                {
+                  id: `${Date.now()}-${Math.random()}`,
+                  from: String(data.from || "Participant"),
+                  text: String(data.text),
+                  at: Date.now(),
+                },
+              ]);
+              return;
+            }
+            if (type === "speaking-approved") {
+              setSpeakingState("approved");
+              setApprovalBanner("You may now speak. Press Unmute when ready.");
+              setLocalPermissions((prev) => ({
+                ...(prev || {}),
+                canSend: Array.isArray(data.canSend)
+                  ? (data.canSend as DailySdkPermissions["canSend"])
+                  : ["audio"],
+              }));
+              toast({
+                title: "Speaking approved",
+                description: "The host allowed you to unmute.",
+              });
+              return;
+            }
+            if (type === "speaking-revoked") {
+              setSpeakingState("revoked");
+              setApprovalBanner(null);
+              setLocalPermissions((prev) => ({ ...(prev || {}), canSend: false }));
+              void call.setLocalAudio(false);
+              void call.setLocalVideo(false);
+              setMicOn(false);
+              setCamOn(false);
+              desiredMicRef.current = false;
+              desiredCamRef.current = false;
+              toast({
+                variant: "destructive",
+                title: "Microphone access revoked",
+                description: "Raise your hand again to request speaking.",
+              });
+              return;
+            }
+            if (type === "hand-raised" && trustedHost) {
+              void refreshHands();
+            }
           });
 
           call.on("recording-started", () => setRecordingOn(true));
@@ -818,12 +925,14 @@ export function DailyMeetingRoom({
             setActiveSpeakerId(id ? String(id) : null);
           });
 
+          // Attendees always join muted/camera-off regardless of prejoin preference.
+          const forceAttendeeQuiet = !trustedHost;
           await call.join({
             url: joinUrlNow,
             token: tokenNow,
             userName: nameNow,
-            startVideoOff: !prefs.startWithVideo,
-            startAudioOff: !prefs.startWithAudio,
+            startVideoOff: forceAttendeeQuiet ? true : !prefs.startWithVideo,
+            startAudioOff: forceAttendeeQuiet ? true : !prefs.startWithAudio,
           });
 
           if (cancelled) return;
@@ -911,9 +1020,154 @@ export function DailyMeetingRoom({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase, reloadKey]);
 
+  const refreshHands = async () => {
+    if (!trustedHost || !meetingKey) return;
+    try {
+      const res = await fetchPendingHands(meetingKey);
+      setPendingHands(res.hands || []);
+    } catch {
+      // host panel is best-effort
+    }
+  };
+
+  const toggleHandRaise = async () => {
+    const call = callRef.current;
+    const sessionId = localSessionId || call?.participants()?.local?.session_id;
+    if (!meetingKey || !sessionId) {
+      toast({
+        variant: "destructive",
+        title: "Not connected",
+        description: "Join the meeting before raising your hand.",
+      });
+      return;
+    }
+    try {
+      if (handRaised) {
+        await cancelMeetingHand({ meeting_key: meetingKey, daily_session_id: String(sessionId) });
+        setSpeakingState("listening");
+        call?.sendAppMessage({ type: "hand-cancelled", sessionId }, "*");
+        toast({ title: "Hand lowered" });
+        return;
+      }
+      await raiseMeetingHand({
+        meeting_key: meetingKey,
+        daily_session_id: String(sessionId),
+        participant_name: displayName,
+        meeting_mode: meetingMode,
+      });
+      setSpeakingState("hand_raised");
+      call?.sendAppMessage(
+        { type: "hand-raised", sessionId, name: displayName, meeting_mode: meetingMode },
+        "*",
+      );
+      toast({ title: "Hand raised", description: "Waiting for the host to approve speaking." });
+    } catch {
+      toast({
+        variant: "destructive",
+        title: "Could not update hand raise",
+        description: "Please try again.",
+      });
+    }
+  };
+
+  const hostApproveHand = async (hand: HandRaiseRow, opts?: { video?: boolean; stage?: boolean }) => {
+    const call = callRef.current;
+    if (!call || !meetingKey) return;
+    try {
+      const res = await approveMeetingSpeaking({
+        meeting_key: meetingKey,
+        daily_session_id: hand.daily_session_id,
+        hand_raise_id: hand.id,
+        audio: true,
+        video: Boolean(opts?.video),
+        invite_to_stage: Boolean(opts?.stage) || meetingMode === "webinar",
+      });
+      const canSend = res.daily_permissions?.canSend ?? ["audio"];
+      call.updateParticipant(hand.daily_session_id, {
+        updatePermissions: {
+          canSend: (Array.isArray(canSend) ? canSend : canSend) as
+            | boolean
+            | Array<"audio" | "video" | "screenVideo" | "screenAudio">,
+        },
+      });
+      call.sendAppMessage(
+        { type: "speaking-approved", sessionId: hand.daily_session_id, canSend },
+        "*",
+      );
+      toast({ title: "Speaking approved", description: `${hand.participant_name} may unmute.` });
+      await refreshHands();
+    } catch {
+      toast({
+        variant: "destructive",
+        title: "Approval failed",
+        description: "Could not grant speaking permission.",
+      });
+    }
+  };
+
+  const hostRevokeSpeaking = async (sessionId: string, action: "mute" | "revoke" = "revoke") => {
+    const call = callRef.current;
+    if (!call || !meetingKey) return;
+    try {
+      const res = await revokeMeetingSpeaking({
+        meeting_key: meetingKey,
+        daily_session_id: sessionId,
+        action,
+      });
+      if (action === "mute") {
+        call.updateParticipant(sessionId, { setAudio: false });
+      } else {
+        const canSend = res.daily_permissions?.canSend ?? false;
+        call.updateParticipant(sessionId, {
+          setAudio: false,
+          setVideo: false,
+          updatePermissions: {
+            canSend: (Array.isArray(canSend) ? canSend : canSend) as
+              | boolean
+              | Array<"audio" | "video" | "screenVideo" | "screenAudio">,
+          },
+        });
+        call.sendAppMessage({ type: "speaking-revoked", sessionId }, "*");
+      }
+      toast({ title: action === "mute" ? "Participant muted" : "Speaking revoked" });
+      await refreshHands();
+    } catch {
+      toast({
+        variant: "destructive",
+        title: "Action failed",
+        description: "Could not update participant permissions.",
+      });
+    }
+  };
+
+  const hostDenyHand = async (hand: HandRaiseRow) => {
+    if (!meetingKey) return;
+    try {
+      await denyMeetingHand({ meeting_key: meetingKey, hand_raise_id: hand.id });
+      await refreshHands();
+      toast({ title: "Request denied" });
+    } catch {
+      toast({ variant: "destructive", title: "Could not deny request" });
+    }
+  };
+
+  useEffect(() => {
+    if (phase !== "meeting" || !trustedHost || !meetingKey) return;
+    void refreshHands();
+    const timer = window.setInterval(() => void refreshHands(), 8000);
+    return () => window.clearInterval(timer);
+  }, [phase, trustedHost, meetingKey]);
+
   const toggleCam = async () => {
     const call = callRef.current;
     if (!call) return;
+    if (camLocked) {
+      toast({
+        title: "Camera locked",
+        description: "Raise your hand and wait for the host to allow your camera.",
+      });
+      return;
+    }
     if (!hasCamera && !camOn) {
       const { cams } = await refreshDevices();
       if (cams.length === 0) {
@@ -944,6 +1198,13 @@ export function DailyMeetingRoom({
   const toggleMic = async () => {
     const call = callRef.current;
     if (!call) return;
+    if (micLocked) {
+      toast({
+        title: "Microphone locked",
+        description: "Raise your hand to speak. The host must approve first.",
+      });
+      return;
+    }
     if (!hasMicrophone && !micOn) {
       const { mics } = await refreshDevices();
       if (mics.length === 0) {
@@ -961,11 +1222,20 @@ export function DailyMeetingRoom({
       await call.setLocalAudio(next);
       setMicOn(next);
       if (!next) setLocalAudioLevel(0);
-      else setAudioTrackEpoch((n) => n + 1);
+      else {
+        setAudioTrackEpoch((n) => n + 1);
+        setSpeakingState("speaking");
+        setApprovalBanner(null);
+      }
     } catch {
       desiredMicRef.current = false;
       setMicOn(false);
       setLocalAudioLevel(0);
+      toast({
+        variant: "destructive",
+        title: "Cannot unmute",
+        description: "Daily permissions still block audio. Ask the host to approve speaking.",
+      });
     }
   };
 
@@ -1009,6 +1279,13 @@ export function DailyMeetingRoom({
   const toggleShare = async () => {
     const call = callRef.current;
     if (!call) return;
+    if (!sharing && !screenAllowed) {
+      toast({
+        title: "Screen share locked",
+        description: "Only hosts and approved presenters can share their screen.",
+      });
+      return;
+    }
     try {
       if (sharing) {
         await call.stopScreenShare();
@@ -1153,6 +1430,9 @@ export function DailyMeetingRoom({
         <div className="min-w-0">
           <div className="flex items-center gap-2">
             <p className="truncate text-sm font-medium text-white">{meetingTitle}</p>
+            <span className="rounded-full bg-[#0e72ed]/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[#7eb6ff]">
+              {meetingMode === "webinar" ? "Webinar" : "Meeting"}
+            </span>
             {recordingOn ? (
               <span className="inline-flex items-center gap-1 rounded bg-red-600/90 px-1.5 py-0.5 text-[10px] font-semibold text-white">
                 <Circle className="h-2 w-2 fill-white" /> REC
@@ -1160,8 +1440,9 @@ export function DailyMeetingRoom({
             ) : null}
           </div>
           <p className="truncate text-[11px] text-zinc-500">
-            Daily{roomName ? ` · ${roomName}` : ""}
-            {isHost ? " · Host" : ""}
+            Daily · secure
+            {roomName ? ` · ${roomName}` : ""}
+            {trustedHost ? " · Host" : meetingMode === "webinar" ? " · Audience" : " · Attendee"}
             {` · ${participantCount} in call`}
           </p>
         </div>
@@ -1314,7 +1595,13 @@ export function DailyMeetingRoom({
                 <aside className="flex w-[min(100vw,320px)] shrink-0 flex-col border-l border-white/10 bg-[#232323]">
                   <div className="flex h-11 items-center justify-between border-b border-white/10 px-3">
                     <p className="text-sm font-medium text-white">
-                      {panel === "people" ? "Participants" : panel === "chat" ? "Chat" : "Meeting info"}
+                      {panel === "people"
+                        ? "Participants"
+                        : panel === "chat"
+                          ? "Chat"
+                          : panel === "hands"
+                            ? "Raised hands"
+                            : "Meeting info"}
                     </p>
                     <button type="button" className="rounded p-1 text-zinc-400 hover:bg-white/10" onClick={() => setPanel("none")}>
                       <X className="h-4 w-4" />
@@ -1329,28 +1616,53 @@ export function DailyMeetingRoom({
                         </div>
                         <div className="min-w-0">
                           <p className="truncate text-sm text-white">{displayName} (You)</p>
-                          <p className="text-[11px] text-zinc-500">{isHost ? "Host" : "Participant"}</p>
+                          <p className="text-[11px] text-zinc-500">
+                            {trustedHost ? "Host" : meetingMode === "webinar" ? "Audience" : "Attendee"}
+                            {micLocked ? " · mic locked" : ""}
+                          </p>
                         </div>
                       </div>
                       {remotes.map((p) => (
-                        <div key={p.session_id} className="flex items-center gap-2 rounded-lg bg-black/20 px-2 py-2">
-                          <div className="h-8 w-8 overflow-hidden rounded-full bg-[#3a3a3a]">
-                            <MeetingProfileAvatar
-                              name={String(p.user_name || "P")}
-                              avatarUrl={null}
-                              className="h-full w-full object-cover"
-                            />
+                        <div key={p.session_id} className="rounded-lg bg-black/20 px-2 py-2">
+                          <div className="flex items-center gap-2">
+                            <div className="h-8 w-8 overflow-hidden rounded-full bg-[#3a3a3a]">
+                              <MeetingProfileAvatar
+                                name={String(p.user_name || "P")}
+                                avatarUrl={null}
+                                className="h-full w-full object-cover"
+                              />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className="truncate text-sm text-white">{p.user_name || "Participant"}</p>
+                              <p className="text-[11px] text-zinc-500">
+                                {p.video ? "Camera on" : "Camera off"}
+                                {p.audio ? "" : " · muted"}
+                              </p>
+                            </div>
                           </div>
-                          <div className="min-w-0 flex-1">
-                            <p className="truncate text-sm text-white">{p.user_name || "Participant"}</p>
-                            <p className="text-[11px] text-zinc-500">
-                              {p.video ? "Camera on" : "Camera off"}
-                              {p.audio ? "" : " · muted"}
-                            </p>
-                          </div>
+                          {trustedHost ? (
+                            <div className="mt-2 flex flex-wrap gap-1">
+                              <Button
+                                size="sm"
+                                variant="secondary"
+                                className="h-7 bg-[#2d2d2d] text-[11px] text-zinc-100"
+                                onClick={() => void hostRevokeSpeaking(p.session_id, "mute")}
+                              >
+                                Mute
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="secondary"
+                                className="h-7 bg-[#2d2d2d] text-[11px] text-zinc-100"
+                                onClick={() => void hostRevokeSpeaking(p.session_id, "revoke")}
+                              >
+                                Stop speaking
+                              </Button>
+                            </div>
+                          ) : null}
                         </div>
                       ))}
-                      {isHost && onOpenQueue ? (
+                      {trustedHost && onOpenQueue ? (
                         <Button
                           className="mt-2 w-full bg-[#0e72ed] hover:bg-[#0b5fc7]"
                           onClick={() => onOpenQueue()}
@@ -1359,6 +1671,47 @@ export function DailyMeetingRoom({
                           Open admit queue{queueWaitingCount > 0 ? ` (${queueWaitingCount})` : ""}
                         </Button>
                       ) : null}
+                    </div>
+                  ) : null}
+
+                  {panel === "hands" ? (
+                    <div className="flex-1 space-y-2 overflow-y-auto p-3">
+                      {pendingHands.length === 0 ? (
+                        <p className="text-center text-xs text-zinc-500">No raised hands.</p>
+                      ) : (
+                        pendingHands.map((hand) => (
+                          <div key={hand.id} className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-2">
+                            <p className="text-sm font-medium text-white">{hand.participant_name}</p>
+                            <p className="text-[11px] text-zinc-400">
+                              Waiting {Math.max(0, hand.waiting_seconds || 0)}s
+                            </p>
+                            <div className="mt-2 flex flex-wrap gap-1">
+                              <Button
+                                size="sm"
+                                className="h-7 bg-emerald-600 text-[11px] hover:bg-emerald-500"
+                                onClick={() => void hostApproveHand(hand)}
+                              >
+                                Allow mic
+                              </Button>
+                              <Button
+                                size="sm"
+                                className="h-7 bg-[#0e72ed] text-[11px] hover:bg-[#0b5fc7]"
+                                onClick={() => void hostApproveHand(hand, { video: true, stage: true })}
+                              >
+                                Mic + camera
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="secondary"
+                                className="h-7 bg-[#2d2d2d] text-[11px] text-zinc-100"
+                                onClick={() => void hostDenyHand(hand)}
+                              >
+                                Deny
+                              </Button>
+                            </div>
+                          </div>
+                        ))
+                      )}
                     </div>
                   ) : null}
 
@@ -1440,48 +1793,104 @@ export function DailyMeetingRoom({
             </div>
           )}
 
-          <div className="flex shrink-0 flex-wrap items-center justify-center gap-2 border-t border-white/10 bg-[#1f1f1f] px-3 py-2.5">
+          {approvalBanner ? (
+            <div
+              role="status"
+              aria-live="polite"
+              className="absolute inset-x-0 top-12 z-20 mx-auto w-[min(92vw,420px)] rounded-xl border border-emerald-400/40 bg-emerald-950/90 px-4 py-3 text-center text-sm text-emerald-50 shadow-lg"
+            >
+              {approvalBanner}
+            </div>
+          ) : null}
+
+          <div className="flex shrink-0 flex-wrap items-center justify-center gap-2 border-t border-white/10 bg-[#1f1f1f] px-3 py-2.5 pb-[max(0.625rem,env(safe-area-inset-bottom))]">
             <ControlButton
-              label={!hasMicrophone ? "No mic" : micOn ? "Mute" : "Unmute"}
-              danger={!micOn || !hasMicrophone}
-              disabled={!hasMicrophone && !micOn}
+              label={
+                micLocked
+                  ? "Raise hand to speak"
+                  : !hasMicrophone
+                    ? "No mic"
+                    : micOn
+                      ? "Mute"
+                      : speakingState === "approved"
+                        ? "Unmute and speak"
+                        : "Unmute"
+              }
+              danger={!micOn || !hasMicrophone || micLocked}
+              disabled={!micLocked && !hasMicrophone && !micOn}
               onClick={() => void toggleMic()}
               meter={<MicLevelBars level={localAudioLevel} muted={!micOn} />}
               deviceMenu={
-                <DailyDeviceMenu
-                  kind="audio"
-                  selectedId={selectedAudioId}
-                  devices={audioInputs}
-                  onSelect={(id) => void switchAudioDevice(id)}
-                />
+                micLocked ? undefined : (
+                  <DailyDeviceMenu
+                    kind="audio"
+                    selectedId={selectedAudioId}
+                    devices={audioInputs}
+                    onSelect={(id) => void switchAudioDevice(id)}
+                  />
+                )
               }
             >
-              {micOn && hasMicrophone ? <Mic className="h-4 w-4" /> : <MicOff className="h-4 w-4" />}
+              {micLocked ? (
+                <Lock className="h-4 w-4" />
+              ) : micOn && hasMicrophone ? (
+                <Mic className="h-4 w-4" />
+              ) : (
+                <MicOff className="h-4 w-4" />
+              )}
             </ControlButton>
             <ControlButton
-              label={!hasCamera ? "No camera" : camOn ? "Stop video" : "Start video"}
-              danger={!camOn || !hasCamera}
-              disabled={!hasCamera && !camOn}
+              label={camLocked ? "Camera locked" : !hasCamera ? "No camera" : camOn ? "Stop video" : "Start video"}
+              danger={!camOn || !hasCamera || camLocked}
+              disabled={!camLocked && !hasCamera && !camOn}
               onClick={() => void toggleCam()}
               deviceMenu={
-                <DailyDeviceMenu
-                  kind="video"
-                  selectedId={selectedVideoId}
-                  devices={videoInputs}
-                  onSelect={(id) => void switchVideoDevice(id)}
-                />
+                camLocked ? undefined : (
+                  <DailyDeviceMenu
+                    kind="video"
+                    selectedId={selectedVideoId}
+                    devices={videoInputs}
+                    onSelect={(id) => void switchVideoDevice(id)}
+                  />
+                )
               }
             >
-              {camOn && hasCamera ? <Video className="h-4 w-4" /> : <VideoOff className="h-4 w-4" />}
+              {camLocked ? (
+                <Lock className="h-4 w-4" />
+              ) : camOn && hasCamera ? (
+                <Video className="h-4 w-4" />
+              ) : (
+                <VideoOff className="h-4 w-4" />
+              )}
             </ControlButton>
-            <ControlButton
-              label={sharing ? "Stop share" : remoteScreen ? "Viewing" : "Share"}
-              active={screenActive}
-              disabled={Boolean(remoteScreen) && !sharing}
-              onClick={() => void toggleShare()}
-            >
-              <MonitorUp className="h-4 w-4" />
-            </ControlButton>
+            {trustedHost || screenAllowed ? (
+              <ControlButton
+                label={sharing ? "Stop share" : remoteScreen ? "Viewing" : "Share"}
+                active={screenActive}
+                disabled={Boolean(remoteScreen) && !sharing}
+                onClick={() => void toggleShare()}
+              >
+                <MonitorUp className="h-4 w-4" />
+              </ControlButton>
+            ) : null}
+            {!trustedHost ? (
+              <ControlButton
+                label={handRaised ? "Lower hand" : "Raise hand"}
+                active={handRaised}
+                onClick={() => void toggleHandRaise()}
+              >
+                <Hand className="h-4 w-4" />
+              </ControlButton>
+            ) : (
+              <ControlButton
+                label="Hands"
+                active={panel === "hands"}
+                badge={pendingHands.length}
+                onClick={() => setPanel((p) => (p === "hands" ? "none" : "hands"))}
+              >
+                <Hand className="h-4 w-4" />
+              </ControlButton>
+            )}
             <ControlButton
               label="Participants"
               active={panel === "people"}
@@ -1505,7 +1914,7 @@ export function DailyMeetingRoom({
             >
               <Info className="h-4 w-4" />
             </ControlButton>
-            {isHost ? (
+            {trustedHost ? (
               <ControlButton
                 label={recordingOn ? "Stop rec" : "Record"}
                 danger={recordingOn}
@@ -1514,7 +1923,7 @@ export function DailyMeetingRoom({
                 {recordingOn ? <Square className="h-4 w-4" /> : <Circle className="h-4 w-4 fill-current" />}
               </ControlButton>
             ) : null}
-            {isHost && onOpenQueue ? (
+            {trustedHost && onOpenQueue ? (
               <ControlButton label="Queue" badge={queueWaitingCount} onClick={() => onOpenQueue()}>
                 <Users className="h-4 w-4" />
               </ControlButton>
