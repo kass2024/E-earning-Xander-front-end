@@ -254,9 +254,11 @@ const normalizeTimeHHMM = (value: string | null | undefined) => {
 };
 interface AvailableSchedulesProps {
   mode?: "available" | "live";
+  /** When true, page is shown inside Appointments tabs. */
+  embedded?: boolean;
 }
 
-const AvailableSchedules = ({ mode = "available" }: AvailableSchedulesProps) => {
+const AvailableSchedules = ({ mode = "available", embedded = false }: AvailableSchedulesProps) => {
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -304,7 +306,7 @@ const AvailableSchedules = ({ mode = "available" }: AvailableSchedulesProps) => 
 
   const isLive = mode === "live";
   const cacheKey = isLive ? "live-zoom-cohorts" : "available-schedules";
-  const pageTitle = isLive ? "Live Zoom Cohort" : "Available Schedule";
+  const pageTitle = isLive ? "Live Zoom Cohort" : embedded ? "Availability" : "Appointments";
   const addButtonLabel = isLive ? "Add Live Zoom Cohort" : "Add Available Time";
   const addDialogTitle = isLive ? "Add Live Zoom Cohort" : "Add Available Time";
   const addDialogDescription = isLive
@@ -909,7 +911,9 @@ const AvailableSchedules = ({ mode = "available" }: AvailableSchedulesProps) => 
           <CardDescription>
             {isLive
               ? "Create cohort slots, start the session (Daily or Zoom from institution settings), and manage the join queue."
-              : "Pick dates on the calendar and set open hours. Learners book those slots on Meeting Registration."}
+              : embedded
+                ? "Pick dates on the calendar and set open hours. Learners book those slots from the public registration page."
+                : "Pick dates on the calendar and set open hours. Learners book those slots on Meeting Registration."}
           </CardDescription>
         </CardHeader>
 

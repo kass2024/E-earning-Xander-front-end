@@ -764,7 +764,7 @@ export function AdminMeetingAvailabilityCalendar({
                   <button
                     type="button"
                     className="mt-2 text-xs font-medium text-[#012F6B] underline-offset-2 hover:underline"
-                    onClick={() => navigate("/dashboard/meeting-registrations")}
+                    onClick={() => navigate("/dashboard/appointments?tab=bookings")}
                   >
                     View all signups
                   </button>

@@ -61,8 +61,7 @@ const ZOOM_MEETING_LINKS: NavLinkItem[] = [
   { to: "/dashboard/zoom-meetings", label: "Meeting", icon: Video },
   { to: "/dashboard/zoom-webinars", label: "Webinars", icon: Video },
   { to: "/dashboard/zoom-recordings", label: "Recordings", icon: Video },
-  { to: "/dashboard/meeting-registrations", label: "Booked Appointments", icon: ClipboardList },
-  { to: "/dashboard/available-schedules", label: "Schedules", icon: CalendarClock },
+  { to: "/dashboard/appointments", label: "Appointments", icon: CalendarClock },
   { to: "/dashboard/live-zoom-cohort", label: "Live Cohorts", icon: CalendarClock },
 ];
 
@@ -169,7 +168,13 @@ const DashboardSidebar = ({ userRole, isOpen, onClose }: DashboardSidebarProps) 
   useInstitutionBrandingRevision();
   const [collapsed, setCollapsed] = useState(false);
   const location = useLocation();
-  const zoomChildActive = ZOOM_MEETING_LINKS.some((link) => location.pathname === link.to);
+  const zoomChildActive = ZOOM_MEETING_LINKS.some(
+    (link) =>
+      location.pathname === link.to ||
+      (link.to === "/dashboard/appointments" &&
+        (location.pathname === "/dashboard/meeting-registrations" ||
+          location.pathname === "/dashboard/available-schedules")),
+  );
   const [zoomOpen, setZoomOpen] = useState(zoomChildActive);
 
   useEffect(() => {
@@ -179,8 +184,7 @@ const DashboardSidebar = ({ userRole, isOpen, onClose }: DashboardSidebarProps) 
   const learnerLinks: NavLinkItem[] = LEARNER_SECTIONS.flatMap((s) => s.links);
 
   const meetingUserLinks: NavLinkItem[] = [
-    { to: "/dashboard/meeting-registrations", label: "Booked Appointments", icon: ClipboardList },
-    { to: "/dashboard/available-schedules", label: "Schedules", icon: CalendarClock },
+    { to: "/dashboard/appointments", label: "Appointments", icon: CalendarClock },
     { to: "/dashboard/settings", label: "Settings", icon: Settings },
   ];
 
@@ -202,7 +206,16 @@ const DashboardSidebar = ({ userRole, isOpen, onClose }: DashboardSidebarProps) 
     },
   });
 
-  const isActive = (path: string) => location.pathname === path;
+  const isActive = (path: string) => {
+    if (path === "/dashboard/appointments") {
+      return (
+        location.pathname === "/dashboard/appointments" ||
+        location.pathname === "/dashboard/meeting-registrations" ||
+        location.pathname === "/dashboard/available-schedules"
+      );
+    }
+    return location.pathname === path;
+  };
 
   const sidebarLinkClass = (path: string) =>
     cn(

@@ -677,33 +677,42 @@ export function prefetchDashboardData(path: string): void {
     },
 
     "/dashboard/available-schedules": () => {
-
-      prefetchOnce(path, () => fetchDashboardCached("available-schedules", getAvailableSchedules));
-
+      prefetchOnce(path, () =>
+        fetchDashboardCached("meeting-registrations-bundle", async () => {
+          const [regs, schedules, status] = await Promise.all([
+            getMeetingRegistrations(),
+            getAvailableSchedules(),
+            getWebinarStatus(),
+          ]);
+          return { regs, schedules, status };
+        }),
+      );
     },
 
     "/dashboard/meeting-registrations": () => {
-
       prefetchOnce(path, () =>
-
         fetchDashboardCached("meeting-registrations-bundle", async () => {
-
           const [regs, schedules, status] = await Promise.all([
-
             getMeetingRegistrations(),
-
             getAvailableSchedules(),
-
             getWebinarStatus(),
-
           ]);
-
           return { regs, schedules, status };
-
         }),
-
       );
+    },
 
+    "/dashboard/appointments": () => {
+      prefetchOnce(path, () =>
+        fetchDashboardCached("meeting-registrations-bundle", async () => {
+          const [regs, schedules, status] = await Promise.all([
+            getMeetingRegistrations(),
+            getAvailableSchedules(),
+            getWebinarStatus(),
+          ]);
+          return { regs, schedules, status };
+        }),
+      );
     },
 
     "/dashboard/zoom": () => {

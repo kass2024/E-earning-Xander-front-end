@@ -168,7 +168,7 @@ const ZoomEmbedMeetingRoom = () => {
 
   const backPath = webinarHost
 
-    ? "/dashboard/meeting-registrations"
+    ? "/dashboard/appointments"
 
     : isHost
 

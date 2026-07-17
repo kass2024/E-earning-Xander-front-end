@@ -110,7 +110,7 @@ function registrationParticipantJoinPath(
   registration: Pick<MeetingRegistrationRow, "zoom_meeting_id" | "full_name" | "email">,
 ) {
   if (!registration.zoom_meeting_id) return null;
-  // Participant (registrant) link — joins under the registered person's name.
+  // Participant (registrant) link - joins under the registered person's name.
   return zoomMeetingEmbedRoom(registration.zoom_meeting_id, 0, undefined, {
     userName: registration.full_name,
     userEmail: registration.email,
@@ -132,7 +132,7 @@ function webinarStatusToShareDetails(status: WebinarStatus | null): LiveZoomCoho
       topic: status.topic || "Meeting Registration Webinar",
       share_text:
         status.share_text ||
-        `Meeting Registration â€” Pathways Webinar\nRegistration page: ${registrationUrl}\nStart the meeting from Meeting Registration when you are ready to host.`,
+        `Meeting Registration - Pathways Webinar\nRegistration page: ${registrationUrl}\nStart the meeting from Meeting Registration when you are ready to host.`,
       registration_url: registrationUrl,
       public_join_url: registrationUrl,
       embed_enabled: true,
@@ -162,7 +162,12 @@ function webinarStatusToShareDetails(status: WebinarStatus | null): LiveZoomCoho
 const DEFAULT_RESCHEDULE_MESSAGE =
   "Dear Valued Customer,\n\nWe sincerely apologize for any inconvenience. Due to an unexpected scheduling conflict, we need to reschedule your appointment. Please let us know your preferred date and time, and we will do our best to accommodate you. Thank you for your patience and understanding.";
 
-const MeetingRegistrations = () => {
+type MeetingRegistrationsProps = {
+  /** When true, page is shown inside Appointments tabs (lighter heading). */
+  embedded?: boolean;
+};
+
+const MeetingRegistrations = ({ embedded = false }: MeetingRegistrationsProps) => {
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -749,7 +754,16 @@ const MeetingRegistrations = () => {
       <Card>
         <CardHeader>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <CardTitle className="flex items-center gap-2">Meeting Registration</CardTitle>
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                {embedded ? "Booking requests" : "Appointments"}
+              </CardTitle>
+              {embedded ? (
+                <CardDescription className="mt-1">
+                  Approve, reject, or reschedule learner booking requests.
+                </CardDescription>
+              ) : null}
+            </div>
             <div className="flex flex-col sm:flex-row sm:items-center gap-3">
               <div className="flex items-center gap-3 rounded-full border px-4 py-2 bg-muted/30">
                 <Video className="h-4 w-4 text-primary shrink-0" />

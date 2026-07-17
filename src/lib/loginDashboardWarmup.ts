@@ -42,7 +42,7 @@ export function warmupDashboardAfterLogin(role: string): void {
   window.setTimeout(() => {
     [
       "/dashboard/live-zoom-cohort",
-      "/dashboard/available-schedules",
+      "/dashboard/appointments",
       "/dashboard/zoom-meetings",
       "/dashboard/zoom-webinars",
       "/dashboard/courses",

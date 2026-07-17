@@ -51,8 +51,7 @@ const CourseMaterials = lazy(() => import("./dashboard/CourseMaterials"));
 const ZoomManagement = lazy(() => import("./dashboard/ZoomManagement"));
 const RecordedMeetings = lazy(() => import("./dashboard/RecordedMeetings"));
 const StudentManagement = lazy(() => import("./dashboard/StudentManagement"));
-import MeetingRegistrations from "./dashboard/MeetingRegistrations";
-import AvailableSchedules from "./dashboard/AvailableSchedules";
+import Appointments from "./dashboard/Appointments";
 const StudyShiftsManagement = lazy(() => import("./dashboard/StudyShiftsManagement"));
 import LiveZoomCohort from "./dashboard/LiveZoomCohort";
 const LearnerProgress = lazy(() => import("./dashboard/LearnerProgress"));
@@ -280,10 +279,14 @@ const Dashboard = ({ initialRole }: DashboardProps) => {
     }
 
     if (userRole === "meeting_user") {
-      if (location.pathname === "/dashboard/available-schedules") {
-        return <AvailableSchedules />;
+      if (
+        location.pathname === "/dashboard/available-schedules" ||
+        location.pathname === "/dashboard/meeting-registrations" ||
+        location.pathname === "/dashboard/appointments"
+      ) {
+        return <Appointments />;
       }
-      return <MeetingRegistrations />;
+      return <Appointments />;
     }
 
     if (hasAdminPortalAccess) {
@@ -305,11 +308,12 @@ const Dashboard = ({ initialRole }: DashboardProps) => {
       if (location.pathname === "/dashboard/students") {
         return <StudentManagement />;
       }
-      if (location.pathname === "/dashboard/meeting-registrations") {
-        return <MeetingRegistrations />;
-      }
-      if (location.pathname === "/dashboard/available-schedules") {
-        return <AvailableSchedules />;
+      if (
+        location.pathname === "/dashboard/meeting-registrations" ||
+        location.pathname === "/dashboard/available-schedules" ||
+        location.pathname === "/dashboard/appointments"
+      ) {
+        return <Appointments />;
       }
       if (location.pathname === "/dashboard/study-shifts") {
         return <StudyShiftsManagement />;

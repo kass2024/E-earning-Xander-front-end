@@ -67,7 +67,7 @@ export function dashboardPathForRole(role: string): string {
     case "instructor":
       return "/dashboard/instructor";
     case "meeting_user":
-      return "/dashboard/meeting-registrations";
+      return "/dashboard/appointments";
     default:
       return "/dashboard/learner";
   }
