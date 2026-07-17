@@ -410,7 +410,23 @@ export function DailyMeetingRoom({
   const meetingRole = resolveMeetingRole(sdk);
   const meetingMode = resolveMeetingMode(sdk);
   const trustedHost = isHost || meetingRole === "host" || meetingRole === "moderator";
-  const meetingKey = roomName || joinUrl;
+  // Always prefer Daily room name so host + guests share one moderation key.
+  const meetingKey = useMemo(() => {
+    if (roomName) return roomName;
+    const fromUrl = String(joinUrl || "").match(/daily\.co\/([^/?#]+)/i);
+    if (fromUrl?.[1]) return decodeURIComponent(fromUrl[1]);
+    try {
+      const path = new URL(joinUrl).pathname.split("/").filter(Boolean).pop();
+      if (path) return decodeURIComponent(path);
+    } catch {
+      // ignore
+    }
+    return joinUrl;
+  }, [roomName, joinUrl]);
+  const trustedHostRef = useRef(trustedHost);
+  const meetingKeyRef = useRef(meetingKey);
+  trustedHostRef.current = trustedHost;
+  meetingKeyRef.current = meetingKey;
 
   const copyTarget = useMemo(() => {
     const preferred = resolvePublicJoinUrl(shareUrl);
@@ -964,8 +980,44 @@ export function DailyMeetingRoom({
               });
               return;
             }
-            if (type === "hand-raised" && trustedHost) {
+            if (type === "hand-raised") {
+              if (!trustedHostRef.current) return;
+              const sid = String(data.sessionId || "").trim();
+              const name = String(data.name || "Participant").trim() || "Participant";
+              if (!sid) return;
+              setPendingHands((prev) => {
+                if (prev.some((h) => h.daily_session_id === sid && h.status === "pending")) {
+                  return prev;
+                }
+                return [
+                  ...prev,
+                  {
+                    id: -Date.now(),
+                    meeting_key: meetingKeyRef.current || "",
+                    meeting_mode: String(data.meeting_mode || ""),
+                    daily_session_id: sid,
+                    participant_name: name,
+                    status: "pending",
+                    waiting_seconds: 0,
+                  },
+                ];
+              });
+              setPanel((p) => (p === "none" ? "hands" : p));
+              toast({
+                title: "Hand raised",
+                description: `${name} is waiting to speak.`,
+              });
               void refreshHands();
+              return;
+            }
+            if (type === "hand-cancelled") {
+              if (!trustedHostRef.current) return;
+              const sid = String(data.sessionId || "").trim();
+              if (sid) {
+                setPendingHands((prev) => prev.filter((h) => h.daily_session_id !== sid));
+              }
+              void refreshHands();
+              return;
             }
           });
 
@@ -1072,12 +1124,12 @@ export function DailyMeetingRoom({
   }, [phase, reloadKey]);
 
   const refreshHands = async () => {
-    if (!trustedHost || !meetingKey) return;
+    if (!trustedHostRef.current || !meetingKeyRef.current) return;
     try {
-      const res = await fetchPendingHands(meetingKey);
+      const res = await fetchPendingHands(meetingKeyRef.current);
       setPendingHands(res.hands || []);
     } catch {
-      // host panel is best-effort
+      // host panel is best-effort — realtime app-message still fills the list
     }
   };
 
@@ -1132,7 +1184,7 @@ export function DailyMeetingRoom({
       const res = await approveMeetingSpeaking({
         meeting_key: meetingKey,
         daily_session_id: hand.daily_session_id,
-        hand_raise_id: hand.id,
+        hand_raise_id: hand.id > 0 ? hand.id : undefined,
         audio: true,
         video: Boolean(opts?.video),
         invite_to_stage: Boolean(opts?.stage) || meetingMode === "webinar",
@@ -1210,7 +1262,13 @@ export function DailyMeetingRoom({
   const hostDenyHand = async (hand: HandRaiseRow) => {
     if (!meetingKey) return;
     try {
-      await denyMeetingHand({ meeting_key: meetingKey, hand_raise_id: hand.id });
+      if (hand.id > 0) {
+        await denyMeetingHand({ meeting_key: meetingKey, hand_raise_id: hand.id });
+      } else {
+        // Optimistic/local-only row — drop it and ask the participant to cancel via session id.
+        setPendingHands((prev) => prev.filter((h) => h.daily_session_id !== hand.daily_session_id));
+        callRef.current?.sendAppMessage({ type: "hand-denied", sessionId: hand.daily_session_id }, "*");
+      }
       await refreshHands();
       toast({ title: "Request denied" });
     } catch {
@@ -1221,7 +1279,7 @@ export function DailyMeetingRoom({
   useEffect(() => {
     if (phase !== "meeting" || !trustedHost || !meetingKey) return;
     void refreshHands();
-    const timer = window.setInterval(() => void refreshHands(), 8000);
+    const timer = window.setInterval(() => void refreshHands(), 2500);
     return () => window.clearInterval(timer);
   }, [phase, trustedHost, meetingKey]);
 
