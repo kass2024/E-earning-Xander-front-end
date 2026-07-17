@@ -3,7 +3,9 @@ import type { HostBranding } from "@/components/live/HostWaitingStage";
 import type { ParticipantBranding } from "@/components/live/ParticipantWaitingStage";
 import {
   getStoredInstitution,
+  isStoredMainAdmin,
   resolveInstitutionLogoUrl,
+  showsPlatformHubBranding,
 } from "@/lib/institutionContext";
 import { isMainPlatformZoomHost } from "@/lib/mainPlatformZoomHost";
 import { LOGO, logoUrl } from "@/lib/brandLogo";
@@ -53,7 +55,8 @@ function enrichAuth(auth: ZoomMeetingBranding | null | undefined): ZoomMeetingBr
 
   let next = auth;
 
-  if (auth.use_institution_logo && !auth.institution) {
+  // Never hydrate partner branding from localStorage for main platform operators.
+  if (auth.use_institution_logo && !auth.institution && !isStoredMainAdmin() && !showsPlatformHubBranding()) {
     const stored = getStoredInstitution();
     if (stored) {
       next = { ...next, institution: stored };
@@ -103,7 +106,7 @@ function resolveInstitutionMeetingLogo(
   }
 
   const stored = getStoredInstitution();
-  if (stored) {
+  if (stored && !isStoredMainAdmin() && !showsPlatformHubBranding()) {
     const fromStored = resolveZoomBrandingLogoUrl(resolveInstitutionLogoUrl(stored));
     if (fromStored) return fromStored;
   }

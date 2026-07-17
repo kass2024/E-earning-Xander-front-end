@@ -27,7 +27,8 @@ import { cohortPublicJoin } from "@/lib/zoomEmbedRoutes";
 import { clearZoomLaunchPending } from "@/lib/zoomLaunchPending";
 import { buildZoomMeetingBranding } from "@/lib/zoomMeetingBranding";
 import type { ZoomClientBranding } from "@/lib/zoomClientBranding";
-import { refreshInstitutionBrandingFromApi, isStoredMainAdmin, prepareMainAdminZoomSession } from "@/lib/institutionContext";
+import { refreshInstitutionBrandingFromApi, isStoredMainAdmin, prepareMainAdminZoomSession, showsPlatformHubBranding } from "@/lib/institutionContext";
+import { getAppDisplayName } from "@/lib/brandSanitize";
 import { resolveZoomSdkJoinUserName } from "@/lib/zoomJoinDisplayName";
 import { HUB } from "@/lib/hubConfig";
 import { sanitizeLegacyBrandText } from "@/lib/brandSanitize";
@@ -429,8 +430,16 @@ const LiveCohortHostStudio = () => {
           phase="preparing"
           isHost
           meetingTitle={hostBranding?.cohortTitle || `Host studio · Cohort #${id}`}
-          institutionName={clientBranding?.companyName ?? hostBranding?.companyName ?? HUB.company}
-          logoUrl={clientBranding?.logoUrl ?? hostBranding?.avatarUrl}
+          institutionName={
+            isStoredMainAdmin() || showsPlatformHubBranding()
+              ? getAppDisplayName()
+              : (clientBranding?.companyName ?? hostBranding?.companyName ?? HUB.company)
+          }
+          logoUrl={
+            isStoredMainAdmin() || showsPlatformHubBranding()
+              ? (clientBranding?.logoUrl ?? hostBranding?.avatarUrl ?? null)
+              : (clientBranding?.logoUrl ?? hostBranding?.avatarUrl)
+          }
           fullscreen
         />
       ) : error && !sdk ? (

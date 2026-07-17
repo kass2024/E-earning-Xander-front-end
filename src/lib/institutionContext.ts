@@ -131,17 +131,26 @@ export function isStoredMainAdmin(): boolean {
     return true;
   }
 
-  const role = (localStorage.getItem("parrot_user_role") ?? "").toLowerCase();
-  if (role === "partner_company" || isViewingAsPartnerInstitution()) {
+  // Explicit partner session — never treat as main admin.
+  if (isViewingAsPartnerInstitution()) {
     return false;
   }
 
+  const role = (localStorage.getItem("parrot_user_role") ?? "").toLowerCase();
+  if (role === "partner_company") {
+    return false;
+  }
+
+  // Platform operators keep hub branding even if a partner row is still cached
+  // from institution management UI (stale parrot_institution).
+  if (localStorage.getItem(IS_MAIN_ADMIN_KEY) === "1") return true;
+  if (role === "admin" || role === "staff") return true;
+
+  // Non-operators: a stored institution means tenant branding.
   if (getStoredInstitution()?.id) {
     return false;
   }
 
-  if (localStorage.getItem(IS_MAIN_ADMIN_KEY) === "1") return true;
-  if (role === "admin" || role === "staff") return true;
   return false;
 }
 
@@ -160,13 +169,14 @@ export function showsPlatformHubBranding(): boolean {
     return false;
   }
 
+  // Main platform admin/staff — hub branding wins over any leftover partner cache.
+  if (isStoredMainAdmin()) {
+    return true;
+  }
+
   const inst = getStoredInstitution();
   if (inst?.id) {
     return false;
-  }
-
-  if (isStoredMainAdmin()) {
-    return true;
   }
 
   const role = (localStorage.getItem("parrot_user_role") ?? "").toLowerCase();
@@ -286,11 +296,23 @@ export function zoomAuthInstitutionParams(actorEmail?: string): {
 
 /** Drop stale partner branding before opening Zoom when the session is main-platform admin. */
 export function prepareMainAdminZoomSession(): void {
-  if (!isStoredMainAdmin()) return;
-  if (!localStorage.getItem(INSTITUTION_KEY)) return;
-  localStorage.removeItem(INSTITUTION_KEY);
+  // Resolve with role/flag first so a leftover parrot_institution cannot block cleanup.
+  if (isViewingAsPartnerInstitution()) return;
+  const role = (localStorage.getItem("parrot_user_role") ?? "").toLowerCase();
+  if (role === "partner_company") return;
+
+  const flaggedMain = localStorage.getItem(IS_MAIN_ADMIN_KEY) === "1";
+  const isPlatformOperator = flaggedMain || role === "admin" || role === "staff";
+  if (!isPlatformOperator) return;
+
+  const hadInstitution = Boolean(localStorage.getItem(INSTITUTION_KEY));
+  if (hadInstitution) {
+    localStorage.removeItem(INSTITUTION_KEY);
+  }
   localStorage.setItem(IS_MAIN_ADMIN_KEY, "1");
-  notifyInstitutionContextUpdated();
+  if (hadInstitution || !flaggedMain) {
+    notifyInstitutionContextUpdated();
+  }
 }
 
 export function useInstitutionBrandingRevision(): number {

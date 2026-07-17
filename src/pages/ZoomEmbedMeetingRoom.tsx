@@ -33,6 +33,7 @@ import {
   isStoredMainAdmin,
   prepareMainAdminZoomSession,
   refreshInstitutionBrandingFromApi,
+  showsPlatformHubBranding,
 } from "@/lib/institutionContext";
 import { clearZoomLaunchPending } from "@/lib/zoomLaunchPending";
 import { resolveZoomSdkJoinUserName } from "@/lib/zoomJoinDisplayName";
@@ -584,7 +585,7 @@ const ZoomEmbedMeetingRoom = () => {
           isHost={isHost}
           meetingTitle={meetingTitle}
           institutionName={
-            isStoredMainAdmin()
+            isStoredMainAdmin() || showsPlatformHubBranding()
               ? getAppDisplayName()
               : (clientBranding?.companyName ??
                 hostBranding?.companyName ??
@@ -593,10 +594,12 @@ const ZoomEmbedMeetingRoom = () => {
                 HUB.company)
           }
           logoUrl={
-            clientBranding?.logoUrl ??
-            hostBranding?.avatarUrl ??
-            participantBranding?.hostAvatarUrl ??
-            institutionLogoUrl()
+            isStoredMainAdmin() || showsPlatformHubBranding()
+              ? (clientBranding?.logoUrl ?? hostBranding?.avatarUrl ?? null)
+              : (clientBranding?.logoUrl ??
+                hostBranding?.avatarUrl ??
+                participantBranding?.hostAvatarUrl ??
+                institutionLogoUrl())
           }
           fullscreen
         />
