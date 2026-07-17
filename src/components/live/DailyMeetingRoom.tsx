@@ -46,7 +46,9 @@ import {
   canSendMedia,
   resolveMeetingMode,
   resolveMeetingRole,
+  toDailyCanSendUpdate,
   type DailySdkPermissions,
+  type DailySendPermission,
   type MeetingMode,
   type MeetingRole,
   type SpeakingState,
@@ -425,6 +427,8 @@ export function DailyMeetingRoom({
   }, [roomName, joinUrl]);
   const trustedHostRef = useRef(trustedHost);
   const meetingKeyRef = useRef(meetingKey);
+  const speakingGrantActiveRef = useRef(false);
+  const localSessionIdRef = useRef<string | null>(null);
   trustedHostRef.current = trustedHost;
   meetingKeyRef.current = meetingKey;
 
@@ -733,19 +737,30 @@ export function DailyMeetingRoom({
       const local = all.local;
       if (local) {
         setSharing(Boolean(local.screen));
-        if (local.session_id) setLocalSessionId(String(local.session_id));
+        if (local.session_id) {
+          const sid = String(local.session_id);
+          localSessionIdRef.current = sid;
+          setLocalSessionId(sid);
+        }
         const perms = (local as { permissions?: DailySdkPermissions }).permissions;
         if (perms) {
           setLocalPermissions(perms);
           const maySendAudio = canSendMedia(perms, "audio") || canAdminParticipants(perms);
           if (!maySendAudio && !trustedHost) {
-            setSpeakingState((prev) => (prev === "hand_raised" ? prev : "listening"));
-            if (local.audio) {
+            // Keep host-approved speaking state while Daily permissions catch up.
+            // Do not force-mute during an active speaking grant (timer / raise-hand accept).
+            setSpeakingState((prev) => {
+              if (prev === "hand_raised" || prev === "approved" || prev === "speaking") return prev;
+              if (speakingGrantActiveRef.current) return "approved";
+              return "listening";
+            });
+            if (local.audio && !speakingGrantActiveRef.current) {
               void call.setLocalAudio(false);
               setMicOn(false);
               desiredMicRef.current = false;
             }
           } else if (maySendAudio && !trustedHost) {
+            speakingGrantActiveRef.current = true;
             setSpeakingState((prev) => (prev === "speaking" || prev === "approved" ? prev : "approved"));
           }
         }
@@ -941,6 +956,10 @@ export function DailyMeetingRoom({
               return;
             }
             if (type === "speaking-approved") {
+              const targetSid = String(data.sessionId || "").trim();
+              const mySid = localSessionIdRef.current;
+              if (targetSid && mySid && targetSid !== mySid) return;
+              speakingGrantActiveRef.current = true;
               setSpeakingState("approved");
               const dur = Number(data.duration_seconds || 0);
               if (dur > 0) {
@@ -950,11 +969,14 @@ export function DailyMeetingRoom({
                 setSpeakingSecondsLeft(null);
                 setApprovalBanner("You may now speak. Press Unmute when ready.");
               }
+              const granted = Array.isArray(data.canSend)
+                ? (data.canSend as DailySendPermission[])
+                : data.canSend instanceof Set
+                  ? (Array.from(data.canSend) as DailySendPermission[])
+                  : (["audio"] as DailySendPermission[]);
               setLocalPermissions((prev) => ({
                 ...(prev || {}),
-                canSend: Array.isArray(data.canSend)
-                  ? (data.canSend as DailySdkPermissions["canSend"])
-                  : ["audio"],
+                canSend: granted,
               }));
               toast({
                 title: "Speaking approved",
@@ -963,6 +985,10 @@ export function DailyMeetingRoom({
               return;
             }
             if (type === "speaking-revoked") {
+              const targetSid = String(data.sessionId || "").trim();
+              const mySid = localSessionIdRef.current;
+              if (targetSid && mySid && targetSid !== mySid) return;
+              speakingGrantActiveRef.current = false;
               setSpeakingState("revoked");
               setApprovalBanner(null);
               setSpeakingSecondsLeft(null);
@@ -1201,18 +1227,35 @@ export function DailyMeetingRoom({
         duration_seconds: duration > 0 ? duration : undefined,
       });
       const canSend = res.daily_permissions?.canSend ?? ["audio"];
-      call.updateParticipant(hand.daily_session_id, {
-        updatePermissions: {
-          canSend: (Array.isArray(canSend) ? canSend : canSend) as
-            | boolean
-            | Array<"audio" | "video" | "screenVideo" | "screenAudio">,
-        },
-      });
+      const canSendUpdate = toDailyCanSendUpdate(canSend as boolean | string[]);
+      try {
+        call.updateParticipant(hand.daily_session_id, {
+          updatePermissions: {
+            hasPresence: true,
+            canSend: canSendUpdate as boolean | Set<"audio" | "video" | "screenVideo" | "screenAudio">,
+          },
+        });
+      } catch {
+        // Fall through — app-message still unlocks guest UI; retry below.
+      }
+      // Retry shortly in case the first update races participant join.
+      window.setTimeout(() => {
+        try {
+          callRef.current?.updateParticipant(hand.daily_session_id, {
+            updatePermissions: {
+              hasPresence: true,
+              canSend: canSendUpdate as boolean | Set<"audio" | "video" | "screenVideo" | "screenAudio">,
+            },
+          });
+        } catch {
+          // ignore
+        }
+      }, 400);
       call.sendAppMessage(
         {
           type: "speaking-approved",
           sessionId: hand.daily_session_id,
-          canSend,
+          canSend: Array.isArray(canSend) ? canSend : canSend === true ? true : ["audio"],
           duration_seconds: duration > 0 ? duration : null,
         },
         "*",
@@ -1247,13 +1290,12 @@ export function DailyMeetingRoom({
         call.updateParticipant(sessionId, { setAudio: false });
       } else {
         const canSend = res.daily_permissions?.canSend ?? false;
+        const canSendUpdate = toDailyCanSendUpdate(canSend as boolean | string[]);
         call.updateParticipant(sessionId, {
           setAudio: false,
           setVideo: false,
           updatePermissions: {
-            canSend: (Array.isArray(canSend) ? canSend : canSend) as
-              | boolean
-              | Array<"audio" | "video" | "screenVideo" | "screenAudio">,
+            canSend: canSendUpdate as boolean | Set<"audio" | "video" | "screenVideo" | "screenAudio">,
           },
         });
         call.sendAppMessage({ type: "speaking-revoked", sessionId }, "*");
@@ -1303,9 +1345,18 @@ export function DailyMeetingRoom({
         const res = await fetchSpeakingTimer(meetingKey, localSessionId);
         if (cancelled) return;
         if (res.grant?.remaining_seconds != null) {
+          speakingGrantActiveRef.current = true;
           setSpeakingSecondsLeft(Math.max(0, Number(res.grant.remaining_seconds)));
+          setSpeakingState((prev) => (prev === "speaking" || prev === "approved" ? prev : "approved"));
+          setLocalPermissions((prev) => ({
+            ...(prev || {}),
+            canSend: Array.isArray(prev?.canSend) || prev?.canSend instanceof Set || prev?.canSend === true
+              ? prev?.canSend
+              : (["audio"] as DailySendPermission[]),
+          }));
         }
         if (!res.grant && (speakingState === "approved" || speakingState === "speaking")) {
+          speakingGrantActiveRef.current = false;
           setSpeakingSecondsLeft(null);
         }
       } catch {
@@ -1353,6 +1404,7 @@ export function DailyMeetingRoom({
         desiredCamRef.current = false;
         setSpeakingState("revoked");
         setSpeakingSecondsLeft(null);
+        speakingGrantActiveRef.current = false;
         setLocalPermissions((prev) => ({ ...(prev || {}), canSend: false }));
         setApprovalBanner(null);
         toast({
