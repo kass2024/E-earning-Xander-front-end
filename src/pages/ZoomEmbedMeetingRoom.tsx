@@ -243,6 +243,7 @@ const ZoomEmbedMeetingRoom = () => {
         room_name: rawDaily.room_name || undefined,
         user_name: dailyDisplayName,
         role: isHost ? 1 : 0,
+        meeting_mode: rawDaily.meeting_mode || undefined,
       });
       if (auth.material) setMaterialMeta(auth.material);
       else if (webinarHost) setMaterialMeta(null);
@@ -398,10 +399,9 @@ const ZoomEmbedMeetingRoom = () => {
           meeting_number: meetingNumber,
           role,
           password,
-          // Participant personal links carry user_name; do not substitute the
-          // logged-in admin's name when opening a registrant join URL.
           user_name: userName || (role === 1 ? storedUserName || "Host" : "Guest"),
           user_email: userEmail,
+          instructor_email: role === 1 ? instructorEmail || undefined : undefined,
         });
         applyAuthResponse(auth as LiveClassSdkAuthResponse);
         return;
@@ -415,9 +415,19 @@ const ZoomEmbedMeetingRoom = () => {
 
     } catch (err: unknown) {
 
-      const message = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
-
-      setError(message || "Unable to start in-app meeting.");
+      const ax = err as {
+        response?: { status?: number; data?: { message?: string } };
+        message?: string;
+      };
+      const message = ax?.response?.data?.message;
+      const status = ax?.response?.status;
+      setError(
+        message && message !== "Server Error"
+          ? message
+          : status
+            ? `Unable to start in-app meeting (HTTP ${status}).`
+            : ax?.message || "Unable to start in-app meeting.",
+      );
 
       setSdk(null);
 
@@ -560,7 +570,9 @@ const ZoomEmbedMeetingRoom = () => {
 
     <div
       className={`zoom-client-meeting-page${
-        meetingProvider === "daily" ? " zoom-client-meeting-page--interactive" : ""
+        meetingProvider === "daily" || Boolean(error) || waitingForHost
+          ? " zoom-client-meeting-page--interactive"
+          : ""
       }`}
     >
 
@@ -617,7 +629,7 @@ const ZoomEmbedMeetingRoom = () => {
 
       ) : error && !sdk ? (
 
-        <div className="zoom-client-meeting-loading px-6">
+        <div className="zoom-client-meeting-loading zoom-client-meeting-loading--interactive px-6">
 
           <div className="w-full max-w-md space-y-4 rounded-xl border border-red-900/50 bg-[#232323] p-8 text-center">
 
@@ -625,13 +637,13 @@ const ZoomEmbedMeetingRoom = () => {
 
             <div className="flex flex-wrap justify-center gap-2">
 
-              <Button className="bg-[#0e72ed] hover:bg-[#0b5fc7]" onClick={() => void loadSdk()}>
+              <Button type="button" className="bg-[#0e72ed] hover:bg-[#0b5fc7]" onClick={() => void loadSdk()}>
 
                 Try again
 
               </Button>
 
-              <Button variant="ghost" className="text-zinc-300 hover:bg-white/10" onClick={() => navigate(backPath)}>
+              <Button type="button" variant="ghost" className="text-zinc-300 hover:bg-white/10" onClick={() => navigate(backPath)}>
 
                 Go back
 
