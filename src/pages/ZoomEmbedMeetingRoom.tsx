@@ -74,7 +74,10 @@ type LiveClassSdkAuthResponse = {
 
   preview?: boolean;
 
-} & ZoomMeetingBranding;
+} & ZoomMeetingBranding & {
+  session_title?: string | null;
+  meeting_mode?: "meeting" | "webinar" | null;
+};
 
 
 
@@ -159,13 +162,33 @@ const ZoomEmbedMeetingRoom = () => {
 
   const [recordingRequested, setRecordingRequested] = useState(false);
 
+  const [adminSessionTitle, setAdminSessionTitle] = useState<string | null>(null);
+  const [adminMeetingMode, setAdminMeetingMode] = useState<"meeting" | "webinar" | null>(null);
 
+  const isHubAdminRoom =
+    Boolean(meetingNumber?.includes("-main-")) ||
+    meetingNumber?.startsWith("admin-meet-main-") ||
+    meetingNumber?.startsWith("admin-webinar-main-");
+
+  const defaultAdminRoomTitle = useMemo(() => {
+    if (materialId || webinarHost) return null;
+    const mode =
+      adminMeetingMode ||
+      (meetingNumber?.includes("webinar") ? "webinar" : "meeting");
+    const label = mode === "webinar" ? "Webinar" : "Meeting";
+    return isHost ? `Host ${label.toLowerCase()}` : label;
+  }, [adminMeetingMode, meetingNumber, materialId, webinarHost, isHost]);
 
   const meetingTitle =
-
     materialMeta?.title ||
-
-    (webinarHost ? "Meeting Registration" : isHost ? "Host live class" : "Live class");
+    adminSessionTitle ||
+    (webinarHost
+      ? "Meeting Registration"
+      : materialId
+        ? isHost
+          ? "Host live class"
+          : "Live class"
+        : defaultAdminRoomTitle || "Meeting");
 
   const backPath = webinarHost
 
@@ -213,6 +236,13 @@ const ZoomEmbedMeetingRoom = () => {
 
   const applyAuthResponse = (auth: LiveClassSdkAuthResponse) => {
     const rawDaily = (auth.sdk ?? {}) as DailyMeetingSdkAuth;
+    const resolvedMode = (rawDaily.meeting_mode || auth.meeting_mode || null) as
+      | "meeting"
+      | "webinar"
+      | null;
+    const resolvedSessionTitle = auth.session_title?.trim() || null;
+    setAdminSessionTitle(resolvedSessionTitle);
+    setAdminMeetingMode(resolvedMode);
     const looksDaily =
       auth.provider === "daily" ||
       (Boolean(String(rawDaily.join_url || rawDaily.room_url || "").trim()) &&
@@ -244,12 +274,12 @@ const ZoomEmbedMeetingRoom = () => {
         room_name: rawDaily.room_name || undefined,
         user_name: dailyDisplayName,
         role: isHost ? 1 : 0,
-        meeting_mode: rawDaily.meeting_mode || undefined,
+        meeting_mode: rawDaily.meeting_mode || resolvedMode || undefined,
       });
       if (auth.material) setMaterialMeta(auth.material);
       else if (webinarHost) setMaterialMeta(null);
       applyMeetingBranding(auth, {
-        sessionTitle: webinarHost ? "Meeting Registration" : auth.material?.title,
+        sessionTitle: webinarHost ? "Meeting Registration" : resolvedSessionTitle || auth.material?.title,
         courseTitle: auth.material?.course_title,
         fallbackName: dailyDisplayName,
       });
@@ -272,7 +302,7 @@ const ZoomEmbedMeetingRoom = () => {
     else if (webinarHost) setMaterialMeta(null);
 
     applyMeetingBranding(auth, {
-      sessionTitle: webinarHost ? "Meeting Registration" : auth.material?.title,
+      sessionTitle: webinarHost ? "Meeting Registration" : resolvedSessionTitle || auth.material?.title,
       courseTitle: auth.material?.course_title,
       fallbackName: nextSdk.user_name || (isHost ? storedUserName || "Instructor" : "Guest"),
     });
@@ -294,7 +324,7 @@ const ZoomEmbedMeetingRoom = () => {
 
       void loadZoomClientSdk().catch(() => undefined);
       prepareMainAdminZoomSession();
-      if (!isStoredMainAdmin()) {
+      if (!isStoredMainAdmin() && !isHubAdminRoom) {
         await refreshInstitutionBrandingFromApi(instructorEmail || learnerEmail || undefined).catch(() => undefined);
       }
 
@@ -463,6 +493,8 @@ const ZoomEmbedMeetingRoom = () => {
     userName,
 
     userEmail,
+
+    isHubAdminRoom,
 
   ]);
 

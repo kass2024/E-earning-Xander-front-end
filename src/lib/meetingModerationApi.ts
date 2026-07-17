@@ -18,7 +18,7 @@ export async function raiseMeetingHand(payload: {
   participant_name?: string;
   meeting_mode?: "meeting" | "webinar";
 }) {
-  const { data } = await api.post("/admin/meetings/moderation/raise-hand", payload);
+  const { data } = await api.post("/meetings/moderation/raise-hand", payload);
   return data as { request: HandRaiseRow; message?: string };
 }
 
@@ -26,12 +26,12 @@ export async function cancelMeetingHand(payload: {
   meeting_key: string;
   daily_session_id: string;
 }) {
-  const { data } = await api.post("/admin/meetings/moderation/cancel-hand", payload);
+  const { data } = await api.post("/meetings/moderation/cancel-hand", payload);
   return data as { ok: boolean };
 }
 
 export async function fetchPendingHands(meetingKey: string) {
-  const { data } = await api.get("/admin/meetings/moderation/hands", {
+  const { data } = await api.get("/meetings/moderation/hands", {
     params: { meeting_key: meetingKey },
   });
   return data as { hands: HandRaiseRow[] };
@@ -48,7 +48,7 @@ export async function approveMeetingSpeaking(payload: {
   invite_to_stage?: boolean;
   duration_seconds?: number;
 }) {
-  const { data } = await api.post("/admin/meetings/moderation/approve-speaking", payload);
+  const { data } = await api.post("/meetings/moderation/approve-speaking", payload);
   return data as {
     grant: unknown;
     daily_permissions?: { canSend?: boolean | string[] };
@@ -61,7 +61,7 @@ export async function revokeMeetingSpeaking(payload: {
   daily_session_id: string;
   action?: "mute" | "revoke" | "stop";
 }) {
-  const { data } = await api.post("/admin/meetings/moderation/revoke-speaking", payload);
+  const { data } = await api.post("/meetings/moderation/revoke-speaking", payload);
   return data as {
     daily_permissions?: { canSend?: boolean | string[] };
     set_audio?: boolean;
@@ -74,7 +74,7 @@ export async function denyMeetingHand(payload: {
   meeting_key: string;
   hand_raise_id: number;
 }) {
-  const { data } = await api.post("/admin/meetings/moderation/deny-hand", payload);
+  const { data } = await api.post("/meetings/moderation/deny-hand", payload);
   return data as { ok: boolean };
 }
 
@@ -82,6 +82,6 @@ export async function leaveMeetingModeration(payload: {
   meeting_key: string;
   daily_session_id: string;
 }) {
-  const { data } = await api.post("/admin/meetings/moderation/leave", payload);
+  const { data } = await api.post("/meetings/moderation/leave", payload);
   return data as { ok: boolean };
 }
