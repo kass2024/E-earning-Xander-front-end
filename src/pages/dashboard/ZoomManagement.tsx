@@ -685,7 +685,7 @@ const ZoomManagement = ({ initialMeetingType = "meeting" }: ZoomManagementProps)
                         title="Copy join link"
                         onClick={() =>
                           handleCopy(
-                            `${window.location.origin}${zoomMeetingEmbedRoom(m.id!, 1, m.password)}`,
+                            `${window.location.origin}${zoomMeetingEmbedRoom(m.id!, 0, m.password)}`,
                           )
                         }
                       >
