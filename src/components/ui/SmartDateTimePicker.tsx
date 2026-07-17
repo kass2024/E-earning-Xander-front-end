@@ -41,7 +41,7 @@ function startOfTodayInZone(timezone: string): Date {
 type TimePickerPanelProps = {
   time24: string;
   onChange: (time24: string) => void;
-  /** Close the popover after hour/minute pick — reopen via the time button. */
+  /** Close the popover after minute pick — reopen via the time button. */
   onComplete?: () => void;
 };
 
@@ -91,7 +91,7 @@ function TimePickerPanel({ time24, onChange, onComplete }: TimePickerPanelProps)
             <button
               key={hour}
               type="button"
-              onClick={() => setParts({ hour12: hour }, true)}
+              onClick={() => setParts({ hour12: hour })}
               className={cn(
                 "rounded-md py-2 text-sm font-medium tabular-nums transition-all duration-150 active:scale-[0.96]",
                 parts.hour12 === hour
@@ -129,7 +129,7 @@ function TimePickerPanel({ time24, onChange, onComplete }: TimePickerPanelProps)
       </div>
 
       <p className="text-[11px] text-center text-muted-foreground">
-        Pick hour or minute to confirm — tap Time again to change.
+        Choose AM/PM and hour, then minute — closes automatically.
       </p>
     </div>
   );
