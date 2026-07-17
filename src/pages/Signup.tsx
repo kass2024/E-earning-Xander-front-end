@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams, useParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { NavLink } from "@/components/NavLink";
 import InstitutionPortalShell from "@/components/institution-portal/InstitutionPortalShell";
+import { portalThemeStyle, resolvePortalTheme } from "@/lib/institutionPortal";
 import { CountrySelect } from "@/components/CountrySelect";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -106,10 +107,6 @@ const Signup = () => {
   const isInstitutionLocked = Boolean(institutionSlugParam && !isInstructorSignup);
   const { toast } = useToast();
   const brand = hubBrand();
-  const brandStyle = {
-    "--brand-primary": brand.primary,
-    "--brand-primary-dark": brand.primaryDark,
-  } as React.CSSProperties;
 
   const [step, setStep] = useState<Step>(isInstructorSignup ? 3 : isInstitutionLocked ? 2 : 1);
   const [firstName, setFirstName] = useState("");
@@ -592,6 +589,12 @@ const Signup = () => {
 
   const useInstitutionJoinChrome = isInstitutionLocked && !isInstructorSignup;
   const showInstitutionJoinShell = useInstitutionJoinChrome && Boolean(lockedInstitution) && !lockedInstitutionError;
+  const portalTheme = resolvePortalTheme(lockedInstitution);
+  const brandStyle = {
+    "--brand-primary": showInstitutionJoinShell ? portalTheme.primary : brand.primary,
+    "--brand-primary-dark": showInstitutionJoinShell ? portalTheme.primaryDark : brand.primaryDark,
+    ...(showInstitutionJoinShell ? portalThemeStyle(portalTheme) : {}),
+  } as React.CSSProperties;
 
   if (useInstitutionJoinChrome && lockedInstitutionLoading) {
     return (
@@ -619,7 +622,7 @@ const Signup = () => {
           ? "bg-transparent"
           : "bg-gradient-to-b from-slate-50 via-white to-slate-50",
       )}
-      style={showInstitutionJoinShell ? undefined : brandStyle}
+      style={brandStyle}
     >
       {!showInstitutionJoinShell && useInstitutionJoinChrome && (
         <header className="border-b border-white/10 bg-gradient-to-r from-[#012F6B] to-[#254D81] px-4 py-5 text-white">
@@ -698,7 +701,7 @@ const Signup = () => {
             >
               <p className="text-sm text-slate-600 max-w-lg mx-auto">
                 Complete the steps below to create your account and enroll in programs at{" "}
-                <span className="font-semibold text-[#012F6B]">{lockedInstitution.name}</span>.
+                <span className="font-semibold text-[var(--institution-primary,#012F6B)]">{lockedInstitution.name}</span>.
               </p>
             </motion.div>
           )}
@@ -1010,8 +1013,9 @@ const Signup = () => {
                       </div>
 
                       {showInstitutionJoinShell && lockedInstitution && (
-                        <div className="rounded-xl border border-[#012F6B]/15 bg-[#012F6B]/5 px-4 py-3 text-sm text-slate-700">
-                          Programs published by <span className="font-semibold text-[#012F6B]">{lockedInstitution.name}</span>
+                        <div className="rounded-xl border border-[var(--institution-primary)]/15 bg-[var(--institution-primary)]/5 px-4 py-3 text-sm text-slate-700">
+                          Programs published by{" "}
+                          <span className="font-semibold text-[var(--institution-primary)]">{lockedInstitution.name}</span>
                         </div>
                       )}
 

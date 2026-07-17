@@ -26,6 +26,8 @@ import { getPublicStorageUrl } from "@/lib/apiConfig";
 import { buildInstitutionLearnerLoginUrl } from "@/lib/institutionSignupLink";
 import { Loader2, Mail, KeyRound } from "lucide-react";
 import InstitutionRegistrationLinkCard from "@/components/dashboard/InstitutionRegistrationLinkCard";
+import { InstitutionWebsiteColorControls } from "@/components/dashboard/InstitutionWebsiteColorControls";
+import { emptyPortalColorDraft, type PortalColorDraft } from "@/lib/institutionPortal";
 
 type Props = {
   institutionId: number | null;
@@ -66,6 +68,11 @@ const InstitutionAdminEditDialog = ({ institutionId, open, onOpenChange, onSaved
   const [meetingProvider, setMeetingProvider] = useState<"zoom" | "daily">("daily");
   const [dailyConfigured, setDailyConfigured] = useState(false);
   const [dailyDomain, setDailyDomain] = useState<string | null>(null);
+  const [portalColors, setPortalColors] = useState<PortalColorDraft>(emptyPortalColorDraft());
+  const [portalTagline, setPortalTagline] = useState("");
+  const [portalHeroTitle, setPortalHeroTitle] = useState("");
+  const [portalHeroSubtitle, setPortalHeroSubtitle] = useState("");
+  const [portalCtaLabel, setPortalCtaLabel] = useState("");
 
   useEffect(() => {
     if (!open) return;
@@ -110,6 +117,12 @@ const InstitutionAdminEditDialog = ({ institutionId, open, onOpenChange, onSaved
         setOwnerPassword("");
         setGeneratedPassword(null);
         setMeetingProvider(((inst as { meeting_provider?: string }).meeting_provider ?? "daily") as "zoom" | "daily");
+        const portal = inst.portal;
+        setPortalColors(emptyPortalColorDraft(portal ?? null));
+        setPortalTagline(portal?.tagline ?? "");
+        setPortalHeroTitle(portal?.hero_title ?? "");
+        setPortalHeroSubtitle(portal?.hero_subtitle ?? "");
+        setPortalCtaLabel(portal?.cta_label ?? "");
       })
       .catch(() => toast({ variant: "destructive", title: "Failed to load institution" }))
       .finally(() => setLoading(false));
@@ -145,6 +158,15 @@ const InstitutionAdminEditDialog = ({ institutionId, open, onOpenChange, onSaved
         mail_from_address: mailFromAddress,
         mail_from_name: mailFromName,
         mail_ehlo_domain: mailEhloDomain,
+        portal_primary_color: portalColors.primary_color,
+        portal_accent_color: portalColors.accent_color,
+        portal_hero_bg_color: portalColors.hero_bg_color,
+        portal_button_bg_color: portalColors.button_bg_color,
+        portal_button_text_color: portalColors.button_text_color,
+        portal_tagline: portalTagline.trim() || null,
+        portal_hero_title: portalHeroTitle.trim() || null,
+        portal_hero_subtitle: portalHeroSubtitle.trim() || null,
+        portal_cta_label: portalCtaLabel.trim() || null,
       };
       if (mailPassword.trim()) payload.mail_password = mailPassword;
 
@@ -223,7 +245,7 @@ const InstitutionAdminEditDialog = ({ institutionId, open, onOpenChange, onSaved
         <DialogHeader>
           <DialogTitle className="text-xl">Manage institution</DialogTitle>
           <DialogDescription>
-            Update branding, logo, admin notes, and optional per-institution SMTP settings.
+            Update branding, website colors, logo, admin notes, and optional per-institution SMTP settings.
           </DialogDescription>
         </DialogHeader>
 
@@ -232,9 +254,10 @@ const InstitutionAdminEditDialog = ({ institutionId, open, onOpenChange, onSaved
         ) : (
           <form onSubmit={handleSave}>
             <Tabs defaultValue="branding" className="space-y-4">
-              <TabsList className="grid w-full grid-cols-3">
+              <TabsList className="grid w-full grid-cols-4">
                 <TabsTrigger value="branding">Branding</TabsTrigger>
-                <TabsTrigger value="login">Login access</TabsTrigger>
+                <TabsTrigger value="website">Website</TabsTrigger>
+                <TabsTrigger value="login">Login</TabsTrigger>
                 <TabsTrigger value="smtp">SMTP</TabsTrigger>
               </TabsList>
 
@@ -282,6 +305,65 @@ const InstitutionAdminEditDialog = ({ institutionId, open, onOpenChange, onSaved
                     . Current: <span className="font-semibold capitalize">{meetingProvider}</span>
                   </p>
                 </div>
+              </TabsContent>
+
+              <TabsContent value="website" className="space-y-4">
+                <InstitutionWebsiteColorControls
+                  value={portalColors}
+                  onChange={setPortalColors}
+                  institutionName={name || "Institution"}
+                />
+                <div className="space-y-3 rounded-xl border p-4">
+                  <p className="text-sm font-semibold">Homepage copy (optional)</p>
+                  <div>
+                    <Label>Tagline</Label>
+                    <Input
+                      className="rounded-xl"
+                      value={portalTagline}
+                      onChange={(e) => setPortalTagline(e.target.value)}
+                      placeholder="Study. Learn. Succeed."
+                    />
+                  </div>
+                  <div>
+                    <Label>Hero title</Label>
+                    <Input
+                      className="rounded-xl"
+                      value={portalHeroTitle}
+                      onChange={(e) => setPortalHeroTitle(e.target.value)}
+                      placeholder={`Welcome to ${name || "your institution"}`}
+                    />
+                  </div>
+                  <div>
+                    <Label>Hero subtitle</Label>
+                    <Input
+                      className="rounded-xl"
+                      value={portalHeroSubtitle}
+                      onChange={(e) => setPortalHeroSubtitle(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <Label>Enroll button label</Label>
+                    <Input
+                      className="rounded-xl"
+                      value={portalCtaLabel}
+                      onChange={(e) => setPortalCtaLabel(e.target.value)}
+                      placeholder="Start enrollment"
+                    />
+                  </div>
+                </div>
+                {slug ? (
+                  <p className="text-xs text-muted-foreground">
+                    Preview:{" "}
+                    <a
+                      href={`/i/${slug}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="font-medium text-[#012F6B] underline-offset-2 hover:underline"
+                    >
+                      /i/{slug}
+                    </a>
+                  </p>
+                ) : null}
               </TabsContent>
 
               <TabsContent value="login" className="space-y-4">

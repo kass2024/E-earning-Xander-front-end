@@ -1110,6 +1110,10 @@ export type PlatformInstitutionInfo = {
     hero_subtitle: string;
     about: string;
     primary_color: string | null;
+    accent_color?: string | null;
+    hero_bg_color?: string | null;
+    button_bg_color?: string | null;
+    button_text_color?: string | null;
     features: Array<{ title: string; description: string }>;
     hero_image_url: string | null;
     cta_label: string;

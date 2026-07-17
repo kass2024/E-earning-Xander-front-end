@@ -7,7 +7,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/use-toast";
 import { getMyInstitutionSettings, updateMyInstitutionBranding } from "@/api/axios";
 import { saveInstitutionContext } from "@/lib/institutionContext";
-import type { InstitutionPortalFeature } from "@/lib/institutionPortal";
+import {
+  emptyPortalColorDraft,
+  type InstitutionPortalFeature,
+  type PortalColorDraft,
+} from "@/lib/institutionPortal";
+import { InstitutionWebsiteColorControls } from "@/components/dashboard/InstitutionWebsiteColorControls";
 import { Globe2, Loader2, Plus, Trash2 } from "lucide-react";
 
 const emptyFeature = (): InstitutionPortalFeature => ({ title: "", description: "" });
@@ -21,10 +26,11 @@ const InstitutionPortalContentSettings = () => {
   const [heroTitle, setHeroTitle] = useState("");
   const [heroSubtitle, setHeroSubtitle] = useState("");
   const [about, setAbout] = useState("");
-  const [primaryColor, setPrimaryColor] = useState("");
+  const [portalColors, setPortalColors] = useState<PortalColorDraft>(emptyPortalColorDraft());
   const [ctaLabel, setCtaLabel] = useState("");
   const [features, setFeatures] = useState<InstitutionPortalFeature[]>([emptyFeature(), emptyFeature(), emptyFeature()]);
   const [heroImageFile, setHeroImageFile] = useState<File | null>(null);
+  const [institutionName, setInstitutionName] = useState("Institution");
 
   useEffect(() => {
     if (!email) {
@@ -33,13 +39,14 @@ const InstitutionPortalContentSettings = () => {
     }
     getMyInstitutionSettings(email)
       .then((res) => {
+        setInstitutionName(res.institution.name ?? "Institution");
         const portal = res.institution.portal;
         if (!portal) return;
         setTagline(portal.tagline ?? "");
         setHeroTitle(portal.hero_title ?? "");
         setHeroSubtitle(portal.hero_subtitle ?? "");
         setAbout(portal.about ?? "");
-        setPrimaryColor(portal.primary_color ?? "");
+        setPortalColors(emptyPortalColorDraft(portal));
         setCtaLabel(portal.cta_label ?? "");
         if (portal.features?.length) {
           setFeatures(portal.features.slice(0, 3));
@@ -58,7 +65,11 @@ const InstitutionPortalContentSettings = () => {
       form.append("portal_hero_title", heroTitle);
       form.append("portal_hero_subtitle", heroSubtitle);
       form.append("portal_about", about);
-      form.append("portal_primary_color", primaryColor);
+      form.append("portal_primary_color", portalColors.primary_color);
+      form.append("portal_accent_color", portalColors.accent_color);
+      form.append("portal_hero_bg_color", portalColors.hero_bg_color);
+      form.append("portal_button_bg_color", portalColors.button_bg_color);
+      form.append("portal_button_text_color", portalColors.button_text_color);
       form.append("portal_cta_label", ctaLabel);
       form.append(
         "portal_features",
@@ -90,41 +101,43 @@ const InstitutionPortalContentSettings = () => {
           Public institution website
         </CardTitle>
         <CardDescription>
-          Customize the auto-generated website shown when learners open your institution link. Leave fields blank to use
-          smart defaults based on your institution profile.
+          Customize colors and copy for your public site. Leave text fields blank to use smart defaults from your
+          institution profile.
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-4 max-w-2xl">
-          <div>
-            <Label>Tagline</Label>
-            <Input value={tagline} onChange={(e) => setTagline(e.target.value)} placeholder="Study. Learn. Succeed." />
-          </div>
-          <div>
-            <Label>Hero headline</Label>
-            <Input value={heroTitle} onChange={(e) => setHeroTitle(e.target.value)} placeholder="Welcome to your institution" />
-          </div>
-          <div>
-            <Label>Hero subtitle</Label>
-            <Textarea value={heroSubtitle} onChange={(e) => setHeroSubtitle(e.target.value)} rows={2} />
-          </div>
-          <div>
-            <Label>About section</Label>
-            <Textarea value={about} onChange={(e) => setAbout(e.target.value)} rows={5} />
-          </div>
-          <div className="grid gap-4 sm:grid-cols-2">
+        <form onSubmit={handleSubmit} className="space-y-6 max-w-2xl">
+          <InstitutionWebsiteColorControls
+            value={portalColors}
+            onChange={setPortalColors}
+            institutionName={institutionName}
+          />
+
+          <div className="space-y-4 border-t pt-4">
             <div>
-              <Label>Brand color</Label>
-              <Input value={primaryColor} onChange={(e) => setPrimaryColor(e.target.value)} placeholder="#012F6B" />
+              <Label>Tagline</Label>
+              <Input value={tagline} onChange={(e) => setTagline(e.target.value)} placeholder="Study. Learn. Succeed." />
+            </div>
+            <div>
+              <Label>Hero headline</Label>
+              <Input value={heroTitle} onChange={(e) => setHeroTitle(e.target.value)} placeholder="Welcome to your institution" />
+            </div>
+            <div>
+              <Label>Hero subtitle</Label>
+              <Textarea value={heroSubtitle} onChange={(e) => setHeroSubtitle(e.target.value)} rows={2} />
+            </div>
+            <div>
+              <Label>About section</Label>
+              <Textarea value={about} onChange={(e) => setAbout(e.target.value)} rows={5} />
             </div>
             <div>
               <Label>Enroll button label</Label>
               <Input value={ctaLabel} onChange={(e) => setCtaLabel(e.target.value)} placeholder="Start enrollment" />
             </div>
-          </div>
-          <div>
-            <Label>Hero background image (optional)</Label>
-            <Input type="file" accept="image/*" onChange={(e) => setHeroImageFile(e.target.files?.[0] ?? null)} />
+            <div>
+              <Label>Hero background image (optional)</Label>
+              <Input type="file" accept="image/*" onChange={(e) => setHeroImageFile(e.target.files?.[0] ?? null)} />
+            </div>
           </div>
 
           <div className="space-y-3">
@@ -182,4 +195,3 @@ const InstitutionPortalContentSettings = () => {
 };
 
 export default InstitutionPortalContentSettings;
-

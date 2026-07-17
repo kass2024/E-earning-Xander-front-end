@@ -7,7 +7,7 @@ import {
   buildInstitutionLearnerSignupUrl,
   buildInstitutionPortalUrl,
 } from "@/lib/institutionSignupLink";
-import { portalThemeStyle, resolvePortalPrimary } from "@/lib/institutionPortal";
+import { portalThemeStyle, resolvePortalTheme } from "@/lib/institutionPortal";
 import { cn } from "@/lib/utils";
 import {
   BookOpen,
@@ -42,7 +42,7 @@ const InstitutionPortalShell = ({
   const [mobileOpen, setMobileOpen] = useState(false);
   const slug = institution.slug?.trim().toLowerCase() || "";
   const logo = resolveInstitutionLogoUrl(institution);
-  const primary = resolvePortalPrimary(institution);
+  const theme = resolvePortalTheme(institution);
   const portal = institution.portal;
   const homeUrl = slug ? buildInstitutionPortalUrl(slug).replace(window.location.origin, "") : "/";
   const joinUrl = slug ? `/join/${slug}` : "/signup";
@@ -64,9 +64,9 @@ const InstitutionPortalShell = ({
   return (
     <div
       className={cn("min-h-screen flex flex-col bg-slate-50", className)}
-      style={portalThemeStyle(primary)}
+      style={portalThemeStyle(theme)}
     >
-      <header className="sticky top-0 z-50 border-b border-white/10 bg-[var(--institution-primary)] text-white shadow-lg">
+      <header className="sticky top-0 z-50 border-b border-white/10 bg-[var(--institution-hero-bg)] text-white shadow-lg">
         <div className="container mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3 sm:py-4">
           <NavLink to={homeUrl} className="flex min-w-0 items-center gap-3">
             {logo ? (
@@ -127,7 +127,7 @@ const InstitutionPortalShell = ({
         </div>
 
         {mobileOpen && (
-          <div className="border-t border-white/10 bg-[var(--institution-primary)] px-4 py-4 lg:hidden">
+          <div className="border-t border-white/10 bg-[var(--institution-hero-bg)] px-4 py-4 lg:hidden">
             <nav className="flex flex-col gap-3">
               {navItems.map((item) => (
                 <NavLink
@@ -145,7 +145,10 @@ const InstitutionPortalShell = ({
                     Log in
                   </NavLink>
                 </Button>
-                <Button asChild className="w-full bg-white text-[var(--institution-primary)]">
+                <Button
+                  asChild
+                  className="w-full bg-[var(--institution-button-bg)] text-[var(--institution-button-text)] hover:opacity-90"
+                >
                   <NavLink to={joinUrl} onClick={() => setMobileOpen(false)}>
                     Register
                   </NavLink>
@@ -157,11 +160,11 @@ const InstitutionPortalShell = ({
       </header>
 
       {!compactHero && activeSection === "home" && portal && (
-        <section className="relative overflow-hidden bg-[var(--institution-primary)] text-white">
+        <section className="relative overflow-hidden bg-[var(--institution-hero-bg)] text-white">
           {portal.hero_image_url && (
             <>
               <img src={portal.hero_image_url} alt="" className="absolute inset-0 h-full w-full object-cover opacity-30" />
-              <div className="absolute inset-0 bg-gradient-to-r from-[var(--institution-primary)] via-[var(--institution-primary)]/90 to-[var(--institution-primary)]/75" />
+              <div className="absolute inset-0 bg-gradient-to-r from-[var(--institution-hero-bg)] via-[var(--institution-hero-bg)]/90 to-[var(--institution-hero-bg)]/75" />
             </>
           )}
           <div className="container relative mx-auto max-w-6xl px-4 py-14 sm:py-20">
@@ -169,7 +172,11 @@ const InstitutionPortalShell = ({
             <h1 className="max-w-3xl text-3xl font-bold leading-tight sm:text-4xl md:text-5xl">{portal.hero_title}</h1>
             <p className="mt-4 max-w-2xl text-base text-white/85 sm:text-lg">{portal.hero_subtitle}</p>
             <div className="mt-8 flex flex-wrap gap-3">
-              <Button asChild size="lg" className="rounded-full bg-white text-[var(--institution-primary)] hover:bg-white/90">
+              <Button
+                asChild
+                size="lg"
+                className="rounded-full bg-[var(--institution-button-bg)] text-[var(--institution-button-text)] hover:opacity-90 shadow-md"
+              >
                 <NavLink to={joinUrl}>{portal.cta_label}</NavLink>
               </Button>
               <Button

@@ -90,7 +90,10 @@ const Login = () => {
   const inputClass = (opts?: { error?: boolean; success?: boolean }) =>
     cn(
       "h-12 rounded-lg pl-11 pr-4 border bg-white text-slate-900 placeholder:text-slate-400",
-      "transition-all duration-200 focus-visible:ring-2 focus-visible:ring-[#012F6B]/20 focus-visible:border-[#012F6B]",
+      "transition-all duration-200 focus-visible:ring-2",
+      isInstitutionLocked
+        ? "focus-visible:ring-[var(--institution-primary)]/20 focus-visible:border-[var(--institution-primary)]"
+        : "focus-visible:ring-[#012F6B]/20 focus-visible:border-[#012F6B]",
       opts?.error && "border-red-300 focus-visible:ring-red-200",
       opts?.success && "border-emerald-300 focus-visible:ring-emerald-200",
       !opts?.error && !opts?.success && "border-slate-200 hover:border-slate-300",
@@ -278,7 +281,11 @@ const Login = () => {
           id="remember"
           checked={remember}
           onCheckedChange={(checked) => setRemember(Boolean(checked))}
-          className="data-[state=checked]:bg-[#012F6B] data-[state=checked]:border-[#012F6B]"
+          className={
+            isInstitutionLocked
+              ? "data-[state=checked]:bg-[var(--institution-button-bg)] data-[state=checked]:border-[var(--institution-button-bg)]"
+              : "data-[state=checked]:bg-[#012F6B] data-[state=checked]:border-[#012F6B]"
+          }
         />
         <label htmlFor="remember" className="text-sm text-slate-600 cursor-pointer select-none">
           Keep me logged in
@@ -289,7 +296,11 @@ const Login = () => {
         type="submit"
         size="lg"
         disabled={loading}
-        className="w-full rounded-md bg-[#012F6B] hover:bg-[#0a3d7a] text-white font-bold h-12 text-base"
+        className={
+          isInstitutionLocked
+            ? "w-full rounded-md bg-[var(--institution-button-bg)] text-[var(--institution-button-text)] hover:opacity-90 font-bold h-12 text-base"
+            : "w-full rounded-md bg-[#012F6B] hover:bg-[#0a3d7a] text-white font-bold h-12 text-base"
+        }
       >
         {loading ? (
           <span className="flex items-center justify-center gap-2">

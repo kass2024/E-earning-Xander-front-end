@@ -25,7 +25,7 @@ const InstitutionPortalHome = () => {
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-slate-50">
-        <Loader2 className="h-9 w-9 animate-spin text-[#012F6B]" />
+        <Loader2 className="h-9 w-9 animate-spin text-[var(--institution-primary,#012F6B)]" />
       </div>
     );
   }
@@ -128,7 +128,7 @@ const InstitutionPortalHome = () => {
           )}
 
           <div className="mt-10 text-center">
-            <Button asChild size="lg" className="rounded-full bg-[var(--institution-primary)] hover:opacity-90">
+            <Button asChild size="lg" className="rounded-full bg-[var(--institution-button-bg)] text-[var(--institution-button-text)] hover:opacity-90">
               <NavLink to={joinUrl}>
                 {portal?.cta_label ?? "Start enrollment"}
                 <ArrowRight className="ml-2 h-4 w-4" />
@@ -174,14 +174,14 @@ const InstitutionPortalHome = () => {
       </section>
 
       {/* Contact CTA */}
-      <section id="contact" className="scroll-mt-24 bg-[var(--institution-primary)] py-14 text-white sm:py-16">
+      <section id="contact" className="scroll-mt-24 bg-[var(--institution-hero-bg)] py-14 text-white sm:py-16">
         <div className="container mx-auto max-w-6xl px-4 text-center">
           <h2 className="text-2xl font-bold sm:text-3xl">Ready to get started?</h2>
           <p className="mx-auto mt-3 max-w-xl text-white/85">
             Create your learner account or sign in to access programs at {institution.name}.
           </p>
           <div className="mt-8 flex flex-wrap justify-center gap-3">
-            <Button asChild size="lg" className="rounded-full bg-white text-[var(--institution-primary)] hover:bg-white/90">
+            <Button asChild size="lg" className="rounded-full bg-[var(--institution-button-bg)] text-[var(--institution-button-text)] hover:opacity-90">
               <NavLink to={joinUrl}>{portal?.cta_label ?? "Register now"}</NavLink>
             </Button>
             <Button
