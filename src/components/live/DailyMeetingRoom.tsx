@@ -1146,18 +1146,28 @@ export function DailyMeetingRoom({
     }
     try {
       if (handRaised) {
-        await cancelMeetingHand({ meeting_key: meetingKey, daily_session_id: String(sessionId) });
+        try {
+          await cancelMeetingHand({ meeting_key: meetingKey, daily_session_id: String(sessionId) });
+        } catch {
+          // Still notify host over Daily if API is briefly unavailable.
+        }
         setSpeakingState("listening");
         call?.sendAppMessage({ type: "hand-cancelled", sessionId }, "*");
         toast({ title: "Hand lowered" });
         return;
       }
-      await raiseMeetingHand({
-        meeting_key: meetingKey,
-        daily_session_id: String(sessionId),
-        participant_name: displayName,
-        meeting_mode: meetingMode,
-      });
+      try {
+        await raiseMeetingHand({
+          meeting_key: meetingKey,
+          daily_session_id: String(sessionId),
+          participant_name: displayName,
+          meeting_mode: meetingMode,
+        });
+      } catch (err: unknown) {
+        // Persist failed — still signal host in-call so speaking can be approved live.
+        const ax = err as { response?: { data?: { message?: string }; status?: number } };
+        console.error("raise-hand API failed", ax?.response?.status, ax?.response?.data);
+      }
       setSpeakingState("hand_raised");
       call?.sendAppMessage(
         { type: "hand-raised", sessionId, name: displayName, meeting_mode: meetingMode },
