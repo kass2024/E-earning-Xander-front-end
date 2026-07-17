@@ -535,8 +535,8 @@ export function DailyMeetingRoom({
     return () => navigator.mediaDevices?.removeEventListener?.("devicechange", onChange);
   }, [phase]);
 
-  // Local mic level — prefer Daily's observer (works for guests who unmute mid-call).
-  // Web Audio analyser is a fallback when the Daily track is already live.
+  // Local mic level — Web Audio from the live track is authoritative for guest unmute.
+  // Daily's local-audio-level observer often stays at 0 for mid-call webinar grants.
   useEffect(() => {
     if (phase !== "meeting" || !micOn) {
       setLocalAudioLevel(0);
@@ -553,19 +553,24 @@ export function DailyMeetingRoom({
     let ctx: AudioContext | null = null;
     let stopped = false;
     let retryTimer: number | null = null;
-    let usingDailyObserver = false;
+    let dailyPeak = 0;
+    let webAudioActive = false;
     const call = callRef.current;
 
     const onDailyLevel = (ev: { audioLevel?: number }) => {
       if (stopped) return;
       const raw = Number(ev?.audioLevel ?? 0);
-      // Daily levels are already 0–1; amplify slightly so quiet speech still moves bars.
-      setLocalAudioLevel(Math.min(1, Math.max(0, raw) * 1.35));
+      dailyPeak = Math.max(dailyPeak * 0.85, Math.min(1, Math.max(0, raw) * 1.35));
+      // Only paint Daily levels when Web Audio is not yet attached.
+      if (!webAudioActive) {
+        setLocalAudioLevel(dailyPeak);
+      }
     };
 
     const stopWebAudio = () => {
       if (raf) cancelAnimationFrame(raf);
       raf = 0;
+      webAudioActive = false;
       if (ctx) {
         void ctx.close();
         ctx = null;
@@ -574,7 +579,7 @@ export function DailyMeetingRoom({
 
     const localAudioTrack = (): MediaStreamTrack | null => {
       const audio = callRef.current?.participants()?.local?.tracks?.audio as
-        | { persistentTrack?: MediaStreamTrack; track?: MediaStreamTrack }
+        | { persistentTrack?: MediaStreamTrack; track?: MediaStreamTrack; state?: string }
         | undefined;
       const track = audio?.persistentTrack || audio?.track || null;
       return track && track.readyState !== "ended" ? track : null;
@@ -586,18 +591,20 @@ export function DailyMeetingRoom({
           window.AudioContext ||
           (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
         if (!Ctor) return false;
+        stopWebAudio();
         ctx = new Ctor();
         if (ctx.state === "suspended") void ctx.resume().catch(() => undefined);
 
         const source = ctx.createMediaStreamSource(new MediaStream([track]));
         const analyser = ctx.createAnalyser();
         analyser.fftSize = 512;
-        analyser.smoothingTimeConstant = 0.35;
+        analyser.smoothingTimeConstant = 0.28;
         source.connect(analyser);
         const data = new Uint8Array(analyser.fftSize);
+        webAudioActive = true;
 
         const tick = () => {
-          if (stopped || usingDailyObserver) return;
+          if (stopped) return;
           if (ctx && ctx.state === "suspended") void ctx.resume().catch(() => undefined);
           analyser.getByteTimeDomainData(data);
           let sum = 0;
@@ -606,48 +613,50 @@ export function DailyMeetingRoom({
             sum += v * v;
           }
           const rms = Math.sqrt(sum / data.length);
-          setLocalAudioLevel(Math.min(1, rms * 4.2));
+          const webLevel = Math.min(1, rms * 4.8);
+          setLocalAudioLevel(Math.max(webLevel, dailyPeak * 0.5));
           raf = requestAnimationFrame(tick);
         };
         raf = requestAnimationFrame(tick);
         return true;
       } catch {
+        webAudioActive = false;
         return false;
       }
     };
 
     const startWebAudioWithRetry = (attempt = 0) => {
-      if (stopped || usingDailyObserver) return;
+      if (stopped) return;
       const track = localAudioTrack();
       if (track && beginWebAudioMetering(track)) return;
       // Guests who unmute after raise-hand may need several seconds for the track.
-      if (attempt < 80) {
-        retryTimer = window.setTimeout(() => startWebAudioWithRetry(attempt + 1), 125);
+      if (attempt < 100) {
+        retryTimer = window.setTimeout(() => startWebAudioWithRetry(attempt + 1), 100);
       }
     };
 
+    // Prefer Web Audio immediately; Daily observer is a secondary signal only.
+    startWebAudioWithRetry();
+
     void (async () => {
-      if (!call?.startLocalAudioLevelObserver) {
-        startWebAudioWithRetry();
-        return;
-      }
+      if (!call?.startLocalAudioLevelObserver) return;
       try {
         if (!call.isLocalAudioLevelObserverRunning?.()) {
-          await call.startLocalAudioLevelObserver(100);
+          await call.startLocalAudioLevelObserver(80);
         }
         if (stopped) return;
-        usingDailyObserver = true;
         call.on("local-audio-level", onDailyLevel);
-        // Seed immediately in case the first event is delayed.
         try {
           const seed = Number(call.getLocalAudioLevel?.() ?? 0);
-          if (seed > 0) setLocalAudioLevel(Math.min(1, seed * 1.35));
+          if (seed > 0) {
+            dailyPeak = Math.min(1, seed * 1.35);
+            if (!webAudioActive) setLocalAudioLevel(dailyPeak);
+          }
         } catch {
           // ignore
         }
       } catch {
-        usingDailyObserver = false;
-        startWebAudioWithRetry();
+        // Web Audio retry path already running.
       }
     })();
 
@@ -811,8 +820,19 @@ export function DailyMeetingRoom({
         }
         const perms = (local as { permissions?: DailySdkPermissions }).permissions;
         if (perms) {
-          setLocalPermissions(perms);
-          const maySendAudio = canSendMedia(perms, "audio") || canAdminParticipants(perms);
+          setLocalPermissions((prev) => {
+            // Keep host-granted audio while Daily's participant permissions lag behind.
+            if (
+              speakingGrantActiveRef.current &&
+              !canSendMedia(perms, "audio") &&
+              !canAdminParticipants(perms) &&
+              (canSendMedia(prev, "audio") || prev?.canSend === true)
+            ) {
+              return { ...perms, canSend: prev?.canSend ?? (["audio"] as DailySendPermission[]) };
+            }
+            return perms;
+          });
+          const maySendAudio = canSendMedia(perms, "audio") || canAdminParticipants(perms) || speakingGrantActiveRef.current;
           if (!maySendAudio && !trustedHost) {
             // Keep host-approved speaking state while Daily permissions catch up.
             // Do not force-mute during an active speaking grant (timer / raise-hand accept).
@@ -1031,24 +1051,64 @@ export function DailyMeetingRoom({
               const dur = Number(data.duration_seconds || 0);
               if (dur > 0) {
                 setSpeakingSecondsLeft(dur);
-                setApprovalBanner(`You may speak for ${Math.ceil(dur / 60)} min. Press Unmute when ready.`);
+                setApprovalBanner(`You may speak for ${Math.ceil(dur / 60)} min. Unmuting…`);
               } else {
                 setSpeakingSecondsLeft(null);
-                setApprovalBanner("You may now speak. Press Unmute when ready.");
+                setApprovalBanner("You may now speak. Unmuting…");
               }
               const granted = Array.isArray(data.canSend)
                 ? (data.canSend as DailySendPermission[])
                 : data.canSend instanceof Set
                   ? (Array.from(data.canSend) as DailySendPermission[])
-                  : (["audio"] as DailySendPermission[]);
+                  : data.canSend === true
+                    ? true
+                    : (["audio"] as DailySendPermission[]);
               setLocalPermissions((prev) => ({
                 ...(prev || {}),
-                canSend: granted,
+                canSend: granted === true ? true : granted.length > 0 ? granted : (["audio"] as DailySendPermission[]),
               }));
               toast({
                 title: "Speaking approved",
                 description: dur > 0 ? `Timer: ${Math.ceil(dur / 60)} minutes.` : "The host allowed you to unmute.",
               });
+              // Auto-unmute after Daily permission update applies — guests should hear their mic waves immediately.
+              const unmuteAfterGrant = async (attempt = 0): Promise<void> => {
+                if (!speakingGrantActiveRef.current) return;
+                try {
+                  desiredMicRef.current = true;
+                  await call.setLocalAudio(true);
+                  const local = call.participants()?.local;
+                  const track =
+                    local?.tracks?.audio?.persistentTrack ||
+                    (local?.tracks?.audio as { track?: MediaStreamTrack } | undefined)?.track;
+                  if (!local?.audio && attempt < 8) {
+                    window.setTimeout(() => void unmuteAfterGrant(attempt + 1), 250);
+                    return;
+                  }
+                  setMicOn(true);
+                  setSpeakingState("speaking");
+                  setAudioTrackEpoch((n) => n + 1);
+                  setApprovalBanner(
+                    dur > 0
+                      ? `You are live — ${Math.ceil(dur / 60)} min remaining.`
+                      : "You are live. Speak when ready.",
+                  );
+                  if (!track && attempt < 8) {
+                    window.setTimeout(() => setAudioTrackEpoch((n) => n + 1), 300);
+                  }
+                } catch {
+                  if (attempt < 8) {
+                    window.setTimeout(() => void unmuteAfterGrant(attempt + 1), 300);
+                    return;
+                  }
+                  setApprovalBanner(
+                    dur > 0
+                      ? `You may speak for ${Math.ceil(dur / 60)} min. Press Unmute when ready.`
+                      : "You may now speak. Press Unmute when ready.",
+                  );
+                }
+              };
+              window.setTimeout(() => void unmuteAfterGrant(0), 350);
               return;
             }
             if (type === "speaking-revoked") {
@@ -1672,12 +1732,31 @@ export function DailyMeetingRoom({
     desiredMicRef.current = next;
     try {
       await call.setLocalAudio(next);
-      setMicOn(next);
+      // Confirm Daily actually enabled the send track (webinar grants can lag).
+      if (next) {
+        for (let i = 0; i < 6; i += 1) {
+          const local = call.participants()?.local;
+          if (local?.audio) break;
+          await new Promise((r) => window.setTimeout(r, 150));
+          await call.setLocalAudio(true);
+        }
+      }
+      const local = call.participants()?.local;
+      const actuallyOn = next ? Boolean(local?.audio) : false;
+      setMicOn(next ? actuallyOn || next : false);
       if (!next) setLocalAudioLevel(0);
       else {
         setAudioTrackEpoch((n) => n + 1);
         setSpeakingState("speaking");
         setApprovalBanner(null);
+        // Re-kick metering after track appears.
+        window.setTimeout(() => setAudioTrackEpoch((n) => n + 1), 400);
+      }
+      if (next && !actuallyOn) {
+        toast({
+          title: "Microphone starting…",
+          description: "If waves stay flat, press Unmute once more.",
+        });
       }
     } catch {
       desiredMicRef.current = false;
