@@ -61,7 +61,7 @@ const ZOOM_MEETING_LINKS: NavLinkItem[] = [
   { to: "/dashboard/zoom-meetings", label: "Daily Meetings", icon: Video },
   { to: "/dashboard/zoom-webinars", label: "Webinars", icon: Video },
   { to: "/dashboard/zoom-recordings", label: "Recordings", icon: Video },
-  { to: "/dashboard/meeting-registrations", label: "Webinar Signups", icon: ClipboardList },
+  { to: "/dashboard/meeting-registrations", label: "Booked Appointments", icon: ClipboardList },
   { to: "/dashboard/available-schedules", label: "Schedules", icon: CalendarClock },
   { to: "/dashboard/live-zoom-cohort", label: "Live Cohorts", icon: CalendarClock },
 ];
@@ -179,7 +179,7 @@ const DashboardSidebar = ({ userRole, isOpen, onClose }: DashboardSidebarProps) 
   const learnerLinks: NavLinkItem[] = LEARNER_SECTIONS.flatMap((s) => s.links);
 
   const meetingUserLinks: NavLinkItem[] = [
-    { to: "/dashboard/meeting-registrations", label: "Webinar Signups", icon: ClipboardList },
+    { to: "/dashboard/meeting-registrations", label: "Booked Appointments", icon: ClipboardList },
     { to: "/dashboard/available-schedules", label: "Schedules", icon: CalendarClock },
     { to: "/dashboard/settings", label: "Settings", icon: Settings },
   ];
