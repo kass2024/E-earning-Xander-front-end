@@ -33,9 +33,13 @@ import {
   Loader2,
   Search,
   Settings2,
-  Mail,
   Download,
   Disc3,
+  Radio,
+  MicOff,
+  Presentation,
+  Clapperboard,
+  Ticket,
 } from "lucide-react";
 import {
   createZoomMeeting,
@@ -61,12 +65,22 @@ type ZoomItem = {
   join_url?: string;
   password?: string;
   agenda?: string;
+  meeting_mode?: string | null;
   session_status?: "live" | "ended" | "upcoming" | "unknown";
   recording_available?: boolean;
   recording_play_url?: string | null;
   recording_download_url?: string | null;
   recording_files?: ZoomRecordingFile[];
 };
+
+function isWebinarItem(item: ZoomItem) {
+  const mode = String(item.meeting_mode ?? "").toLowerCase();
+  const id = String(item.id ?? "");
+  return mode === "webinar" || id.startsWith("admin-webinar-");
+}
+
+const WEBINAR_DURATION_PRESETS = [30, 45, 60, 90, 120] as const;
+const WEBINAR_CATEGORIES = ["General", "Admissions", "Orientation", "Academic", "Marketing", "Training"] as const;
 
 type StaffUser = {
   id?: number;
@@ -113,6 +127,7 @@ const ZoomManagement = ({ initialMeetingType = "meeting" }: ZoomManagementProps)
 
   // Locked by sidebar route: Meeting → meeting, Webinars → webinar
   const meetingType: MeetingType = initialMeetingType;
+  const isWebinar = meetingType === "webinar";
   const [meetingTimezone, setMeetingTimezone] = useState(resolveDefaultTimezone);
   const [requireRegistration, setRequireRegistration] = useState(false);
   const [recurrence, setRecurrence] = useState("none");
@@ -120,13 +135,13 @@ const ZoomManagement = ({ initialMeetingType = "meeting" }: ZoomManagementProps)
   const [meetingCategory, setMeetingCategory] = useState("General");
 
   const [meetingTitle, setMeetingTitle] = useState("");
-  const [meetingDuration, setMeetingDuration] = useState("30");
+  const [meetingDuration, setMeetingDuration] = useState(isWebinar ? "60" : "30");
   const [meetingStartTime, setMeetingStartTime] = useState("");
   const [meetingAgenda, setMeetingAgenda] = useState("");
   const [additionalEmails, setAdditionalEmails] = useState<string[]>([]);
 
   const [joinBeforeHost, setJoinBeforeHost] = useState(true);
-  const [muteOnEntry, setMuteOnEntry] = useState(false);
+  const [muteOnEntry, setMuteOnEntry] = useState(isWebinar);
   const [autoRecording, setAutoRecording] = useState(true);
   const [hostVideo, setHostVideo] = useState(true);
   const [participantVideo, setParticipantVideo] = useState(false);
@@ -240,6 +255,14 @@ const ZoomManagement = ({ initialMeetingType = "meeting" }: ZoomManagementProps)
     if (storedEmail) setHostDisplayEmail(storedEmail);
   }, []);
 
+  useEffect(() => {
+    if (!isWebinar) return;
+    setMuteOnEntry(true);
+    setParticipantVideo(false);
+    setRequireRegistration(true);
+    setMeetingDuration((prev) => (prev === "30" ? "60" : prev));
+  }, [isWebinar]);
+
   const filteredStaff = useMemo(() => {
     const q = staffSearch.trim().toLowerCase();
     if (!q) return staffUsers;
@@ -255,18 +278,27 @@ const ZoomManagement = ({ initialMeetingType = "meeting" }: ZoomManagementProps)
     [selectedStaffEmails, additionalEmails],
   );
 
+  const scopedMeetings = useMemo(
+    () => meetings.filter((m) => (isWebinar ? isWebinarItem(m) : !isWebinarItem(m))),
+    [meetings, isWebinar],
+  );
+
   const meetingStats = useMemo(() => {
-    const live = meetings.filter((m) => m.session_status === "live").length;
-    const upcoming = meetings.filter((m) => m.session_status === "upcoming").length;
-    const ended = meetings.filter((m) => m.session_status === "ended").length;
-    return { total: meetings.length, live, upcoming, ended };
-  }, [meetings]);
+    const live = scopedMeetings.filter((m) => m.session_status === "live").length;
+    const upcoming = scopedMeetings.filter((m) => m.session_status === "upcoming").length;
+    const ended = scopedMeetings.filter((m) => m.session_status === "ended").length;
+    return { total: scopedMeetings.length, live, upcoming, ended };
+  }, [scopedMeetings]);
 
   const handleCreateMeeting = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!meetingTitle.trim()) {
-      toast({ variant: "destructive", title: "Title required", description: "Give your session a title." });
+      toast({
+        variant: "destructive",
+        title: "Title required",
+        description: isWebinar ? "Give your webinar a title." : "Give your session a title.",
+      });
       return;
     }
 
@@ -304,14 +336,14 @@ const ZoomManagement = ({ initialMeetingType = "meeting" }: ZoomManagementProps)
       await createZoomMeeting(payload);
       toast({
         variant: "success",
-        title: "Zoom meeting created",
+        title: isWebinar ? "Webinar scheduled" : "Meeting created",
         description: invitePreview.length
           ? `Invites will be sent to ${invitePreview.length} recipient${invitePreview.length === 1 ? "" : "s"}.`
           : undefined,
       });
 
       setMeetingTitle("");
-      setMeetingDuration("30");
+      setMeetingDuration(isWebinar ? "60" : "30");
       setMeetingAgenda("");
       setMeetingStartTime("");
       setAdditionalEmails([]);
@@ -322,7 +354,7 @@ const ZoomManagement = ({ initialMeetingType = "meeting" }: ZoomManagementProps)
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Failed to create meeting",
+        description: isWebinar ? "Failed to create webinar" : "Failed to create meeting",
       });
     } finally {
       setCreating(false);
@@ -334,12 +366,15 @@ const ZoomManagement = ({ initialMeetingType = "meeting" }: ZoomManagementProps)
 
   const handleDeleteMeeting = async (id: string | number | undefined) => {
     if (!id) return;
-    if (!window.confirm("Are you sure you want to delete this Zoom meeting?")) return;
+    if (!window.confirm(isWebinar ? "Delete this webinar?" : "Are you sure you want to delete this meeting?")) return;
 
     try {
       setDeletingId(id);
       await deleteZoomMeeting(id);
-      toast({ title: "Meeting deleted", description: "The meeting has been removed." });
+      toast({
+        title: isWebinar ? "Webinar deleted" : "Meeting deleted",
+        description: isWebinar ? "The webinar has been removed." : "The meeting has been removed.",
+      });
       setMeetings((prev) => prev.filter((m) => String(m.id) !== String(id)));
       void loadData(true);
     } catch (error: unknown) {
@@ -347,7 +382,7 @@ const ZoomManagement = ({ initialMeetingType = "meeting" }: ZoomManagementProps)
       toast({
         variant: "destructive",
         title: "Error",
-        description: err?.response?.data?.message || "Failed to delete meeting.",
+        description: err?.response?.data?.message || (isWebinar ? "Failed to delete webinar." : "Failed to delete meeting."),
       });
     } finally {
       setDeletingId(null);
@@ -358,7 +393,7 @@ const ZoomManagement = ({ initialMeetingType = "meeting" }: ZoomManagementProps)
     if (!meeting.id) return;
     openZoomMeetingInNewTab(zoomMeetingEmbedRoom(meeting.id, 1, meeting.password), {
       beginLaunch: false,
-      launchTitle: meeting.topic ?? "Zoom meeting",
+      launchTitle: meeting.topic ?? (isWebinar ? "Webinar" : "Meeting"),
       isHost: true,
     });
   };
@@ -374,18 +409,542 @@ const ZoomManagement = ({ initialMeetingType = "meeting" }: ZoomManagementProps)
     );
   };
 
-  const sortedMeetings = [...meetings].sort((a, b) => {
+  const sortedMeetings = [...scopedMeetings].sort((a, b) => {
     const aTime = a.start_time ? Date.parse(a.start_time) : 0;
     const bTime = b.start_time ? Date.parse(b.start_time) : 0;
     if (aTime && bTime && aTime !== bTime) return bTime - aTime;
     return Number(b.id) - Number(a.id);
   });
 
+  const settingsToggles = [
+    { id: "jbh", label: isWebinar ? "Allow join before host (practice)" : "Allow join before host", checked: joinBeforeHost, onChange: setJoinBeforeHost },
+    { id: "mute", label: isWebinar ? "Audience muted on entry" : "Mute participants on entry", checked: muteOnEntry, onChange: setMuteOnEntry },
+    { id: "rec", label: isWebinar ? "Auto-record webinar" : "Auto-record meeting", checked: autoRecording, onChange: setAutoRecording },
+    { id: "hvid", label: "Host video on", checked: hostVideo, onChange: setHostVideo },
+    { id: "pvid", label: isWebinar ? "Audience video on (usually off)" : "Participant video on", checked: participantVideo, onChange: setParticipantVideo },
+    { id: "wr", label: "Waiting room", checked: waitingRoom, onChange: setWaitingRoom },
+    { id: "auth", label: "Require authentication", checked: meetingAuthentication, onChange: setMeetingAuthentication },
+    { id: "notify", label: "Registrant email notifications", checked: registrantsEmailNotification, onChange: setRegistrantsEmailNotification },
+    { id: "multi", label: "Allow multiple devices", checked: allowMultipleDevices, onChange: setAllowMultipleDevices },
+  ];
+
+  const invitationsBlock = (
+    <div className={cn(
+      "space-y-4",
+      isWebinar
+        ? "rounded-2xl border border-teal-200/80 bg-teal-50/40 p-4"
+        : "rounded-xl border border-[#012F6B]/10 bg-slate-50/60 p-4",
+    )}>
+      <div className="flex items-center gap-2">
+        <Users className={cn("h-4 w-4", isWebinar ? "text-teal-800" : "text-[#012F6B]")} />
+        <p className={cn("text-sm font-semibold", isWebinar ? "text-teal-900" : "text-[#012F6B]")}>
+          {isWebinar ? "Speakers & panelists" : "Invitations"}
+        </p>
+        {invitePreview.length > 0 && (
+          <Badge variant="secondary" className="ml-auto">
+            {invitePreview.length} total
+          </Badge>
+        )}
+      </div>
+      {isWebinar && (
+        <p className="text-xs text-teal-900/70">
+          Invite staff or guest emails who should appear on stage. Audience registration is controlled separately below.
+        </p>
+      )}
+
+      <div className="space-y-2">
+        <Label>{isWebinar ? "Staff speakers" : "Staff members"}</Label>
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            className="pl-9 h-9"
+            placeholder="Search staff by name or email…"
+            value={staffSearch}
+            onChange={(e) => setStaffSearch(e.target.value)}
+          />
+        </div>
+        <div className="max-h-36 overflow-y-auto rounded-lg border bg-white p-2 space-y-1">
+          {staffUsers.length === 0 ? (
+            <p className="text-xs text-muted-foreground px-2 py-3 text-center">No staff users found.</p>
+          ) : filteredStaff.length === 0 ? (
+            <p className="text-xs text-muted-foreground px-2 py-3 text-center">No matches for your search.</p>
+          ) : (
+            filteredStaff.map((u) => {
+              const selected = selectedStaffEmails.includes(u.email);
+              return (
+                <button
+                  key={u.email}
+                  type="button"
+                  onClick={() => toggleStaffEmail(u.email)}
+                  className={cn(
+                    "w-full flex items-center gap-3 rounded-md px-2 py-2 text-left text-sm transition-colors",
+                    selected
+                      ? isWebinar
+                        ? "bg-teal-100 border border-teal-300"
+                        : "bg-[#012F6B]/10 border border-[#012F6B]/20"
+                      : "hover:bg-slate-50",
+                  )}
+                >
+                  <span
+                    className={cn(
+                      "h-4 w-4 rounded border flex items-center justify-center shrink-0",
+                      selected
+                        ? isWebinar
+                          ? "bg-teal-700 border-teal-700 text-white"
+                          : "bg-[#012F6B] border-[#012F6B] text-white"
+                        : "border-slate-300",
+                    )}
+                  >
+                    {selected ? "✓" : ""}
+                  </span>
+                  <span className="min-w-0">
+                    <span className="font-medium block truncate">{u.name || u.email}</span>
+                    <span className="text-xs text-muted-foreground block truncate">{u.email}</span>
+                  </span>
+                </button>
+              );
+            })
+          )}
+        </div>
+      </div>
+
+      <EmailChipInput
+        value={additionalEmails}
+        onChange={setAdditionalEmails}
+        placeholder="name@example.com"
+        label={isWebinar ? "Guest panelist emails" : "Additional emails"}
+        description={isWebinar ? "External speakers who are not in the staff list." : "Invite guests who are not in the staff list."}
+      />
+    </div>
+  );
+
+  const scheduleExtras = (
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div className="space-y-2">
+        <Label>Recurrence</Label>
+        <Select value={recurrence} onValueChange={setRecurrence}>
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="none">None</SelectItem>
+            <SelectItem value="daily">Daily</SelectItem>
+            <SelectItem value="weekly">Weekly</SelectItem>
+            <SelectItem value="monthly">Monthly</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+      <div className="space-y-2">
+        <Label>Reminder</Label>
+        <Select value={reminderTime} onValueChange={setReminderTime}>
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="none">None</SelectItem>
+            <SelectItem value="10m">10 minutes before</SelectItem>
+            <SelectItem value="1h">1 hour before</SelectItem>
+            <SelectItem value="24h">24 hours before</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+    </div>
+  );
+
+  const advancedSettings = (
+    <Collapsible open={settingsOpen} onOpenChange={setSettingsOpen}>
+      <CollapsibleTrigger asChild>
+        <Button type="button" variant="outline" className="w-full justify-between border-dashed">
+          <span className="flex items-center gap-2">
+            <Settings2 className="h-4 w-4" />
+            {isWebinar ? "Broadcast settings" : "Meeting settings"}
+          </span>
+          <ChevronDown className={cn("h-4 w-4 transition-transform", settingsOpen && "rotate-180")} />
+        </Button>
+      </CollapsibleTrigger>
+      <CollapsibleContent className="pt-4 space-y-3">
+        {settingsToggles.map((item) => (
+          <div key={item.id} className="flex items-center justify-between gap-3 rounded-lg border px-3 py-2.5 bg-white">
+            <Label htmlFor={item.id} className="text-sm font-normal cursor-pointer">
+              {item.label}
+            </Label>
+            <Switch id={item.id} checked={item.checked} onCheckedChange={item.onChange} />
+          </div>
+        ))}
+        <div className="space-y-2 pt-1">
+          <Label>Audio</Label>
+          <Select value={audioType} onValueChange={setAudioType}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="both">Computer & telephone</SelectItem>
+              <SelectItem value="voip">Computer audio only</SelectItem>
+              <SelectItem value="telephony">Telephone only</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </CollapsibleContent>
+    </Collapsible>
+  );
+
+  const sessionsList = (
+    <div className={cn(isWebinar ? "space-y-4" : "")}>
+      {itemsLoading ? (
+        <div className="flex justify-center py-16">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </div>
+      ) : sortedMeetings.length === 0 ? (
+        <div className="text-center py-16 text-muted-foreground">
+          {isWebinar ? (
+            <Clapperboard className="h-10 w-10 mx-auto mb-3 opacity-40" />
+          ) : (
+            <Video className="h-10 w-10 mx-auto mb-3 opacity-40" />
+          )}
+          <p className="font-medium">{isWebinar ? "No webinars yet" : "No meetings yet"}</p>
+          <p className="text-sm mt-1">
+            {isWebinar ? "Publish your first broadcast from the stage planner." : "Schedule your first session using the form."}
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {sortedMeetings.map((m) => (
+            <div
+              key={m.id}
+              className={cn(
+                "bg-white p-4 transition-all duration-200",
+                isWebinar
+                  ? "rounded-2xl border border-teal-100 border-l-4 border-l-teal-600 shadow-sm hover:shadow-md hover:-translate-y-0.5"
+                  : "rounded-xl border hover:shadow-sm",
+              )}
+            >
+              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap mb-1">
+                    {isWebinar && (
+                      <Badge className="bg-teal-700 hover:bg-teal-700 gap-1">
+                        <Radio className="h-3 w-3" />
+                        Webinar
+                      </Badge>
+                    )}
+                    <h3 className={cn("font-semibold truncate", isWebinar ? "text-teal-950" : "text-[#012F6B]")}>
+                      {m.topic || (isWebinar ? "Untitled webinar" : "Untitled meeting")}
+                    </h3>
+                    {meetingStatusBadge(m.session_status)}
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    {formatMeetingStartTime(m.start_time)}
+                    {m.duration ? ` · ${m.duration} min` : ""}
+                  </p>
+                </div>
+                <div className="flex flex-wrap items-center gap-2 shrink-0">
+                  {m.id && (
+                    <>
+                      {m.session_status !== "ended" && (
+                        <Button
+                          size="sm"
+                          className={isWebinar ? "bg-teal-700 hover:bg-teal-800" : undefined}
+                          onClick={() => handleStartSession(m)}
+                        >
+                          {m.session_status === "live" ? "Go live" : isWebinar ? "Start webinar" : "Start"}
+                        </Button>
+                      )}
+                      {m.session_status === "ended" && m.recording_available && (
+                        <>
+                          <Badge variant="outline" className="gap-1 text-emerald-700 border-emerald-200 bg-emerald-50">
+                            <Disc3 className="h-3 w-3" />
+                            Recorded
+                          </Badge>
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            className="gap-1.5"
+                            onClick={() => setReplayMeeting(m)}
+                          >
+                            <PlayCircle className="h-4 w-4" />
+                            Playback
+                          </Button>
+                          {m.recording_download_url && (
+                            <Button size="sm" variant="outline" className="gap-1.5" asChild>
+                              <a href={m.recording_download_url} target="_blank" rel="noopener noreferrer">
+                                <Download className="h-4 w-4" />
+                                Download
+                              </a>
+                            </Button>
+                          )}
+                        </>
+                      )}
+                      {m.session_status === "ended" && !m.recording_available && (
+                        <span className="text-xs text-muted-foreground px-1">
+                          {recordingsLoading ? "Checking recording…" : "No recording"}
+                        </span>
+                      )}
+                      <Button
+                        size="icon"
+                        variant="outline"
+                        title="Copy join link"
+                        onClick={() =>
+                          handleCopy(
+                            `${window.location.origin}${zoomMeetingEmbedRoom(m.id!, 1, m.password)}`,
+                          )
+                        }
+                      >
+                        <Copy className="h-4 w-4" />
+                      </Button>
+                    </>
+                  )}
+                  <Button
+                    size="icon"
+                    variant="destructive"
+                    disabled={deletingId === m.id}
+                    onClick={() => void handleDeleteMeeting(m.id)}
+                  >
+                    <Trash className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+
+  if (isWebinar) {
+    return (
+      <div className="space-y-6">
+        <div className="relative overflow-hidden rounded-3xl border border-teal-800/20 bg-[linear-gradient(135deg,#0f3d3a_0%,#0f766e_45%,#134e4a_100%)] p-6 sm:p-8 text-white shadow-[0_20px_50px_rgba(15,118,110,0.28)]">
+          <div className="pointer-events-none absolute -right-10 -top-10 h-40 w-40 rounded-full bg-white/10 blur-2xl" />
+          <div className="pointer-events-none absolute bottom-0 left-1/3 h-24 w-64 rounded-full bg-teal-200/20 blur-3xl" />
+          <div className="relative flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+            <div className="max-w-2xl space-y-3">
+              <p className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em]">
+                <Presentation className="h-3.5 w-3.5" />
+                Broadcast stage
+              </p>
+              <h1 className="text-3xl sm:text-4xl font-black tracking-tight">Webinars</h1>
+              <p className="text-white/85 text-sm sm:text-base leading-relaxed">
+                Plan a one-to-many session. Audience joins muted with camera off; you invite speakers to the stage when ready.
+                Host: {hostDisplayName ?? hostDisplayEmail ?? "Admin"}.
+              </p>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 w-full lg:w-auto">
+              {[
+                { label: "Total", value: meetingStats.total, icon: Clapperboard },
+                { label: "Live", value: meetingStats.live, icon: Radio },
+                { label: "Upcoming", value: meetingStats.upcoming, icon: Calendar },
+                { label: "Ended", value: meetingStats.ended, icon: Disc3 },
+              ].map((stat) => (
+                <div
+                  key={stat.label}
+                  className="rounded-2xl border border-white/15 bg-white/10 px-3 py-3 backdrop-blur-sm transition-transform duration-200 hover:-translate-y-0.5"
+                >
+                  <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wide text-white/70">
+                    <stat.icon className="h-3.5 w-3.5" />
+                    {stat.label}
+                  </div>
+                  <p className="mt-1 text-2xl font-bold tabular-nums">{stat.value}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
+          <form className="xl:col-span-7 space-y-4" onSubmit={handleCreateMeeting}>
+            <section className="rounded-3xl border border-teal-100 bg-white p-5 sm:p-6 shadow-sm space-y-5">
+              <div className="flex items-start gap-3">
+                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-teal-700 text-sm font-bold text-white">1</span>
+                <div>
+                  <h2 className="text-lg font-semibold text-teal-950">Event details</h2>
+                  <p className="text-sm text-muted-foreground">Title, timing, and what the audience will hear.</p>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="webinar-title">Webinar title</Label>
+                <Input
+                  id="webinar-title"
+                  placeholder="e.g. Pathways information evening"
+                  value={meetingTitle}
+                  onChange={(e) => setMeetingTitle(e.target.value)}
+                  className="h-11"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Duration</Label>
+                <div className="flex flex-wrap gap-2">
+                  {WEBINAR_DURATION_PRESETS.map((mins) => (
+                    <button
+                      key={mins}
+                      type="button"
+                      onClick={() => setMeetingDuration(String(mins))}
+                      className={cn(
+                        "rounded-full border px-3 py-1.5 text-sm transition-all duration-150",
+                        meetingDuration === String(mins)
+                          ? "border-teal-700 bg-teal-700 text-white shadow-sm"
+                          : "border-teal-200 bg-teal-50/50 text-teal-900 hover:border-teal-400",
+                      )}
+                    >
+                      {mins} min
+                    </button>
+                  ))}
+                </div>
+                <Input
+                  type="number"
+                  min={1}
+                  value={meetingDuration}
+                  onChange={(e) => setMeetingDuration(e.target.value)}
+                  className="max-w-[140px]"
+                  aria-label="Custom duration minutes"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Category</Label>
+                  <Select value={meetingCategory} onValueChange={setMeetingCategory}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {WEBINAR_CATEGORIES.map((cat) => (
+                        <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label className="opacity-0 pointer-events-none hidden sm:block">Provider</Label>
+                  <div className="h-10 rounded-md border border-teal-100 bg-teal-50/60 px-3 flex items-center gap-2 text-sm text-teal-900">
+                    <MicOff className="h-4 w-4 shrink-0" />
+                    Audience starts muted · {platformProvider === "daily" ? "Daily" : "Zoom"}
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Start date & time</Label>
+                <SmartDateTimePicker
+                  idPrefix="zoom-webinar"
+                  value={meetingStartTime}
+                  timezone={meetingTimezone}
+                  onValueChange={setMeetingStartTime}
+                  onTimezoneChange={setMeetingTimezone}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="webinar-agenda">Agenda</Label>
+                <Textarea
+                  id="webinar-agenda"
+                  placeholder="What will you present to the audience?"
+                  value={meetingAgenda}
+                  onChange={(e) => setMeetingAgenda(e.target.value)}
+                  rows={3}
+                />
+              </div>
+            </section>
+
+            <section className="rounded-3xl border border-teal-100 bg-white p-5 sm:p-6 shadow-sm space-y-5">
+              <div className="flex items-start gap-3">
+                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-teal-700 text-sm font-bold text-white">2</span>
+                <div>
+                  <h2 className="text-lg font-semibold text-teal-950">Audience & registration</h2>
+                  <p className="text-sm text-muted-foreground">Control how people sign up and get notified.</p>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between gap-3 rounded-2xl border border-teal-200 bg-gradient-to-r from-teal-50 to-white px-4 py-3">
+                <div className="flex items-start gap-3 min-w-0">
+                  <Ticket className="h-5 w-5 text-teal-700 mt-0.5 shrink-0" />
+                  <div className="min-w-0">
+                    <Label htmlFor="require-registration" className="text-sm font-semibold text-teal-950 cursor-pointer">
+                      Require registration
+                    </Label>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Collect registrant details before they receive the join link.
+                    </p>
+                  </div>
+                </div>
+                <Switch
+                  id="require-registration"
+                  checked={requireRegistration}
+                  onCheckedChange={setRequireRegistration}
+                />
+              </div>
+
+              {scheduleExtras}
+            </section>
+
+            <section className="rounded-3xl border border-teal-100 bg-white p-5 sm:p-6 shadow-sm space-y-5">
+              <div className="flex items-start gap-3">
+                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-teal-700 text-sm font-bold text-white">3</span>
+                <div>
+                  <h2 className="text-lg font-semibold text-teal-950">Stage & broadcast</h2>
+                  <p className="text-sm text-muted-foreground">Invite panelists and tune webinar room behaviour.</p>
+                </div>
+              </div>
+
+              {invitationsBlock}
+              {advancedSettings}
+
+              <Button
+                type="submit"
+                disabled={creating}
+                className="w-full h-12 bg-teal-700 hover:bg-teal-800 font-semibold text-base shadow-md shadow-teal-900/20"
+              >
+                {creating ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Publishing webinar…
+                  </>
+                ) : (
+                  <>
+                    <Radio className="mr-2 h-4 w-4" />
+                    Publish webinar
+                  </>
+                )}
+              </Button>
+            </section>
+          </form>
+
+          <div className="xl:col-span-5 space-y-4">
+            <div className="rounded-3xl border border-teal-100 bg-[linear-gradient(180deg,#f0fdfa_0%,#ffffff_40%)] p-5 sm:p-6 shadow-sm min-h-[320px]">
+              <div className="mb-4">
+                <h2 className="text-lg font-semibold text-teal-950 flex items-center gap-2">
+                  <Clapperboard className="h-5 w-5" />
+                  Your webinars
+                </h2>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Go live, share audience links, replay recordings, or remove sessions.
+                </p>
+              </div>
+              {sessionsList}
+            </div>
+          </div>
+        </div>
+
+        <ZoomRecordingPlayerDialog
+          open={!!replayMeeting}
+          onOpenChange={(open) => {
+            if (!open) setReplayMeeting(null);
+          }}
+          title={replayMeeting?.topic}
+          files={replayMeeting?.recording_files}
+          fallbackDownloadUrl={replayMeeting?.recording_download_url}
+          fallbackPlayUrl={replayMeeting?.recording_play_url}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <AdminPageHeader
-        title={meetingType === "webinar" ? "Webinars" : "Meeting"}
-        description={`Schedule sessions and manage recordings. Host: ${hostDisplayName ?? hostDisplayEmail ?? "Admin"}. Provider defaults are managed in Settings → Live meetings.`}
+        title="Meeting"
+        description={`Schedule interactive sessions and manage recordings. Host: ${hostDisplayName ?? hostDisplayEmail ?? "Admin"}. Provider defaults are managed in Settings → Live meetings.`}
       />
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -396,17 +955,14 @@ const ZoomManagement = ({ initialMeetingType = "meeting" }: ZoomManagementProps)
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-5 gap-6 items-start">
-        {/* ─── Schedule form ─── */}
         <Card className="xl:col-span-2 border-[#012F6B]/10 shadow-sm">
           <CardHeader className="pb-4">
             <CardTitle className="flex items-center gap-2 text-[#012F6B]">
               <Video className="h-5 w-5" />
-              {meetingType === "webinar" ? "Schedule a webinar" : "Schedule a meeting"}
+              Schedule a meeting
             </CardTitle>
             <CardDescription>
-              {meetingType === "webinar"
-                ? "Create a broadcast-style webinar. Audience joins muted with camera off until you invite them to speak."
-                : "Create an interactive meeting. Attendees join muted; they raise a hand before speaking."}
+              Create an interactive meeting. Attendees join muted; they raise a hand before speaking.
             </CardDescription>
           </CardHeader>
 
@@ -456,151 +1012,9 @@ const ZoomManagement = ({ initialMeetingType = "meeting" }: ZoomManagementProps)
                 </div>
               </div>
 
-              {/* Invitations */}
-              <div className="rounded-xl border border-[#012F6B]/10 bg-slate-50/60 p-4 space-y-4">
-                <div className="flex items-center gap-2">
-                  <Users className="h-4 w-4 text-[#012F6B]" />
-                  <p className="text-sm font-semibold text-[#012F6B]">Invitations</p>
-                  {invitePreview.length > 0 && (
-                    <Badge variant="secondary" className="ml-auto">
-                      {invitePreview.length} total
-                    </Badge>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Staff members</Label>
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      className="pl-9 h-9"
-                      placeholder="Search staff by name or email…"
-                      value={staffSearch}
-                      onChange={(e) => setStaffSearch(e.target.value)}
-                    />
-                  </div>
-                  <div className="max-h-36 overflow-y-auto rounded-lg border bg-white p-2 space-y-1">
-                    {staffUsers.length === 0 ? (
-                      <p className="text-xs text-muted-foreground px-2 py-3 text-center">No staff users found.</p>
-                    ) : filteredStaff.length === 0 ? (
-                      <p className="text-xs text-muted-foreground px-2 py-3 text-center">No matches for your search.</p>
-                    ) : (
-                      filteredStaff.map((u) => {
-                        const selected = selectedStaffEmails.includes(u.email);
-                        return (
-                          <button
-                            key={u.email}
-                            type="button"
-                            onClick={() => toggleStaffEmail(u.email)}
-                            className={cn(
-                              "w-full flex items-center gap-3 rounded-md px-2 py-2 text-left text-sm transition-colors",
-                              selected ? "bg-[#012F6B]/10 border border-[#012F6B]/20" : "hover:bg-slate-50",
-                            )}
-                          >
-                            <span
-                              className={cn(
-                                "h-4 w-4 rounded border flex items-center justify-center shrink-0",
-                                selected ? "bg-[#012F6B] border-[#012F6B] text-white" : "border-slate-300",
-                              )}
-                            >
-                              {selected ? "✓" : ""}
-                            </span>
-                            <span className="min-w-0">
-                              <span className="font-medium block truncate">{u.name || u.email}</span>
-                              <span className="text-xs text-muted-foreground block truncate">{u.email}</span>
-                            </span>
-                          </button>
-                        );
-                      })
-                    )}
-                  </div>
-                </div>
-
-                <EmailChipInput
-                  value={additionalEmails}
-                  onChange={setAdditionalEmails}
-                  placeholder="name@example.com"
-                  label="Additional emails"
-                  description="Invite guests who are not in the staff list."
-                />
-              </div>
-
-              {/* Schedule extras + settings */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Recurrence</Label>
-                  <Select value={recurrence} onValueChange={setRecurrence}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">None</SelectItem>
-                      <SelectItem value="daily">Daily</SelectItem>
-                      <SelectItem value="weekly">Weekly</SelectItem>
-                      <SelectItem value="monthly">Monthly</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>Reminder</Label>
-                  <Select value={reminderTime} onValueChange={setReminderTime}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">None</SelectItem>
-                      <SelectItem value="10m">10 minutes before</SelectItem>
-                      <SelectItem value="1h">1 hour before</SelectItem>
-                      <SelectItem value="24h">24 hours before</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <Collapsible open={settingsOpen} onOpenChange={setSettingsOpen}>
-                <CollapsibleTrigger asChild>
-                  <Button type="button" variant="outline" className="w-full justify-between border-dashed">
-                    <span className="flex items-center gap-2">
-                      <Settings2 className="h-4 w-4" />
-                      Meeting settings
-                    </span>
-                    <ChevronDown className={cn("h-4 w-4 transition-transform", settingsOpen && "rotate-180")} />
-                  </Button>
-                </CollapsibleTrigger>
-                <CollapsibleContent className="pt-4 space-y-3">
-                  {[
-                    { id: "jbh", label: "Allow join before host", checked: joinBeforeHost, onChange: setJoinBeforeHost },
-                    { id: "mute", label: "Mute participants on entry", checked: muteOnEntry, onChange: setMuteOnEntry },
-                    { id: "rec", label: "Auto-record meeting", checked: autoRecording, onChange: setAutoRecording },
-                    { id: "hvid", label: "Host video on", checked: hostVideo, onChange: setHostVideo },
-                    { id: "pvid", label: "Participant video on", checked: participantVideo, onChange: setParticipantVideo },
-                    { id: "wr", label: "Waiting room", checked: waitingRoom, onChange: setWaitingRoom },
-                    { id: "auth", label: "Require authentication", checked: meetingAuthentication, onChange: setMeetingAuthentication },
-                    { id: "notify", label: "Registrant email notifications", checked: registrantsEmailNotification, onChange: setRegistrantsEmailNotification },
-                    { id: "multi", label: "Allow multiple devices", checked: allowMultipleDevices, onChange: setAllowMultipleDevices },
-                  ].map((item) => (
-                    <div key={item.id} className="flex items-center justify-between gap-3 rounded-lg border px-3 py-2.5 bg-white">
-                      <Label htmlFor={item.id} className="text-sm font-normal cursor-pointer">
-                        {item.label}
-                      </Label>
-                      <Switch id={item.id} checked={item.checked} onCheckedChange={item.onChange} />
-                    </div>
-                  ))}
-                  <div className="space-y-2 pt-1">
-                    <Label>Audio</Label>
-                    <Select value={audioType} onValueChange={setAudioType}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="both">Computer & telephone</SelectItem>
-                        <SelectItem value="voip">Computer audio only</SelectItem>
-                        <SelectItem value="telephony">Telephone only</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </CollapsibleContent>
-              </Collapsible>
+              {invitationsBlock}
+              {scheduleExtras}
+              {advancedSettings}
 
               <Button
                 type="submit"
@@ -620,7 +1034,6 @@ const ZoomManagement = ({ initialMeetingType = "meeting" }: ZoomManagementProps)
           </CardContent>
         </Card>
 
-        {/* ─── Meetings list ─── */}
         <Card className="xl:col-span-3 border-[#012F6B]/10 shadow-sm">
           <CardHeader className="pb-4">
             <CardTitle className="flex items-center gap-2 text-[#012F6B]">
@@ -629,113 +1042,7 @@ const ZoomManagement = ({ initialMeetingType = "meeting" }: ZoomManagementProps)
             </CardTitle>
             <CardDescription>Start live sessions, share links, play back recordings, or remove meetings.</CardDescription>
           </CardHeader>
-          <CardContent>
-            {itemsLoading ? (
-              <div className="flex justify-center py-16">
-                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-              </div>
-            ) : sortedMeetings.length === 0 ? (
-              <div className="text-center py-16 text-muted-foreground">
-                <Video className="h-10 w-10 mx-auto mb-3 opacity-40" />
-                <p className="font-medium">No Zoom meetings yet</p>
-                <p className="text-sm mt-1">Schedule your first session using the form.</p>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {sortedMeetings.map((m) => (
-                  <div
-                    key={m.id}
-                    className="rounded-xl border bg-white p-4 hover:shadow-sm transition-shadow"
-                  >
-                    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap mb-1">
-                          <h3 className="font-semibold text-[#012F6B] truncate">
-                            {m.topic || "Untitled meeting"}
-                          </h3>
-                          {meetingStatusBadge(m.session_status)}
-                        </div>
-                        <p className="text-sm text-muted-foreground">
-                          {formatMeetingStartTime(m.start_time)}
-                          {m.duration ? ` · ${m.duration} min` : ""}
-                        </p>
-                      </div>
-                      <div className="flex flex-wrap items-center gap-2 shrink-0">
-                        {m.id && (
-                          <>
-                            {m.session_status !== "ended" && (
-                              <Button size="sm" onClick={() => handleStartSession(m)}>
-                                {m.session_status === "live" ? "Join" : "Start"}
-                              </Button>
-                            )}
-                            {m.session_status === "ended" && m.recording_available && (
-                              <>
-                                <Badge variant="outline" className="gap-1 text-emerald-700 border-emerald-200 bg-emerald-50">
-                                  <Disc3 className="h-3 w-3" />
-                                  Recorded
-                                </Badge>
-                                <Button
-                                  size="sm"
-                                  variant="secondary"
-                                  className="gap-1.5"
-                                  onClick={() => setReplayMeeting(m)}
-                                >
-                                  <PlayCircle className="h-4 w-4" />
-                                  Playback
-                                </Button>
-                                {m.recording_download_url && (
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    className="gap-1.5"
-                                    asChild
-                                  >
-                                    <a
-                                      href={m.recording_download_url}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                    >
-                                      <Download className="h-4 w-4" />
-                                      Download
-                                    </a>
-                                  </Button>
-                                )}
-                              </>
-                            )}
-                            {m.session_status === "ended" && !m.recording_available && (
-                              <span className="text-xs text-muted-foreground px-1">
-                                {recordingsLoading ? "Checking recording…" : "No recording"}
-                              </span>
-                            )}
-                            <Button
-                              size="icon"
-                              variant="outline"
-                              title="Copy join link"
-                              onClick={() =>
-                                handleCopy(
-                                  `${window.location.origin}${zoomMeetingEmbedRoom(m.id!, 1, m.password)}`,
-                                )
-                              }
-                            >
-                              <Copy className="h-4 w-4" />
-                            </Button>
-                          </>
-                        )}
-                        <Button
-                          size="icon"
-                          variant="destructive"
-                          disabled={deletingId === m.id}
-                          onClick={() => void handleDeleteMeeting(m.id)}
-                        >
-                          <Trash className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
+          <CardContent>{sessionsList}</CardContent>
         </Card>
       </div>
 
