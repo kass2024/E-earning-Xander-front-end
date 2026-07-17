@@ -1,12 +1,9 @@
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { NavLink } from "@/components/NavLink";
 import { Button } from "@/components/ui/button";
 import type { PlatformInstitutionInfo } from "@/api/axios";
 import { resolveInstitutionLogoUrl } from "@/lib/institutionContext";
-import {
-  buildInstitutionLearnerLoginUrl,
-  buildInstitutionLearnerSignupUrl,
-  buildInstitutionPortalUrl,
-} from "@/lib/institutionSignupLink";
 import { portalThemeStyle, resolvePortalTheme } from "@/lib/institutionPortal";
 import { cn } from "@/lib/utils";
 import {
@@ -20,9 +17,10 @@ import {
   UserPlus,
   X,
 } from "lucide-react";
-import { useState } from "react";
 
 export type PortalNavSection = "home" | "programs" | "about" | "contact" | "join" | "login";
+
+const SECTION_IDS: PortalNavSection[] = ["home", "programs", "about", "contact"];
 
 type Props = {
   institution: PlatformInstitutionInfo;
@@ -32,6 +30,21 @@ type Props = {
   compactHero?: boolean;
 };
 
+function portalHomePath(slug: string): string {
+  return `/i/${encodeURIComponent(slug)}`;
+}
+
+function scrollToSection(sectionId: string, behavior: ScrollBehavior = "smooth") {
+  if (sectionId === "home") {
+    window.scrollTo({ top: 0, behavior });
+    return;
+  }
+  const el = document.getElementById(sectionId);
+  if (el) {
+    el.scrollIntoView({ behavior, block: "start" });
+  }
+}
+
 const InstitutionPortalShell = ({
   institution,
   activeSection = "home",
@@ -39,26 +52,105 @@ const InstitutionPortalShell = ({
   className,
   compactHero = false,
 }: Props) => {
+  const navigate = useNavigate();
+  const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [hashSection, setHashSection] = useState<PortalNavSection | null>(null);
+
   const slug = institution.slug?.trim().toLowerCase() || "";
   const logo = resolveInstitutionLogoUrl(institution);
   const theme = resolvePortalTheme(institution);
   const portal = institution.portal;
-  const homeUrl = slug ? buildInstitutionPortalUrl(slug).replace(window.location.origin, "") : "/";
+  const homePath = slug ? portalHomePath(slug) : "/";
   const joinUrl = slug ? `/join/${slug}` : "/signup";
   const loginUrl = slug ? `/login/${slug}` : "/login";
+  const onPortalHome = location.pathname.replace(/\/$/, "") === homePath;
 
-  const navItems: Array<{ id: PortalNavSection; label: string; href: string }> = [
-    { id: "home", label: "Home", href: homeUrl },
-    { id: "programs", label: "Programs", href: `${homeUrl}#programs` },
-    { id: "about", label: "About", href: `${homeUrl}#about` },
-    { id: "contact", label: "Contact", href: `${homeUrl}#contact` },
-  ];
+  const navItems = useMemo(
+    () =>
+      [
+        { id: "home" as const, label: "Home", hash: "" },
+        { id: "programs" as const, label: "Programs", hash: "programs" },
+        { id: "about" as const, label: "About", hash: "about" },
+        { id: "contact" as const, label: "Contact", hash: "contact" },
+      ] as const,
+    [],
+  );
+
+  const goToSection = useCallback(
+    (section: PortalNavSection, hash: string) => {
+      setMobileOpen(false);
+      setHashSection(section);
+
+      if (!onPortalHome) {
+        navigate(hash ? `${homePath}#${hash}` : homePath);
+        return;
+      }
+
+      if (hash) {
+        window.history.replaceState(null, "", `${homePath}#${hash}`);
+        scrollToSection(hash, "smooth");
+      } else {
+        window.history.replaceState(null, "", homePath);
+        scrollToSection("home", "smooth");
+      }
+    },
+    [homePath, navigate, onPortalHome],
+  );
+
+  // Scroll when arriving on /i/:slug#section (from login/join or refresh).
+  useEffect(() => {
+    if (!onPortalHome) return;
+    const raw = (location.hash || "").replace(/^#/, "").trim().toLowerCase();
+    if (!raw || !SECTION_IDS.includes(raw as PortalNavSection)) {
+      if (!location.hash) setHashSection("home");
+      return;
+    }
+    setHashSection(raw as PortalNavSection);
+    const t = window.setTimeout(() => scrollToSection(raw, "smooth"), 80);
+    return () => window.clearTimeout(t);
+  }, [onPortalHome, location.hash, location.pathname]);
+
+  // Highlight menu from scroll position on the portal home page.
+  useEffect(() => {
+    if (!onPortalHome || compactHero) return;
+
+    const observers: IntersectionObserver[] = [];
+    const ratios = new Map<string, number>();
+
+    SECTION_IDS.forEach((id) => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      const observer = new IntersectionObserver(
+        ([entry]) => {
+          ratios.set(id, entry.isIntersecting ? entry.intersectionRatio : 0);
+          let best: PortalNavSection = "home";
+          let bestRatio = 0;
+          ratios.forEach((ratio, key) => {
+            if (ratio > bestRatio) {
+              bestRatio = ratio;
+              best = key as PortalNavSection;
+            }
+          });
+          if (bestRatio > 0.15) setHashSection(best);
+        },
+        { rootMargin: "-20% 0px -55% 0px", threshold: [0, 0.2, 0.4, 0.6] },
+      );
+      observer.observe(el);
+      observers.push(observer);
+    });
+
+    return () => observers.forEach((o) => o.disconnect());
+  }, [onPortalHome, compactHero, institution.id]);
+
+  const currentSection: PortalNavSection =
+    hashSection ??
+    (activeSection === "join" || activeSection === "login" ? activeSection : activeSection);
 
   const linkClass = (section: PortalNavSection) =>
     cn(
       "text-sm font-medium transition-colors",
-      activeSection === section ? "text-white" : "text-white/80 hover:text-white",
+      currentSection === section ? "text-white" : "text-white/80 hover:text-white",
     );
 
   return (
@@ -68,7 +160,11 @@ const InstitutionPortalShell = ({
     >
       <header className="sticky top-0 z-50 border-b border-white/10 bg-[var(--institution-hero-bg)] text-white shadow-lg">
         <div className="container mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3 sm:py-4">
-          <NavLink to={homeUrl} className="flex min-w-0 items-center gap-3">
+          <button
+            type="button"
+            className="flex min-w-0 items-center gap-3 text-left"
+            onClick={() => goToSection("home", "")}
+          >
             {logo ? (
               <img
                 src={logo}
@@ -86,13 +182,18 @@ const InstitutionPortalShell = ({
                 <p className="hidden truncate text-[11px] text-white/75 sm:block max-w-[220px]">{portal.tagline}</p>
               )}
             </div>
-          </NavLink>
+          </button>
 
-          <nav className="hidden items-center gap-6 lg:flex">
+          <nav className="hidden items-center gap-6 lg:flex" aria-label="Institution website">
             {navItems.map((item) => (
-              <NavLink key={item.id} to={item.href} className={linkClass(item.id)}>
+              <button
+                key={item.id}
+                type="button"
+                className={linkClass(item.id)}
+                onClick={() => goToSection(item.id, item.hash)}
+              >
                 {item.label}
-              </NavLink>
+              </button>
             ))}
           </nav>
 
@@ -128,16 +229,16 @@ const InstitutionPortalShell = ({
 
         {mobileOpen && (
           <div className="border-t border-white/10 bg-[var(--institution-hero-bg)] px-4 py-4 lg:hidden">
-            <nav className="flex flex-col gap-3">
+            <nav className="flex flex-col gap-3" aria-label="Institution website mobile">
               {navItems.map((item) => (
-                <NavLink
+                <button
                   key={item.id}
-                  to={item.href}
-                  className={linkClass(item.id)}
-                  onClick={() => setMobileOpen(false)}
+                  type="button"
+                  className={cn(linkClass(item.id), "text-left")}
+                  onClick={() => goToSection(item.id, item.hash)}
                 >
                   {item.label}
-                </NavLink>
+                </button>
               ))}
               <div className="mt-2 flex flex-col gap-2 border-t border-white/10 pt-3">
                 <Button asChild variant="secondary" className="w-full bg-white/10 text-white hover:bg-white/20 border-0">
@@ -159,8 +260,8 @@ const InstitutionPortalShell = ({
         )}
       </header>
 
-      {!compactHero && activeSection === "home" && portal && (
-        <section className="relative overflow-hidden bg-[var(--institution-hero-bg)] text-white">
+      {!compactHero && onPortalHome && portal && (
+        <section id="home" className="relative scroll-mt-24 overflow-hidden bg-[var(--institution-hero-bg)] text-white">
           {portal.hero_image_url && (
             <>
               <img src={portal.hero_image_url} alt="" className="absolute inset-0 h-full w-full object-cover opacity-30" />
@@ -196,12 +297,32 @@ const InstitutionPortalShell = ({
 
       <footer className="border-t border-slate-200 bg-white">
         <div className="container mx-auto max-w-6xl px-4 py-10">
-          <div className="grid gap-8 md:grid-cols-[1.2fr_1fr]">
+          <div className="grid gap-8 md:grid-cols-[1.2fr_1fr_1fr]">
             <div>
               <h3 className="text-lg font-bold text-[var(--institution-primary)]">{institution.name}</h3>
               {portal?.tagline && <p className="mt-2 text-sm text-slate-600">{portal.tagline}</p>}
+              <p className="mt-3 text-sm text-slate-500">
+                Programs, enrollment, and support for learners at {institution.name} only.
+              </p>
+            </div>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Explore</p>
+              <ul className="mt-3 space-y-2 text-sm">
+                {navItems.map((item) => (
+                  <li key={item.id}>
+                    <button
+                      type="button"
+                      className="text-slate-700 hover:text-[var(--institution-primary)]"
+                      onClick={() => goToSection(item.id, item.hash)}
+                    >
+                      {item.label}
+                    </button>
+                  </li>
+                ))}
+              </ul>
             </div>
             <div className="space-y-2 text-sm text-slate-600">
+              <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Contact</p>
               {institution.contact_email && (
                 <p className="flex items-center gap-2">
                   <Mail className="h-4 w-4 shrink-0 text-[var(--institution-primary)]" />
@@ -213,7 +334,9 @@ const InstitutionPortalShell = ({
               {institution.contact_phone && (
                 <p className="flex items-center gap-2">
                   <Phone className="h-4 w-4 shrink-0 text-[var(--institution-primary)]" />
-                  {institution.contact_phone}
+                  <a href={`tel:${institution.contact_phone}`} className="hover:underline">
+                    {institution.contact_phone}
+                  </a>
                 </p>
               )}
               {institution.address && (
@@ -235,13 +358,18 @@ const InstitutionPortalShell = ({
                   </a>
                 </p>
               )}
+              {!institution.contact_email && !institution.contact_phone && !institution.address && (
+                <p className="text-slate-500">Contact details will appear when published by {institution.name}.</p>
+              )}
             </div>
           </div>
           <div className="mt-8 flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-6 text-xs text-slate-500">
-            <span>© {new Date().getFullYear()} {institution.name}. All rights reserved.</span>
+            <span>
+              © {new Date().getFullYear()} {institution.name}. All rights reserved.
+            </span>
             <span className="inline-flex items-center gap-1">
               <BookOpen className="h-3.5 w-3.5" />
-              Powered by learning platform
+              Institution portal
             </span>
           </div>
         </div>
@@ -251,4 +379,3 @@ const InstitutionPortalShell = ({
 };
 
 export default InstitutionPortalShell;
-
