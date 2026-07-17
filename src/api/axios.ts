@@ -856,6 +856,22 @@ export const releaseLiveZoomCohortParticipant = async (id: number) => {
   return response.data;
 };
 
+export const releaseLiveZoomCohortQueueEntry = async (id: number, entryId: number) => {
+  const response = await api.post(`/livezoom-cohort/${id}/queue/release/${entryId}`);
+  return response.data as {
+    message: string;
+    released?: LiveZoomCohortQueueEntry;
+    queue?: {
+      session: LiveZoomCohortSessionInfo;
+      current: LiveZoomCohortQueueEntry | null;
+      in_session?: LiveZoomCohortQueueEntry[];
+      waiting: LiveZoomCohortQueueEntry[];
+      waiting_count: number;
+      admitted_ready?: LiveZoomCohortQueueEntry[];
+    };
+  };
+};
+
 export const admitNextLiveZoomCohortWaiting = async (id: number) => {
   const response = await api.post(`/livezoom-cohort/${id}/queue/admit-next`);
   return response.data as {

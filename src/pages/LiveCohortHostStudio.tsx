@@ -13,12 +13,13 @@ import {
   markLiveCohortHostInMeeting,
   markLiveCohortHostLeft,
   releaseLiveZoomCohortParticipant,
+  releaseLiveZoomCohortQueueEntry,
   toggleLiveCohortRecording,
   type LiveZoomCohortQueueEntry,
   type ZoomMeetingSdkAuth,
 } from "@/api/axios";
 import { LiveMeetingExperience } from "@/components/live/LiveMeetingExperience";
-import type { DailyMeetingSdkAuth } from "@/components/live/DailyMeetingRoom";
+import type { DailyHostControls, DailyMeetingSdkAuth } from "@/components/live/DailyMeetingRoom";
 import type { ZoomParticipant } from "@/components/live/zoomMeetingClient";
 import { HostQueuePanel } from "@/components/live/HostQueuePanel";
 import type { HostBranding } from "@/components/live/HostWaitingStage";
@@ -69,6 +70,7 @@ const LiveCohortHostStudio = () => {
   const [meetingReady, setMeetingReady] = useState(false);
   const staleMeetingRetryRef = useRef(false);
   const hasConnectedOnceRef = useRef(false);
+  const hostControlsRef = useRef<DailyHostControls | null>(null);
 
   const publicJoinUrl = resolvePublicJoinUrl(id ? cohortPublicJoin(id) : "");
 
@@ -313,6 +315,45 @@ const LiveCohortHostStudio = () => {
     }
   };
 
+  const handleMuteParticipant = (entry: LiveZoomCohortQueueEntry) => {
+    const ok = hostControlsRef.current?.muteByName(entry.display_name);
+    if (!ok) {
+      toast({
+        variant: "destructive",
+        title: "Mute failed",
+        description: "Could not find that participant in the live call yet.",
+      });
+    }
+  };
+
+  const handleStopVideoParticipant = (entry: LiveZoomCohortQueueEntry) => {
+    const ok = hostControlsRef.current?.stopVideoByName(entry.display_name);
+    if (!ok) {
+      toast({
+        variant: "destructive",
+        title: "Stop video failed",
+        description: "Could not find that participant in the live call yet.",
+      });
+    }
+  };
+
+  const handleRemoveParticipant = async (entry: LiveZoomCohortQueueEntry) => {
+    if (!window.confirm(`Remove ${entry.display_name} from the session?`)) return;
+    setActionLoading(true);
+    try {
+      hostControlsRef.current?.removeByName(entry.display_name);
+      const res = await releaseLiveZoomCohortQueueEntry(id, entry.id);
+      if (res.queue) applyQueue(res.queue);
+      else await loadQueue(true);
+      toast({ title: "Removed", description: res.message || `${entry.display_name} was removed.` });
+    } catch (err: unknown) {
+      const message = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      toast({ variant: "destructive", title: "Remove failed", description: message || "Could not remove participant." });
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   const handleRecording = async (action: "start" | "stop", meta?: { clientHandled?: boolean }) => {
     // DailyMeetingRoom already started/stopped via the client SDK — only sync UI.
     if (meta?.clientHandled) {
@@ -509,6 +550,7 @@ const LiveCohortHostStudio = () => {
             onParticipantRemoved={(participant) => void handleParticipantRemoved(participant)}
             onPrejoinCancel={() => navigate("/dashboard/live-zoom-cohort")}
             skipPrejoin={meetingProvider !== "daily"}
+            hostControlsRef={hostControlsRef}
           />
         </div>
       ) : null}
@@ -567,6 +609,9 @@ const LiveCohortHostStudio = () => {
         onAdmitSelected={(ids) => void handleAdmitSelected(ids)}
         onRelease={() => void handleRelease()}
         onAdmitEntry={(entryId) => void handleAdmitEntry(entryId)}
+        onMuteParticipant={handleMuteParticipant}
+        onStopVideoParticipant={handleStopVideoParticipant}
+        onRemoveParticipant={(entry) => void handleRemoveParticipant(entry)}
         onToggleRecording={(action, meta) => void handleRecording(action, meta)}
       />
     </div>

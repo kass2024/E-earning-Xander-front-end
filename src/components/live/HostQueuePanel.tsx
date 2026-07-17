@@ -4,11 +4,14 @@ import { Badge } from "@/components/ui/badge";
 import {
   CheckSquare,
   Loader2,
+  MicOff,
   Radio,
   Square,
   UserCheck,
   UserPlus,
+  UserX,
   Users,
+  VideoOff,
   X,
 } from "lucide-react";
 import type { LiveZoomCohortQueueEntry } from "@/api/axios";
@@ -37,6 +40,9 @@ type Props = {
   onAdmitSelected?: (entryIds: number[]) => void;
   onRelease: () => void;
   onAdmitEntry: (entryId: number) => void;
+  onMuteParticipant?: (entry: LiveZoomCohortQueueEntry) => void;
+  onStopVideoParticipant?: (entry: LiveZoomCohortQueueEntry) => void;
+  onRemoveParticipant?: (entry: LiveZoomCohortQueueEntry) => void;
   onToggleRecording: (action: "start" | "stop", meta?: { clientHandled?: boolean }) => void;
 };
 
@@ -55,6 +61,9 @@ export function HostQueuePanel({
   onAdmitSelected,
   onRelease,
   onAdmitEntry,
+  onMuteParticipant,
+  onStopVideoParticipant,
+  onRemoveParticipant,
   onToggleRecording,
 }: Props) {
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
@@ -65,6 +74,7 @@ export function HostQueuePanel({
   }, [inSession, current]);
   const inSessionCount = sessionPeople.length;
   const selectedWaiting = selectedIds.filter((id) => waiting.some((w) => w.id === id));
+  const canModerateSession = Boolean(onMuteParticipant || onStopVideoParticipant || onRemoveParticipant);
 
   const toggleSelected = (id: number) => {
     setSelectedIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
@@ -134,20 +144,65 @@ export function HostQueuePanel({
               In session ({inSessionCount})
             </p>
             {sessionPeople.length > 0 ? (
-              <ul className="space-y-2">
+              <ul className="space-y-3">
                 {sessionPeople.map((person) => (
-                  <li key={person.id} className="min-w-0">
-                    <p className="truncate font-medium text-white">{person.display_name}</p>
-                    <div className="mt-1 flex flex-wrap gap-1.5">
-                      <Badge className="h-5 bg-emerald-600 capitalize text-[10px] hover:bg-emerald-600">
-                        {person.status}
-                      </Badge>
-                      {person.is_guest && (
-                        <Badge variant="outline" className="h-5 border-white/20 text-[10px] text-zinc-300">
-                          Guest
+                  <li key={person.id} className="min-w-0 space-y-2">
+                    <div>
+                      <p className="truncate font-medium text-white">{person.display_name}</p>
+                      <div className="mt-1 flex flex-wrap gap-1.5">
+                        <Badge className="h-5 bg-emerald-600 capitalize text-[10px] hover:bg-emerald-600">
+                          {person.status}
                         </Badge>
-                      )}
+                        {person.is_guest && (
+                          <Badge variant="outline" className="h-5 border-white/20 text-[10px] text-zinc-300">
+                            Guest
+                          </Badge>
+                        )}
+                      </div>
                     </div>
+                    {canModerateSession ? (
+                      <div className="flex flex-wrap gap-1.5">
+                        {onMuteParticipant ? (
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            className="h-7 bg-[#2d2d2d] px-2 text-[10px] text-zinc-100 hover:bg-[#3a3a3a]"
+                            disabled={actionLoading}
+                            onClick={() => onMuteParticipant(person)}
+                            title="Mute microphone"
+                          >
+                            <MicOff className="mr-1 h-3 w-3" />
+                            Mute
+                          </Button>
+                        ) : null}
+                        {onStopVideoParticipant ? (
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            className="h-7 bg-[#2d2d2d] px-2 text-[10px] text-zinc-100 hover:bg-[#3a3a3a]"
+                            disabled={actionLoading}
+                            onClick={() => onStopVideoParticipant(person)}
+                            title="Turn camera off"
+                          >
+                            <VideoOff className="mr-1 h-3 w-3" />
+                            Video
+                          </Button>
+                        ) : null}
+                        {onRemoveParticipant ? (
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            className="h-7 px-2 text-[10px]"
+                            disabled={actionLoading}
+                            onClick={() => onRemoveParticipant(person)}
+                            title="Remove from call"
+                          >
+                            <UserX className="mr-1 h-3 w-3" />
+                            Remove
+                          </Button>
+                        ) : null}
+                      </div>
+                    ) : null}
                   </li>
                 ))}
               </ul>

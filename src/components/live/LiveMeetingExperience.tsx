@@ -4,8 +4,14 @@ import type { ParticipantBranding } from "@/components/live/ParticipantWaitingSt
 import type { ZoomParticipant } from "@/components/live/zoomMeetingClient";
 import type { MeetingShareDetails } from "@/lib/meetingShareDetails";
 import type { ZoomClientBranding } from "@/lib/zoomClientBranding";
-import { DailyMeetingRoom, type DailyMeetingSdkAuth } from "@/components/live/DailyMeetingRoom";
+import {
+  DailyMeetingRoom,
+  type DailyHostControls,
+  type DailyMeetingSdkAuth,
+  type DailyRemoteParticipantSnapshot,
+} from "@/components/live/DailyMeetingRoom";
 import { ZoomMeetingExperience, type ZoomSdkView } from "@/components/live/ZoomMeetingExperience";
+import type { MutableRefObject } from "react";
 
 export type LiveMeetingProvider = "zoom" | "daily";
 
@@ -42,6 +48,8 @@ type Props = {
   materialId?: number;
   hostEmail?: string;
   sdkView?: ZoomSdkView;
+  hostControlsRef?: MutableRefObject<DailyHostControls | null>;
+  onRemoteParticipantsChange?: (remotes: DailyRemoteParticipantSnapshot[]) => void;
 };
 
 function isDailySdk(sdk: ZoomMeetingSdkAuth | DailyMeetingSdkAuth): sdk is DailyMeetingSdkAuth {
@@ -108,6 +116,8 @@ export function LiveMeetingExperience(props: Props) {
           props.leaveDashboardLabel ??
           (props.isHost ? "Back to dashboard" : "Back to waiting room")
         }
+        hostControlsRef={props.hostControlsRef}
+        onRemoteParticipantsChange={props.onRemoteParticipantsChange}
       />
     );
   }

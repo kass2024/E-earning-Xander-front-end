@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type MutableRefObject, type ReactNode } from "react";
 import DailyIframe, { type DailyCall, type DailyParticipant } from "@daily-co/daily-js";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -76,6 +76,21 @@ export type DailyMeetingSdkAuth = {
   permissions?: DailySdkPermissions | null;
 };
 
+export type DailyRemoteParticipantSnapshot = {
+  sessionId: string;
+  userName: string;
+  audio: boolean;
+  video: boolean;
+};
+
+export type DailyHostControls = {
+  muteByName: (userName: string) => boolean;
+  stopVideoByName: (userName: string) => boolean;
+  removeByName: (userName: string) => boolean;
+  findByName: (userName: string) => DailyRemoteParticipantSnapshot | null;
+  listRemotes: () => DailyRemoteParticipantSnapshot[];
+};
+
 type ChatMessage = {
   id: string;
   from: string;
@@ -103,6 +118,8 @@ type Props = {
   onToggleRecording?: (action: "start" | "stop", meta?: { clientHandled?: boolean }) => void;
   onOpenQueue?: () => void;
   leaveDashboardLabel?: string;
+  hostControlsRef?: MutableRefObject<DailyHostControls | null>;
+  onRemoteParticipantsChange?: (remotes: DailyRemoteParticipantSnapshot[]) => void;
 };
 
 let dailyLifecycle: Promise<void> = Promise.resolve();
@@ -378,6 +395,8 @@ export function DailyMeetingRoom({
   onToggleRecording,
   onOpenQueue,
   leaveDashboardLabel = "Back to dashboard",
+  hostControlsRef,
+  onRemoteParticipantsChange,
 }: Props) {
   const { toast } = useToast();
   const callRef = useRef<DailyCall | null>(null);
@@ -1359,6 +1378,99 @@ export function DailyMeetingRoom({
     }
   };
 
+  const normalizeName = (value: string) => value.trim().toLowerCase().replace(/\s+/g, " ");
+
+  const findRemoteByName = (userName: string): DailyParticipant | null => {
+    const needle = normalizeName(userName);
+    if (!needle) return null;
+    return (
+      remotes.find((p) => normalizeName(String(p.user_name || "")) === needle) ||
+      remotes.find((p) => normalizeName(String(p.user_name || "")).includes(needle)) ||
+      remotes.find((p) => needle.includes(normalizeName(String(p.user_name || "")))) ||
+      null
+    );
+  };
+
+  const snapshotRemote = (p: DailyParticipant): DailyRemoteParticipantSnapshot => ({
+    sessionId: String(p.session_id),
+    userName: String(p.user_name || "Participant"),
+    audio: Boolean(p.audio),
+    video: Boolean(p.video),
+  });
+
+  const hostMuteParticipant = (sessionId: string) => {
+    const call = callRef.current;
+    if (!call || !sessionId) return false;
+    try {
+      call.updateParticipant(sessionId, { setAudio: false });
+      toast({ title: "Muted", description: "Participant microphone turned off." });
+      return true;
+    } catch {
+      toast({ variant: "destructive", title: "Mute failed" });
+      return false;
+    }
+  };
+
+  const hostStopVideo = (sessionId: string) => {
+    const call = callRef.current;
+    if (!call || !sessionId) return false;
+    try {
+      call.updateParticipant(sessionId, { setVideo: false });
+      toast({ title: "Camera off", description: "Participant camera turned off." });
+      return true;
+    } catch {
+      toast({ variant: "destructive", title: "Stop video failed" });
+      return false;
+    }
+  };
+
+  const hostRemoveParticipant = (sessionId: string) => {
+    const call = callRef.current;
+    if (!call || !sessionId) return false;
+    try {
+      call.updateParticipant(sessionId, {
+        eject: true,
+        setAudio: false,
+        setVideo: false,
+      });
+      toast({ title: "Removed", description: "Participant was removed from the call." });
+      return true;
+    } catch {
+      toast({ variant: "destructive", title: "Remove failed" });
+      return false;
+    }
+  };
+
+  useEffect(() => {
+    onRemoteParticipantsChange?.(remotes.map(snapshotRemote));
+  }, [remotes, onRemoteParticipantsChange]);
+
+  useEffect(() => {
+    if (!hostControlsRef) return;
+    hostControlsRef.current = {
+      muteByName: (userName) => {
+        const match = findRemoteByName(userName);
+        return match ? hostMuteParticipant(String(match.session_id)) : false;
+      },
+      stopVideoByName: (userName) => {
+        const match = findRemoteByName(userName);
+        return match ? hostStopVideo(String(match.session_id)) : false;
+      },
+      removeByName: (userName) => {
+        const match = findRemoteByName(userName);
+        return match ? hostRemoveParticipant(String(match.session_id)) : false;
+      },
+      findByName: (userName) => {
+        const match = findRemoteByName(userName);
+        return match ? snapshotRemote(match) : null;
+      },
+      listRemotes: () => remotes.map(snapshotRemote),
+    };
+    return () => {
+      hostControlsRef.current = null;
+    };
+  });
+
   const hostDenyHand = async (hand: HandRaiseRow) => {
     if (!meetingKey) return;
     try {
@@ -1928,6 +2040,40 @@ export function DailyMeetingRoom({
                           label={name}
                           className="absolute left-1/2 top-3 z-10 -translate-x-1/2"
                         />
+                        {trustedHost ? (
+                          <div className="absolute right-2 top-2 z-20 flex gap-1 rounded-lg bg-black/70 p-1 opacity-90 hover:opacity-100">
+                            <button
+                              type="button"
+                              title="Mute"
+                              className="rounded p-1.5 text-white hover:bg-white/15 disabled:opacity-40"
+                              disabled={!p.audio}
+                              onClick={() => hostMuteParticipant(p.session_id)}
+                            >
+                              <MicOff className="h-3.5 w-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              title="Stop video"
+                              className="rounded p-1.5 text-white hover:bg-white/15 disabled:opacity-40"
+                              disabled={!p.video}
+                              onClick={() => hostStopVideo(p.session_id)}
+                            >
+                              <VideoOff className="h-3.5 w-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              title="Remove"
+                              className="rounded p-1.5 text-red-300 hover:bg-red-500/20"
+                              onClick={() => {
+                                if (window.confirm(`Remove ${name} from the call?`)) {
+                                  hostRemoveParticipant(p.session_id);
+                                }
+                              }}
+                            >
+                              <X className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        ) : null}
                         <span className="absolute bottom-2 left-2 max-w-[90%] truncate rounded bg-black/60 px-2 py-0.5 text-[11px] text-white">
                           {name}
                           {!p.audio ? " · muted" : ""}
@@ -1998,7 +2144,8 @@ export function DailyMeetingRoom({
                                 size="sm"
                                 variant="secondary"
                                 className="h-7 bg-[#2d2d2d] text-[11px] text-zinc-100"
-                                onClick={() => void hostRevokeSpeaking(p.session_id, "mute")}
+                                onClick={() => hostMuteParticipant(p.session_id)}
+                                disabled={!p.audio}
                               >
                                 Mute
                               </Button>
@@ -2006,10 +2153,33 @@ export function DailyMeetingRoom({
                                 size="sm"
                                 variant="secondary"
                                 className="h-7 bg-[#2d2d2d] text-[11px] text-zinc-100"
-                                onClick={() => void hostRevokeSpeaking(p.session_id, "revoke")}
+                                onClick={() => hostStopVideo(p.session_id)}
+                                disabled={!p.video}
                               >
-                                Stop speaking
+                                Stop video
                               </Button>
+                              <Button
+                                size="sm"
+                                variant="destructive"
+                                className="h-7 text-[11px]"
+                                onClick={() => {
+                                  if (window.confirm(`Remove ${p.user_name || "this participant"} from the call?`)) {
+                                    hostRemoveParticipant(p.session_id);
+                                  }
+                                }}
+                              >
+                                Remove
+                              </Button>
+                              {meetingMode === "webinar" ? (
+                                <Button
+                                  size="sm"
+                                  variant="secondary"
+                                  className="h-7 bg-[#2d2d2d] text-[11px] text-zinc-100"
+                                  onClick={() => void hostRevokeSpeaking(p.session_id, "revoke")}
+                                >
+                                  Revoke speak
+                                </Button>
+                              ) : null}
                             </div>
                           ) : null}
                         </div>
