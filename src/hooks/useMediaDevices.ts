@@ -79,7 +79,13 @@ export function useMediaDevices() {
     if (!audioTrack) return;
 
     try {
-      const ctx = new AudioContext();
+      const Ctor =
+        window.AudioContext ||
+        (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+      if (!Ctor) return;
+      const ctx = new Ctor();
+      // Resume in case the browser created the context suspended (autoplay policy).
+      if (ctx.state === "suspended") void ctx.resume().catch(() => undefined);
       const source = ctx.createMediaStreamSource(stream);
       const analyser = ctx.createAnalyser();
       analyser.fftSize = 256;
@@ -90,6 +96,9 @@ export function useMediaDevices() {
       const data = new Uint8Array(analyser.frequencyBinCount);
       const tick = () => {
         if (!analyserRef.current) return;
+        if (audioCtxRef.current?.state === "suspended") {
+          void audioCtxRef.current.resume().catch(() => undefined);
+        }
         analyserRef.current.getByteFrequencyData(data);
         const avg = data.reduce((sum, v) => sum + v, 0) / data.length;
         setAudioLevel(Math.min(1, avg / 90));

@@ -501,17 +501,25 @@ export function DailyMeetingRoom({
     let raf = 0;
     let ctx: AudioContext | null = null;
     let stopped = false;
+    let retry = 0;
 
-    const start = () => {
+    const localAudioTrack = (): MediaStreamTrack | null => {
       const call = callRef.current;
       const track = call?.participants()?.local?.tracks?.audio?.persistentTrack;
-      if (!track || track.readyState === "ended") {
-        setLocalAudioLevel(0);
-        return;
-      }
+      return track && track.readyState === "live" ? track : null;
+    };
 
+    const beginMetering = (track: MediaStreamTrack) => {
       try {
-        ctx = new AudioContext();
+        const Ctor =
+          window.AudioContext ||
+          (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+        if (!Ctor) return;
+        ctx = new Ctor();
+        // Browsers often create the context "suspended" until a user gesture;
+        // without resuming, the analyser reads pure silence and bars never move.
+        if (ctx.state === "suspended") void ctx.resume().catch(() => undefined);
+
         const source = ctx.createMediaStreamSource(new MediaStream([track]));
         const analyser = ctx.createAnalyser();
         analyser.fftSize = 512;
@@ -521,6 +529,7 @@ export function DailyMeetingRoom({
 
         const tick = () => {
           if (stopped) return;
+          if (ctx && ctx.state === "suspended") void ctx.resume().catch(() => undefined);
           analyser.getByteTimeDomainData(data);
           let sum = 0;
           for (let i = 0; i < data.length; i += 1) {
@@ -535,6 +544,24 @@ export function DailyMeetingRoom({
         };
         raf = requestAnimationFrame(tick);
       } catch {
+        setLocalAudioLevel(0);
+      }
+    };
+
+    const start = () => {
+      if (stopped) return;
+      const track = localAudioTrack();
+      if (track) {
+        beginMetering(track);
+        return;
+      }
+      // The persistent track may not be live the instant the mic turns on;
+      // poll briefly instead of giving up so the meter always attaches.
+      if (retry < 40) {
+        retry += 1;
+        setLocalAudioLevel(0);
+        raf = requestAnimationFrame(start);
+      } else {
         setLocalAudioLevel(0);
       }
     };
