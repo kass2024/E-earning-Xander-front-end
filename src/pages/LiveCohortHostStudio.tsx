@@ -389,7 +389,7 @@ const LiveCohortHostStudio = () => {
       }`}
     >
       {!meetingReady && (
-        <header className="absolute left-0 right-0 top-0 z-[3] flex h-11 shrink-0 items-center justify-between gap-2 border-b border-white/10 bg-[#232323]/95 px-3 backdrop-blur-sm sm:px-4 pt-[env(safe-area-inset-top,0px)]">
+        <header className="absolute left-0 right-0 top-0 z-[3] flex min-h-11 shrink-0 items-start justify-between gap-2 border-b border-white/10 bg-[#232323]/95 px-3 py-2 backdrop-blur-sm sm:items-center sm:px-4 sm:py-0 pt-[max(0.5rem,env(safe-area-inset-top))]">
           <div className="flex min-w-0 items-center gap-2">
             <button
               type="button"

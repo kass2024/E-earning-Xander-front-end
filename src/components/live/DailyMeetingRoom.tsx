@@ -1566,40 +1566,50 @@ export function DailyMeetingRoom({
 
   return (
     <div className="relative flex h-full min-h-[100dvh] w-full flex-col bg-[#1a1a1a]">
-      <div className="flex h-11 shrink-0 items-center justify-between gap-2 border-b border-white/10 bg-[#232323] px-3 sm:px-4">
-        <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            <p className="truncate text-sm font-medium text-white">{meetingTitle}</p>
-            <span className="rounded-full bg-[#0e72ed]/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[#7eb6ff]">
+      <header className="flex min-h-11 shrink-0 items-start justify-between gap-2 border-b border-white/10 bg-[#232323] px-3 py-2 sm:px-4 sm:py-2.5 pt-[max(0.5rem,env(safe-area-inset-top))]">
+        <div className="min-w-0 flex-1 pr-1">
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+            <p className="min-w-0 max-w-full text-sm font-medium leading-snug text-white sm:truncate">
+              {meetingTitle}
+            </p>
+            <span className="shrink-0 rounded-full bg-[#0e72ed]/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[#7eb6ff]">
               {meetingMode === "webinar" ? "Webinar" : "Meeting"}
             </span>
             {recordingOn ? (
-              <span className="inline-flex items-center gap-1 rounded bg-red-600/90 px-1.5 py-0.5 text-[10px] font-semibold text-white">
+              <span className="inline-flex shrink-0 items-center gap-1 rounded bg-red-600/90 px-1.5 py-0.5 text-[10px] font-semibold text-white">
                 <Circle className="h-2 w-2 fill-white" /> REC
               </span>
             ) : null}
           </div>
-          <p className="truncate text-[11px] text-zinc-500">
-            Daily · secure
-            {roomName ? ` · ${roomName}` : ""}
-            {trustedHost ? " · Host" : meetingMode === "webinar" ? " · Audience" : " · Attendee"}
-            {` · ${participantCount} in call`}
+          <p className="mt-0.5 line-clamp-2 text-[11px] leading-snug text-zinc-500 sm:line-clamp-1 sm:truncate">
+            <span className="whitespace-nowrap">Daily · secure</span>
+            {roomName ? (
+              <>
+                <span className="hidden sm:inline"> · </span>
+                <span className="block sm:inline">{roomName}</span>
+              </>
+            ) : null}
+            <span className="whitespace-nowrap">
+              {trustedHost ? " · Host" : meetingMode === "webinar" ? " · Audience" : " · Attendee"}
+              {` · ${participantCount} in call`}
+            </span>
           </p>
         </div>
-        <div className="flex shrink-0 items-center gap-1.5">
+        <div className="flex shrink-0 items-start gap-1.5 pt-0.5">
           {copyTarget ? (
             <Button
               size="sm"
               variant="secondary"
-              className="h-8 bg-[#2d2d2d] text-xs text-zinc-100 hover:bg-[#3a3a3a]"
+              className="h-8 max-w-[9.5rem] bg-[#2d2d2d] text-xs text-zinc-100 hover:bg-[#3a3a3a] sm:max-w-none"
               onClick={() => void copyJoinLink()}
             >
-              <Copy className="h-3.5 w-3.5 sm:mr-1.5" />
-              <span className="hidden sm:inline">Copy join link</span>
+              <Copy className="h-3.5 w-3.5 shrink-0 sm:mr-1.5" />
+              <span className="hidden truncate sm:inline">Copy join link</span>
+              <span className="truncate sm:hidden">Copy link</span>
             </Button>
           ) : null}
         </div>
-      </div>
+      </header>
 
       {error ? (
         <div className="flex flex-1 flex-col items-center justify-center gap-4 px-6 text-center">
