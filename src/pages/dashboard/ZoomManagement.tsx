@@ -111,7 +111,8 @@ function meetingStatusBadge(status?: ZoomItem["session_status"]) {
 const ZoomManagement = ({ initialMeetingType = "meeting" }: ZoomManagementProps) => {
   const { toast } = useToast();
 
-  const [meetingType, setMeetingType] = useState<MeetingType>(initialMeetingType);
+  // Locked by sidebar route: Daily Meetings → meeting, Webinars → webinar
+  const meetingType: MeetingType = initialMeetingType;
   const [meetingTimezone, setMeetingTimezone] = useState(resolveDefaultTimezone);
   const [requireRegistration, setRequireRegistration] = useState(false);
   const [recurrence, setRecurrence] = useState("none");
@@ -148,10 +149,6 @@ const ZoomManagement = ({ initialMeetingType = "meeting" }: ZoomManagementProps)
   const [hostDisplayEmail, setHostDisplayEmail] = useState<string | null>(null);
 
   const [platformProvider, setPlatformProvider] = useState<"zoom" | "daily">("daily");
-
-  useEffect(() => {
-    setMeetingType(initialMeetingType);
-  }, [initialMeetingType]);
 
   const mergeMeetingRecordings = (current: ZoomItem[], withRecordings: ZoomItem[]) => {
     const byId = new Map(
@@ -416,30 +413,14 @@ const ZoomManagement = ({ initialMeetingType = "meeting" }: ZoomManagementProps)
           <CardContent>
             <form className="space-y-6" onSubmit={handleCreateMeeting}>
               <div className="space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Meeting type</Label>
-                    <Select value={meetingType} onValueChange={(value) => setMeetingType(value as MeetingType)}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="meeting">
-                          {platformProvider === "daily" ? "Daily meeting" : "Zoom meeting"}
-                        </SelectItem>
-                        <SelectItem value="webinar">Webinar</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Duration (minutes)</Label>
-                    <Input
-                      type="number"
-                      min={1}
-                      value={meetingDuration}
-                      onChange={(e) => setMeetingDuration(e.target.value)}
-                    />
-                  </div>
+                <div className="space-y-2 max-w-xs">
+                  <Label>Duration (minutes)</Label>
+                  <Input
+                    type="number"
+                    min={1}
+                    value={meetingDuration}
+                    onChange={(e) => setMeetingDuration(e.target.value)}
+                  />
                 </div>
 
                 <div className="space-y-2">
