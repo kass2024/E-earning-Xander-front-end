@@ -15,8 +15,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/components/ui/use-toast";
 import {
   getPlatformInstitution,
-  getZoomHosts,
-  assignInstitutionZoomHost,
   getMeetingProviderStatus,
   resetInstitutionOwnerPassword,
   resendInstitutionCredentials,
@@ -26,7 +24,7 @@ import {
 } from "@/api/axios";
 import { getPublicStorageUrl } from "@/lib/apiConfig";
 import { buildInstitutionLearnerLoginUrl } from "@/lib/institutionSignupLink";
-import { Loader2, Mail, KeyRound, Video } from "lucide-react";
+import { Loader2, Mail, KeyRound } from "lucide-react";
 import InstitutionRegistrationLinkCard from "@/components/dashboard/InstitutionRegistrationLinkCard";
 
 type Props = {
@@ -60,52 +58,29 @@ const InstitutionAdminEditDialog = ({ institutionId, open, onOpenChange, onSaved
   const [mailPasswordSet, setMailPasswordSet] = useState(false);
   const [testTo, setTestTo] = useState("");
   const [ownerEmail, setOwnerEmail] = useState("");
+  const [contactPhone, setContactPhone] = useState("");
   const [ownerStatus, setOwnerStatus] = useState("");
   const [ownerPassword, setOwnerPassword] = useState("");
   const [resettingPassword, setResettingPassword] = useState(false);
   const [generatedPassword, setGeneratedPassword] = useState<string | null>(null);
-  const [zoomHostUserId, setZoomHostUserId] = useState("");
-  const [assignableZoomHosts, setAssignableZoomHosts] = useState<string[]>([]);
-  const [zoomAccountUsers, setZoomAccountUsers] = useState<
-    Array<{
-      email: string;
-      display_name?: string;
-      available?: boolean;
-      assigned_to?: { institution_id: number; institution_name: string } | null;
-    }>
-  >([]);
-  const [zoomUsersDiscovered, setZoomUsersDiscovered] = useState(0);
-  const [assigningZoomHost, setAssigningZoomHost] = useState(false);
   const [meetingProvider, setMeetingProvider] = useState<"zoom" | "daily">("daily");
   const [dailyConfigured, setDailyConfigured] = useState(false);
   const [dailyDomain, setDailyDomain] = useState<string | null>(null);
 
-  const loadZoomHosts = async (forInstitutionId?: number) => {
-    try {
-      const res = await getZoomHosts(forInstitutionId);
-      setAssignableZoomHosts(res.assignable_hosts ?? []);
-      setZoomAccountUsers(res.zoom_account_users ?? []);
-      setZoomUsersDiscovered(Number(res.zoom_users_discovered ?? 0));
-    } catch {
-      setAssignableZoomHosts([]);
-      setZoomAccountUsers([]);
-      setZoomUsersDiscovered(0);
-    }
-  };
-
   useEffect(() => {
     if (!open) return;
-    void loadZoomHosts(institutionId ?? undefined);
     getMeetingProviderStatus()
       .then((res) => {
         setDailyConfigured(Boolean(res.providers?.daily?.configured));
         setDailyDomain(res.providers?.daily?.domain ?? null);
+        const current = String(res.main_platform_meeting_provider || "daily").toLowerCase();
+        setMeetingProvider(current === "zoom" ? "zoom" : "daily");
       })
       .catch(() => {
         setDailyConfigured(false);
         setDailyDomain(null);
       });
-  }, [open, institutionId]);
+  }, [open]);
 
   useEffect(() => {
     if (!open || !institutionId) return;
@@ -130,51 +105,23 @@ const InstitutionAdminEditDialog = ({ institutionId, open, onOpenChange, onSaved
         setMailPasswordSet(Boolean(inst.mail_password_set));
         setTestTo(inst.contact_email ?? "");
         setOwnerEmail((inst as { owner?: { email?: string; status?: string } }).owner?.email ?? inst.contact_email ?? "");
+        setContactPhone(inst.contact_phone ?? "");
         setOwnerStatus((inst as { owner?: { status?: string } }).owner?.status ?? "none");
         setOwnerPassword("");
         setGeneratedPassword(null);
-        setZoomHostUserId((inst as { zoom_host_user_id?: string }).zoom_host_user_id ?? "");
         setMeetingProvider(((inst as { meeting_provider?: string }).meeting_provider ?? "daily") as "zoom" | "daily");
       })
       .catch(() => toast({ variant: "destructive", title: "Failed to load institution" }))
       .finally(() => setLoading(false));
   }, [open, institutionId, toast]);
 
-  const handleAutoAssignZoomHost = async () => {
-    if (!institutionId) return;
-    setAssigningZoomHost(true);
-    try {
-      const res = await assignInstitutionZoomHost(institutionId, Boolean(zoomHostUserId.trim()));
-      setZoomHostUserId(res.zoom_host_user_id ?? "");
-      await loadZoomHosts(institutionId);
-      toast({
-        title: "Zoom host assigned",
-        description: res.zoom_host_user_id || "Host updated for this institution.",
-      });
-    } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
-      toast({ variant: "destructive", title: "Auto-assign failed", description: msg });
-    } finally {
-      setAssigningZoomHost(false);
-    }
-  };
-
-  const formatZoomHostOption = (email: string) => {
-    const user = zoomAccountUsers.find((u) => u.email === email);
-    if (!user?.assigned_to) {
-      return user?.display_name ? `${user.display_name} (${email})` : email;
-    }
-    if (user.assigned_to.institution_id === institutionId) {
-      return user.display_name ? `${user.display_name} (${email}) - current` : `${email} - current`;
-    }
-    return user.display_name
-      ? `${user.display_name} (${email}) - ${user.assigned_to.institution_name}`
-      : `${email} - ${user.assigned_to.institution_name}`;
-  };
-
   const handleSave = async (e: FormEvent) => {
     e.preventDefault();
     if (!institutionId) return;
+    if (!ownerEmail.trim()) {
+      toast({ variant: "destructive", title: "Login email is required" });
+      return;
+    }
     setSaving(true);
     try {
       if (logoFile) {
@@ -185,8 +132,10 @@ const InstitutionAdminEditDialog = ({ institutionId, open, onOpenChange, onSaved
 
       const payload: Record<string, unknown> = {
         name,
-        website,
-        address,
+        contact_email: ownerEmail.trim(),
+        contact_phone: contactPhone.trim() || null,
+        website: website.trim() || null,
+        address: address.trim() || null,
         admin_notes: adminNotes,
         mail_use_custom: mailUseCustom,
         mail_host: mailHost,
@@ -196,7 +145,6 @@ const InstitutionAdminEditDialog = ({ institutionId, open, onOpenChange, onSaved
         mail_from_address: mailFromAddress,
         mail_from_name: mailFromName,
         mail_ehlo_domain: mailEhloDomain,
-        zoom_host_user_id: zoomHostUserId.trim() || null,
       };
       if (mailPassword.trim()) payload.mail_password = mailPassword;
 
@@ -327,65 +275,12 @@ const InstitutionAdminEditDialog = ({ institutionId, open, onOpenChange, onSaved
                 <div className="rounded-xl border border-[#012F6B]/15 bg-[#012F6B]/[0.03] p-4 space-y-2">
                   <p className="text-sm font-medium text-[#012F6B]">Meeting platform</p>
                   <p className="text-xs text-muted-foreground">
-                    Partner institutions inherit the main admin setting from Settings → Live meetings.
-                    Current: <span className="font-semibold capitalize">{meetingProvider}</span>
+                    Partners use the shared main-admin setting from Settings → Live meetings
+                    {dailyConfigured && meetingProvider === "daily" && dailyDomain
+                      ? ` (Daily · ${dailyDomain})`
+                      : ""}
+                    . Current: <span className="font-semibold capitalize">{meetingProvider}</span>
                   </p>
-                </div>
-                <div className="rounded-xl border border-[#012F6B]/15 bg-[#012F6B]/[0.03] p-4 space-y-3">
-                  <div className="flex items-center gap-2">
-                    <Video className="h-4 w-4 text-[#012F6B]" />
-                    <p className="text-sm font-medium text-[#012F6B]">Zoom live host</p>
-                  </div>
-                  {meetingProvider === "daily" ? (
-                    <p className="text-xs text-muted-foreground">
-                      Zoom host assignment applies only when the main platform uses Zoom.
-                    </p>
-                  ) : null}
-                  {zoomUsersDiscovered > 0 ? (
-                    <p className="text-xs text-emerald-700">
-                      {zoomUsersDiscovered} licensed Zoom user(s) discovered from your account.
-                    </p>
-                  ) : (
-                    <p className="text-xs text-amber-700">
-                      No Zoom users loaded yet. Ensure ZOOM_ACCOUNT_ID, ZOOM_CLIENT_ID, and ZOOM_CLIENT_SECRET are set, and add scope user:read:list_users:admin to your Zoom S2S app.
-                    </p>
-                  )}
-                  {assignableZoomHosts.length > 0 ? (
-                    <select
-                      className="flex h-10 w-full rounded-xl border border-input bg-background px-3 py-2 text-sm"
-                      value={zoomHostUserId}
-                      onChange={(e) => setZoomHostUserId(e.target.value)}
-                    >
-                      <option value="">Auto-assign next available host</option>
-                      {assignableZoomHosts.map((host) => (
-                        <option key={host} value={host}>
-                          {formatZoomHostOption(host)}
-                        </option>
-                      ))}
-                    </select>
-                  ) : (
-                    <Input
-                      className="rounded-xl font-mono text-sm"
-                      value={zoomHostUserId}
-                      onChange={(e) => setZoomHostUserId(e.target.value)}
-                      placeholder="host@yourzoomaccount.com (optional)"
-                    />
-                  )}
-                  <div className="flex flex-wrap gap-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      disabled={!institutionId || assigningZoomHost}
-                      onClick={() => void handleAutoAssignZoomHost()}
-                    >
-                      {assigningZoomHost ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-                      Auto-assign host
-                    </Button>
-                  </div>
-                  {zoomHostUserId ? (
-                    <p className="text-xs font-mono text-[#012F6B]">Current: {zoomHostUserId}</p>
-                  ) : null}
                 </div>
               </TabsContent>
 
@@ -393,12 +288,30 @@ const InstitutionAdminEditDialog = ({ institutionId, open, onOpenChange, onSaved
                 <div className="rounded-xl border bg-muted/30 p-4 space-y-3">
                   <p className="text-sm font-medium">Partner owner account</p>
                   <p className="text-sm text-muted-foreground">
-                    Institution partners sign in at their branded login page. If login fails, reset the password here — no previous password required.
+                    Institution partners sign in at their branded login page. Updating the login email also updates the owner account email.
                   </p>
                   <div className="grid gap-3 sm:grid-cols-2">
                     <div>
-                      <Label>Owner email</Label>
-                      <Input className="rounded-xl mt-1" value={ownerEmail} readOnly />
+                      <Label>Login email</Label>
+                      <Input
+                        type="email"
+                        className="rounded-xl mt-1"
+                        value={ownerEmail}
+                        onChange={(e) => {
+                          setOwnerEmail(e.target.value);
+                          setTestTo(e.target.value);
+                        }}
+                        required
+                      />
+                    </div>
+                    <div>
+                      <Label>Phone</Label>
+                      <Input
+                        className="rounded-xl mt-1"
+                        value={contactPhone}
+                        onChange={(e) => setContactPhone(e.target.value)}
+                        placeholder="+1 …"
+                      />
                     </div>
                     <div>
                       <Label>Account status</Label>

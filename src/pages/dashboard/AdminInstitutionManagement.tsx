@@ -46,7 +46,6 @@ import {
   enablePlatformInstitution,
   getInstitutionPromoCodes,
   getPlatformInstitutions,
-  backfillInstitutionZoomHosts,
   resendInstitutionCredentials,
   sendInstitutionPaymentReminder,
   type PlatformInstitutionInfo,
@@ -54,6 +53,7 @@ import {
 import { useDashboardQuery } from "@/hooks/useDashboardQuery";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import InstitutionAdminEditDialog from "@/components/dashboard/InstitutionAdminEditDialog";
+import InstitutionAdminCreateDialog from "@/components/dashboard/InstitutionAdminCreateDialog";
 import { startAdminInstitutionViewAs } from "@/lib/adminImpersonation";
 import {
   Building2,
@@ -77,7 +77,6 @@ import {
   Link2,
   LogIn,
   Globe2,
-  Video,
 } from "lucide-react";
 import { getPublicStorageUrl } from "@/lib/apiConfig";
 import { buildInstitutionLearnerLoginUrl, buildInstitutionLearnerSignupUrl, buildInstitutionPortalUrl } from "@/lib/institutionSignupLink";
@@ -148,35 +147,9 @@ const AdminInstitutionManagement = () => {
   const [promoLabel, setPromoLabel] = useState("");
   const [editId, setEditId] = useState<number | null>(null);
   const [editOpen, setEditOpen] = useState(false);
+  const [createOpen, setCreateOpen] = useState(false);
   const [actionId, setActionId] = useState<number | null>(null);
   const [creatingPromo, setCreatingPromo] = useState(false);
-  const [backfillingZoomHosts, setBackfillingZoomHosts] = useState(false);
-
-  const handleBackfillZoomHosts = async () => {
-    setBackfillingZoomHosts(true);
-    try {
-      const res = await backfillInstitutionZoomHosts(false);
-      const assigned = res.results.filter((row) => row.assigned).length;
-      toast({
-        title: "Zoom hosts assigned",
-        description: assigned > 0 ? `${assigned} institution(s) received a Zoom host.` : "All institutions already had hosts.",
-      });
-      await reload();
-    } catch (err: unknown) {
-      const apiErr = err as { response?: { data?: { message?: string; error_code?: string } } };
-      const msg = apiErr?.response?.data?.message;
-      const code = apiErr?.response?.data?.error_code;
-      toast({
-        variant: "destructive",
-        title: code === "no_zoom_hosts_available" ? "No Zoom hosts available" : "Zoom host backfill failed",
-        description:
-          msg ??
-          "Could not assign Zoom hosts. Check that Zoom credentials are configured on the server and licensed host users exist.",
-      });
-    } finally {
-      setBackfillingZoomHosts(false);
-    }
-  };
 
   const stats = useMemo(
     () => ({
@@ -481,13 +454,11 @@ const AdminInstitutionManagement = () => {
       <AdminPageHeader eyebrow="Platform" title="Partner Institutions" description="Approve, manage, and preview partner dashboards.">
         <Button
           type="button"
-          variant="outline"
-          onClick={() => void handleBackfillZoomHosts()}
-          disabled={backfillingZoomHosts}
-          className="border-[#012F6B]/20"
+          onClick={() => setCreateOpen(true)}
+          className="bg-[#012F6B] hover:bg-[#254D81] text-white font-semibold"
         >
-          {backfillingZoomHosts ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Video className="mr-2 h-4 w-4" />}
-          Assign Zoom hosts
+          <Plus className="mr-2 h-4 w-4" />
+          Create institution
         </Button>
         <Button
           onClick={() => void refresh()}
@@ -524,6 +495,7 @@ const AdminInstitutionManagement = () => {
       </div>
 
       <InstitutionAdminEditDialog institutionId={editId} open={editOpen} onOpenChange={setEditOpen} onSaved={refresh} />
+      <InstitutionAdminCreateDialog open={createOpen} onOpenChange={setCreateOpen} onCreated={refresh} />
 
       <Card className="overflow-hidden border-0 shadow-lg ring-1 ring-[#012F6B]/10">
         <CardHeader className="border-b border-[#012F6B]/10 bg-gradient-to-r from-[#012F6B]/[0.05] to-transparent pb-4 space-y-4">

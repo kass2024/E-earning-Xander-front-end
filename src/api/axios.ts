@@ -1543,6 +1543,27 @@ export const getPlatformInstitution = async (id: number) => {
   return response.data as PlatformInstitutionInfo;
 };
 
+export const createPlatformInstitution = async (data: {
+  name: string;
+  contact_email: string;
+  contact_phone?: string;
+  website?: string;
+  address?: string;
+  admin_notes?: string;
+  owner_name?: string;
+  password?: string;
+  auto_approve?: boolean;
+  send_credentials?: boolean;
+}) => {
+  const response = await api.post(`/platform-institutions`, data);
+  return response.data as {
+    message: string;
+    institution: PlatformInstitutionInfo;
+    password?: string | null;
+    login_url?: string;
+  };
+};
+
 export const assignInstitutionZoomHost = async (id: number, force = false) => {
   const response = await api.post(`/platform-institutions/${id}/assign-zoom-host`, { force });
   return response.data as { message: string; zoom_host_user_id: string; institution: PlatformInstitutionInfo };
