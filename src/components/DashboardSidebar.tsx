@@ -11,6 +11,7 @@ import {
   Calendar,
   CalendarClock,
   ClipboardList,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   LogOut,
@@ -32,6 +33,7 @@ import {
   FolderOpen,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
 import { type HubRole } from "@/lib/hubConfig";
 import { prefetchDashboardRoute, prefetchMyCourses } from "@/lib/dashboardPrefetchRoutes";
@@ -49,8 +51,21 @@ interface DashboardSidebarProps {
 }
 
 type NavLinkItem = { to: string; label: string; icon: typeof LayoutDashboard };
+type NavGroupItem = { label: string; icon: typeof LayoutDashboard; children: NavLinkItem[] };
+type NavItem = NavLinkItem | NavGroupItem;
 
-const ADMIN_SECTIONS: Array<{ title: string; links: NavLinkItem[] }> = [
+const isNavGroup = (item: NavItem): item is NavGroupItem => "children" in item;
+
+const ZOOM_MEETING_LINKS: NavLinkItem[] = [
+  { to: "/dashboard/classes", label: "Live Classes", icon: Calendar },
+  { to: "/dashboard/zoom", label: "Live Meetings", icon: Video },
+  { to: "/dashboard/zoom-recordings", label: "Recordings", icon: Video },
+  { to: "/dashboard/meeting-registrations", label: "Webinar Signups", icon: ClipboardList },
+  { to: "/dashboard/available-schedules", label: "Schedules", icon: CalendarClock },
+  { to: "/dashboard/live-zoom-cohort", label: "Live Cohorts", icon: CalendarClock },
+];
+
+const ADMIN_SECTIONS: Array<{ title: string; links: NavItem[] }> = [
   {
     title: "Overview",
     links: [{ to: "/dashboard/admin", label: "Dashboard", icon: LayoutDashboard }],
@@ -80,12 +95,11 @@ const ADMIN_SECTIONS: Array<{ title: string; links: NavLinkItem[] }> = [
       { to: "/dashboard/programs", label: "Programs", icon: FolderOpen },
       { to: "/dashboard/study-shifts", label: "Study Shifts", icon: Clock },
       { to: "/dashboard/instructors", label: "Instructors", icon: Users },
-      { to: "/dashboard/classes", label: "Live Classes", icon: Calendar },
-      { to: "/dashboard/zoom", label: "Live Meetings", icon: Video },
-      { to: "/dashboard/zoom-recordings", label: "Recordings", icon: Video },
-      { to: "/dashboard/meeting-registrations", label: "Webinar Signups", icon: ClipboardList },
-      { to: "/dashboard/available-schedules", label: "Schedules", icon: CalendarClock },
-      { to: "/dashboard/live-zoom-cohort", label: "Live Cohorts", icon: CalendarClock },
+      {
+        label: "Zoom meetings",
+        icon: Video,
+        children: ZOOM_MEETING_LINKS,
+      },
       { to: "/dashboard/materials", label: "Materials", icon: FileText },
     ],
   },
@@ -154,6 +168,12 @@ const DashboardSidebar = ({ userRole, isOpen, onClose }: DashboardSidebarProps) 
   useInstitutionBrandingRevision();
   const [collapsed, setCollapsed] = useState(false);
   const location = useLocation();
+  const zoomChildActive = ZOOM_MEETING_LINKS.some((link) => location.pathname === link.to);
+  const [zoomOpen, setZoomOpen] = useState(zoomChildActive);
+
+  useEffect(() => {
+    if (zoomChildActive) setZoomOpen(true);
+  }, [zoomChildActive]);
 
   const learnerLinks: NavLinkItem[] = LEARNER_SECTIONS.flatMap((s) => s.links);
 
@@ -194,22 +214,59 @@ const DashboardSidebar = ({ userRole, isOpen, onClose }: DashboardSidebarProps) 
     performDashboardLogout();
   };
 
+  const closeMobile = () => {
+    if (window.innerWidth < 1024) onClose?.();
+  };
+
+  const renderNavLink = (link: NavLinkItem, options?: { end?: boolean; nested?: boolean }) => (
+    <NavLink
+      key={link.to}
+      to={link.to}
+      end={options?.end}
+      onClick={closeMobile}
+      {...linkPrefetchProps(link.to)}
+      className={cn(sidebarLinkClass(link.to), options?.nested && "pl-9")}
+    >
+      <link.icon className="shrink-0 w-5 h-5" />
+      {!collapsed && <span className="text-sm">{link.label}</span>}
+    </NavLink>
+  );
+
+  const renderNavItem = (item: NavItem, endPath?: string) => {
+    if (isNavGroup(item)) {
+      if (collapsed) {
+        return item.children.map((child) => renderNavLink(child));
+      }
+
+      return (
+        <Collapsible key={item.label} open={zoomOpen} onOpenChange={setZoomOpen} className="w-full">
+          <CollapsibleTrigger
+            className={cn(
+              "flex w-full items-center gap-3 px-3 py-2.5 rounded-lg",
+              "text-muted-foreground hover:bg-muted hover:text-foreground transition-all",
+              zoomChildActive && "bg-primary/10 text-primary font-medium",
+            )}
+          >
+            <item.icon className="shrink-0 w-5 h-5" />
+            <span className="text-sm flex-1 text-left">{item.label}</span>
+            <ChevronDown className={cn("h-4 w-4 shrink-0 transition-transform", zoomOpen && "rotate-180")} />
+          </CollapsibleTrigger>
+          <CollapsibleContent className="flex flex-col gap-1 mt-1">
+            {item.children.map((child) => renderNavLink(child, { nested: true }))}
+          </CollapsibleContent>
+        </Collapsible>
+      );
+    }
+
+    return renderNavLink(item, { end: endPath ? item.to === endPath : undefined });
+  };
+
   const renderFlatLinks = (links: NavLinkItem[]) =>
-    links.map((link) => (
-      <NavLink
-        key={link.to}
-        to={link.to}
-        end={link.to === "/dashboard/admin" || link.to === "/dashboard/learner" || link.to === "/dashboard/instructor"}
-        onClick={() => {
-          if (window.innerWidth < 1024) onClose?.();
-        }}
-        {...linkPrefetchProps(link.to)}
-        className={sidebarLinkClass(link.to)}
-      >
-        <link.icon className="shrink-0 w-5 h-5" />
-        {!collapsed && <span className="text-sm">{link.label}</span>}
-      </NavLink>
-    ));
+    links.map((link) =>
+      renderNavLink(link, {
+        end: link.to === "/dashboard/admin" || link.to === "/dashboard/learner" || link.to === "/dashboard/instructor",
+      }),
+    );
 
   const hubTitle = dashboardBrandTitle();
   const hubSubtitle = dashboardBrandSubtitle();
@@ -289,25 +346,14 @@ const DashboardSidebar = ({ userRole, isOpen, onClose }: DashboardSidebarProps) 
                   </p>
                 )}
                 {section.links
-                  .filter(
-                    (link) =>
-                      link.to !== "/dashboard/institutions" || (isStoredMainAdmin() && !partnerView && menuRole !== "partner_company"),
-                  )
-                  .map((link) => (
-                  <NavLink
-                    key={link.to}
-                    to={link.to}
-                    end={link.to === "/dashboard/admin"}
-                    onClick={() => {
-                      if (window.innerWidth < 1024) onClose?.();
-                    }}
-                    {...linkPrefetchProps(link.to)}
-                    className={sidebarLinkClass(link.to)}
-                  >
-                    <link.icon className="shrink-0 w-5 h-5" />
-                    {!collapsed && <span className="text-sm">{link.label}</span>}
-                  </NavLink>
-                ))}
+                  .filter((link) => {
+                    if (isNavGroup(link)) return true;
+                    return (
+                      link.to !== "/dashboard/institutions" ||
+                      (isStoredMainAdmin() && !partnerView && menuRole !== "partner_company")
+                    );
+                  })
+                  .map((link) => renderNavItem(link, "/dashboard/admin"))}
               </div>
             ))
           ) : menuRole === "instructor" ? (
