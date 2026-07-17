@@ -165,6 +165,14 @@ const ZoomEmbedMeetingRoom = () => {
   const [adminSessionTitle, setAdminSessionTitle] = useState<string | null>(null);
   const [adminMeetingMode, setAdminMeetingMode] = useState<"meeting" | "webinar" | null>(null);
 
+  const guestInviteDisplayName = useMemo(() => {
+    const fromUrlName = String(userName || "").trim();
+    const fromUrlEmail = String(userEmail || "").trim();
+    if (fromUrlName && fromUrlName.toLowerCase() !== "guest") return fromUrlName;
+    if (fromUrlEmail) return fromUrlEmail;
+    return fromUrlName || "";
+  }, [userName, userEmail]);
+
   const isHubAdminRoom =
     Boolean(meetingNumber?.includes("-main-")) ||
     meetingNumber?.startsWith("admin-meet-main-") ||
@@ -259,10 +267,10 @@ const ZoomEmbedMeetingRoom = () => {
         setLoading(false);
         return;
       }
-      // Prefer explicit URL name (registrant personal link). Do not reuse the
+      // Prefer explicit URL name/email (registrant personal invite). Do not reuse the
       // logged-in admin's localStorage name for participant joins.
       const dailyFallback =
-        String(userName || "").trim() ||
+        guestInviteDisplayName ||
         String(rawDaily.user_name || "").trim() ||
         (isHost ? String(storedUserName || "").trim() || "Instructor" : "Guest");
       const dailyDisplayName = isHost
@@ -288,7 +296,7 @@ const ZoomEmbedMeetingRoom = () => {
 
     const zoomSdk = auth.sdk as ZoomMeetingSdkAuth;
     const fallbackName =
-      String(userName || "").trim() ||
+      guestInviteDisplayName ||
       zoomSdk.user_name ||
       (isHost ? storedUserName || "Instructor" : "Guest");
     const nextSdk = {
@@ -430,7 +438,11 @@ const ZoomEmbedMeetingRoom = () => {
           meeting_number: meetingNumber,
           role,
           password,
-          user_name: userName || (role === 1 ? storedUserName || "Host" : "Guest"),
+          user_name:
+            userName ||
+            (role === 1
+              ? storedUserName || "Host"
+              : guestInviteDisplayName || userEmail || "Guest"),
           user_email: userEmail,
           instructor_email: role === 1 ? instructorEmail || undefined : undefined,
         });
@@ -493,6 +505,8 @@ const ZoomEmbedMeetingRoom = () => {
     userName,
 
     userEmail,
+
+    guestInviteDisplayName,
 
     isHubAdminRoom,
 
@@ -701,9 +715,11 @@ const ZoomEmbedMeetingRoom = () => {
           userName={
             "user_name" in sdk && sdk.user_name
               ? sdk.user_name
-              : storedUserName || (isHost ? "Instructor" : "Learner")
+              : isHost
+                ? storedUserName || "Instructor"
+                : guestInviteDisplayName || "Guest"
           }
-          avatarUrl={prejoinAvatarUrl}
+          avatarUrl={isHost ? prejoinAvatarUrl : null}
           isHost={isHost}
           shareUrl={
             typeof window !== "undefined"

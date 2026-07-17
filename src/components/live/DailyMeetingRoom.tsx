@@ -400,7 +400,12 @@ export function DailyMeetingRoom({
   const displayName =
     String(userNameProp || sdk.user_name || "").trim() ||
     (isHost ? String(institutionName || HUB.name).trim() || "Host" : "Participant");
-  const brandLogo = resolveZoomBrandingLogoUrl(logoUrlProp || avatarUrl) || logoUrl(LOGO.src);
+  // Host chrome/branding logo — never apply this to a guest's own tile (that swaps profiles).
+  const institutionLogo = resolveZoomBrandingLogoUrl(logoUrlProp) || logoUrl(LOGO.src);
+  const selfAvatar = isHost
+    ? resolveZoomBrandingLogoUrl(avatarUrl) || institutionLogo
+    : resolveZoomBrandingLogoUrl(avatarUrl) || null;
+  const brandLogo = institutionLogo;
   const roomName = String(sdk.room_name || "").trim();
   const meetingRole = resolveMeetingRole(sdk);
   const meetingMode = resolveMeetingMode(sdk);
@@ -1555,7 +1560,7 @@ export function DailyMeetingRoom({
       <ZoomPrejoinLobby
         meetingTitle={meetingTitle}
         userName={displayName}
-        avatarUrl={brandLogo}
+        avatarUrl={selfAvatar}
         institutionName={institutionName || (isHost ? displayName : undefined)}
         logoUrl={brandLogo}
         isHost={isHost}
@@ -1709,7 +1714,7 @@ export function DailyMeetingRoom({
                     ) : (
                       <BrandTile
                         name={displayName}
-                        logo={brandLogo}
+                        logo={selfAvatar}
                         label={isHost ? "Host" : "You"}
                         compact={compactTiles}
                       />
@@ -1791,7 +1796,7 @@ export function DailyMeetingRoom({
                     <div className="flex-1 space-y-2 overflow-y-auto p-3">
                       <div className="flex items-center gap-2 rounded-lg bg-black/30 px-2 py-2">
                         <div className="h-8 w-8 overflow-hidden rounded-full">
-                          <MeetingProfileAvatar name={displayName} avatarUrl={brandLogo} className="h-full w-full object-cover" />
+                          <MeetingProfileAvatar name={displayName} avatarUrl={selfAvatar} className="h-full w-full object-cover" />
                         </div>
                         <div className="min-w-0">
                           <p className="truncate text-sm text-white">{displayName} (You)</p>

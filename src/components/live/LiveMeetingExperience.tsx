@@ -76,7 +76,8 @@ export function LiveMeetingExperience(props: Props) {
         avatarUrl={
           props.isHost
             ? props.hostBranding?.avatarUrl || props.clientBranding?.logoUrl || props.avatarUrl
-            : props.avatarUrl
+            : // Guests keep initials from their name/email — never inherit host institution logo.
+              null
         }
         institutionName={institutionName}
         logoUrl={logoUrl}
