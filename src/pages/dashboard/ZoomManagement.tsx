@@ -44,7 +44,6 @@ import {
   ZoomMeetingPayload,
   getUsers,
   getPlatformMeetingSettings,
-  updatePlatformMeetingSettings,
 } from "@/api/axios";
 import { fetchDashboardCached, readDashboardCache } from "@/lib/dashboardCache";
 import { openZoomMeetingInNewTab, zoomMeetingEmbedRoom } from "@/lib/zoomEmbedRoutes";
@@ -53,7 +52,6 @@ import type { ZoomRecordingFile } from "@/api/axios";
 import { resolveDefaultTimezone } from "@/lib/commonTimezones";
 import { localDatetimeToZoomStart } from "@/lib/scheduledDateTime";
 import { cn } from "@/lib/utils";
-import { isStoredMainAdmin } from "@/lib/institutionContext";
 
 type ZoomItem = {
   id?: string | number;
@@ -150,12 +148,6 @@ const ZoomManagement = ({ initialMeetingType = "meeting" }: ZoomManagementProps)
   const [hostDisplayEmail, setHostDisplayEmail] = useState<string | null>(null);
 
   const [platformProvider, setPlatformProvider] = useState<"zoom" | "daily">("daily");
-  const [platformSettingsLoading, setPlatformSettingsLoading] = useState(true);
-  const [platformSettingsSaving, setPlatformSettingsSaving] = useState(false);
-  const [dailyConfigured, setDailyConfigured] = useState(false);
-  const [dailyDomain, setDailyDomain] = useState<string | null>(null);
-  const [availableMeetingProviders, setAvailableMeetingProviders] = useState<string[]>(["zoom"]);
-  const [canManageMainPlatformSettings, setCanManageMainPlatformSettings] = useState(true);
 
   useEffect(() => {
     setMeetingType(initialMeetingType);
@@ -230,53 +222,14 @@ const ZoomManagement = ({ initialMeetingType = "meeting" }: ZoomManagementProps)
   };
 
   const loadPlatformMeetingSettings = async () => {
-    setPlatformSettingsLoading(true);
     try {
       const { data } = await fetchDashboardCached(
         "platform-meeting-settings",
         getPlatformMeetingSettings,
       );
-      setPlatformProvider(data.main_platform_meeting_provider ?? "daily");
-      setCanManageMainPlatformSettings(
-        data.can_manage_main_platform_settings !== false || isStoredMainAdmin(),
-      );
-      const status = data.meeting_provider_status;
-      setDailyConfigured(Boolean(status?.providers?.daily?.configured));
-      setDailyDomain(status?.providers?.daily?.domain ?? null);
-      setAvailableMeetingProviders(status?.available_meeting_providers ?? ["daily", "zoom"]);
+      setPlatformProvider(data.main_platform_meeting_provider === "zoom" ? "zoom" : "daily");
     } catch {
-      // Platform settings are optional for non-main admins.
-    } finally {
-      setPlatformSettingsLoading(false);
-    }
-  };
-
-  const handleSavePlatformProvider = async () => {
-    setPlatformSettingsSaving(true);
-    try {
-      const data = await updatePlatformMeetingSettings({
-        main_platform_meeting_provider: platformProvider,
-      });
-      setPlatformProvider(data.main_platform_meeting_provider);
-      toast({
-        variant: "success",
-        title: "Main platform updated",
-        description:
-          platformProvider === "daily"
-            ? "New live classes on main-platform courses will use Daily."
-            : "New live classes on main-platform courses will use Zoom.",
-      });
-    } catch (error: unknown) {
-      const err = error as { response?: { data?: { message?: string; error_code?: string } } };
-      toast({
-        variant: "destructive",
-        title: "Could not save",
-        description:
-          err?.response?.data?.message ??
-          "Failed to update main platform meeting provider. Sign in again and retry.",
-      });
-    } finally {
-      setPlatformSettingsSaving(false);
+      setPlatformProvider("daily");
     }
   };
 
@@ -435,7 +388,7 @@ const ZoomManagement = ({ initialMeetingType = "meeting" }: ZoomManagementProps)
     <div className="space-y-6">
       <AdminPageHeader
         title={meetingType === "webinar" ? "Webinars" : "Daily Meetings"}
-        description={`Schedule sessions and manage recordings. Host: ${hostDisplayName ?? hostDisplayEmail ?? "Admin"}. Main platform uses ${platformProvider === "daily" ? "Daily" : "Zoom"}.`}
+        description={`Schedule sessions and manage recordings. Host: ${hostDisplayName ?? hostDisplayEmail ?? "Admin"}. Provider defaults are managed in Settings → Live meetings.`}
       />
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -444,99 +397,6 @@ const ZoomManagement = ({ initialMeetingType = "meeting" }: ZoomManagementProps)
         <AdminStatCard label="Upcoming" value={meetingStats.upcoming} />
         <AdminStatCard label="Ended" value={meetingStats.ended} />
       </div>
-
-      <Card className="border-[#012F6B]/10 shadow-sm">
-        <CardHeader className="pb-4">
-          <CardTitle className="flex items-center gap-2 text-[#012F6B]">
-            <Settings2 className="h-5 w-5" />
-            Main platform live meetings
-          </CardTitle>
-          <CardDescription>
-            Choose Zoom or Daily for courses that belong to the main platform (not a partner institution).
-            Partner institutions still use their own setting under Partner Institutions.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {platformSettingsLoading ? (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              Loading platform settings…
-            </div>
-          ) : (
-            <>
-              <div className="max-w-lg space-y-3">
-                <Label>Meeting platform</Label>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    disabled={!availableMeetingProviders.includes("daily") || !canManageMainPlatformSettings}
-                    onClick={() => setPlatformProvider("daily")}
-                    className={cn(
-                      "rounded-lg border px-4 py-3 text-left transition-colors",
-                      platformProvider === "daily"
-                        ? "border-[#012F6B] bg-[#012F6B] text-white"
-                        : "border-[#012F6B]/20 bg-white hover:border-[#012F6B]/40",
-                      (!availableMeetingProviders.includes("daily") || !canManageMainPlatformSettings) &&
-                        "cursor-not-allowed opacity-50",
-                    )}
-                  >
-                    <p className="text-sm font-semibold">Daily</p>
-                    <p className={cn("text-xs mt-1", platformProvider === "daily" ? "text-white/80" : "text-muted-foreground")}>
-                      Default · private rooms
-                    </p>
-                  </button>
-                  <button
-                    type="button"
-                    disabled={!availableMeetingProviders.includes("zoom") || !canManageMainPlatformSettings}
-                    onClick={() => setPlatformProvider("zoom")}
-                    className={cn(
-                      "rounded-lg border px-4 py-3 text-left transition-colors",
-                      platformProvider === "zoom"
-                        ? "border-[#012F6B] bg-[#012F6B] text-white"
-                        : "border-[#012F6B]/20 bg-white hover:border-[#012F6B]/40",
-                      (!availableMeetingProviders.includes("zoom") || !canManageMainPlatformSettings) &&
-                        "cursor-not-allowed opacity-50",
-                    )}
-                  >
-                    <p className="text-sm font-semibold">Zoom</p>
-                    <p className={cn("text-xs mt-1", platformProvider === "zoom" ? "text-white/80" : "text-muted-foreground")}>
-                      Licensed Zoom hosts
-                    </p>
-                  </button>
-                </div>
-                {platformProvider === "daily" && dailyConfigured && dailyDomain ? (
-                  <p className="text-xs text-emerald-700">Daily configured ({dailyDomain})</p>
-                ) : null}
-                <p className="text-xs text-muted-foreground">
-                  Applies to newly scheduled live classes only. Existing sessions keep their original provider.
-                  Switch anytime between Daily and Zoom, then save.
-                </p>
-                {!canManageMainPlatformSettings ? (
-                  <p className="text-xs text-amber-700">
-                    Your account cannot change this setting here. Partner institutions: use Partner Institutions → Manage.
-                  </p>
-                ) : null}
-              </div>
-
-              <Button
-                type="button"
-                disabled={platformSettingsSaving || !canManageMainPlatformSettings}
-                onClick={() => void handleSavePlatformProvider()}
-                className="bg-[#012F6B] hover:bg-[#0a3d7a]"
-              >
-                {platformSettingsSaving ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Saving…
-                  </>
-                ) : (
-                  `Save as ${platformProvider === "daily" ? "Daily" : "Zoom"}`
-                )}
-              </Button>
-            </>
-          )}
-        </CardContent>
-      </Card>
 
       <div className="grid grid-cols-1 xl:grid-cols-5 gap-6 items-start">
         {/* ─── Schedule form ─── */}
