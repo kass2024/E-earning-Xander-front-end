@@ -61,6 +61,8 @@ interface Course {
   status?: string | null;
   duration?: string | null;
   paid_enrollments_count?: number;
+  can_host?: boolean;
+  assigned_to_me?: boolean;
 }
 
 const DURATION_PRESETS = [30, 45, 60, 90, 120] as const;
@@ -199,7 +201,9 @@ const InstructorMaterials = () => {
 
         if (!courseId && list.length > 0 && !selectedCourseId) {
           const idFromQuery = initialCourseId ? Number(initialCourseId) : undefined;
-          const nextId = idFromQuery && list.some((c) => c.id === idFromQuery) ? idFromQuery : list[0]?.id;
+          const queryMatch = idFromQuery && list.some((c) => c.id === idFromQuery) ? idFromQuery : undefined;
+          const firstAssignable = list.find((c) => c.can_host)?.id;
+          const nextId = queryMatch ?? firstAssignable ?? list[0]?.id;
           if (nextId) setSelectedCourseId(nextId);
         }
       } catch (error: unknown) {
@@ -254,6 +258,11 @@ const InstructorMaterials = () => {
     [courses, selectedCourseId],
   );
 
+  const canHostSelectedCourse =
+    selectedCourse == null
+      ? false
+      : Boolean(selectedCourse.can_host ?? selectedCourse.assigned_to_me ?? true);
+
   const courseSessions = useMemo(() => {
     const filtered = sessions.filter((s) => {
       if (selectedCourseId && s.course_id !== selectedCourseId) return false;
@@ -278,6 +287,14 @@ const InstructorMaterials = () => {
   );
 
   const handleStartSession = async (session: InstructorLiveClassSession) => {
+    if (session.can_host === false || (!canHostSelectedCourse && session.course_id === selectedCourseId)) {
+      toast({
+        variant: "destructive",
+        title: "View only",
+        description: "This course is not assigned to you. Assign it in Course Management to start live classes.",
+      });
+      return;
+    }
     const meetingPath = session.host_room_path || materialEmbedRoom(session.id, 1);
     beginZoomLaunch({ title: session.title ?? "Live class", isHost: true });
     setStartingSessionId(session.id);
@@ -318,6 +335,14 @@ const InstructorMaterials = () => {
   };
 
   const handleDeleteSession = async (session: InstructorLiveClassSession) => {
+    if (session.can_host === false || (!canHostSelectedCourse && session.course_id === selectedCourseId)) {
+      toast({
+        variant: "destructive",
+        title: "View only",
+        description: "This course is not assigned to you. You can view sessions but not delete them.",
+      });
+      return;
+    }
     const courseId = session.course_id ?? selectedCourseId;
     if (!courseId) {
       toast({ variant: "destructive", title: "Cannot delete", description: "Course not found for this session." });
@@ -354,6 +379,15 @@ const InstructorMaterials = () => {
   const handleScheduleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!classStartTime.trim() || !selectedCourseId || !instructorEmail) return;
+
+    if (!canHostSelectedCourse) {
+      toast({
+        variant: "destructive",
+        title: "View only",
+        description: "This course is not assigned to you. Assign it in Course Management to schedule live classes.",
+      });
+      return;
+    }
 
     if (!isFutureScheduled(classStartTime, scheduleTimezone)) {
       toast({
@@ -510,8 +544,8 @@ const InstructorMaterials = () => {
       </div>
 
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-12">
-        <Card className="overflow-hidden rounded-2xl border-0 shadow-md xl:col-span-4 ring-1 ring-[#012F6B]/10">
-          <CardHeader className="bg-[#012F6B] pb-4 pt-5 text-white">
+        <Card className="overflow-hidden rounded-2xl border-0 shadow-md xl:col-span-4 ring-1 ring-[#0070D0]/10">
+          <CardHeader className="bg-[#0070D0] pb-4 pt-5 text-white">
             <CardTitle className="flex items-center gap-2 text-base font-semibold">
               <BookOpen className="h-4 w-4" />
               Courses
@@ -535,6 +569,7 @@ const InstructorMaterials = () => {
               <ul className="space-y-2">
                 {courses.map((course) => {
                   const isActive = course.id === selectedCourseId;
+                  const canHost = Boolean(course.can_host ?? course.assigned_to_me);
                   return (
                     <li key={course.id}>
                       <button
@@ -542,14 +577,16 @@ const InstructorMaterials = () => {
                         className={cn(
                           "w-full rounded-xl px-3 py-3 text-left transition-all",
                           isActive
-                            ? "bg-[#012F6B] text-white shadow-md"
+                            ? "bg-[#0070D0] text-white shadow-md"
                             : "bg-muted/40 hover:bg-muted/70 text-foreground",
                         )}
                         onClick={() => setSelectedCourseId(course.id)}
                       >
                         <p className="truncate text-sm font-medium">{course.title ?? "Untitled course"}</p>
                         <div className="mt-1.5 flex items-center justify-between gap-2 text-[11px] opacity-80">
-                          <span className="uppercase tracking-wide">{course.status ?? "active"}</span>
+                          <span className="uppercase tracking-wide">
+                            {canHost ? "Assigned" : "View only"}
+                          </span>
                           <span className="flex items-center gap-1">
                             <Users className="h-3 w-3" />
                             {course.paid_enrollments_count ?? 0}
@@ -564,21 +601,41 @@ const InstructorMaterials = () => {
           </CardContent>
         </Card>
 
-        <Card className="overflow-hidden rounded-2xl border-0 shadow-md xl:col-span-8 ring-1 ring-[#012F6B]/10">
-          <CardHeader className="border-b border-[#012F6B]/10 bg-gradient-to-r from-[#012F6B]/[0.06] to-transparent pb-4">
-            <CardTitle className="flex items-center gap-2 text-lg text-[#012F6B]">
+        <Card className="overflow-hidden rounded-2xl border-0 shadow-md xl:col-span-8 ring-1 ring-[#0070D0]/10">
+          <CardHeader className="border-b border-[#0070D0]/10 bg-gradient-to-r from-[#0070D0]/[0.06] to-transparent pb-4">
+            <CardTitle className="flex items-center gap-2 text-lg text-[#0070D0]">
               <Video className="h-5 w-5" />
-              Schedule a class
+              {canHostSelectedCourse ? "Schedule a class" : "Course sessions"}
             </CardTitle>
             {selectedCourse && (
-              <p className="text-sm text-muted-foreground truncate">{selectedCourse.title}</p>
+              <p className="text-sm text-muted-foreground truncate">
+                {selectedCourse.title}
+                {!canHostSelectedCourse ? " · View only" : ""}
+              </p>
             )}
           </CardHeader>
           <CardContent className="p-5 sm:p-6">
             {selectedCourseId == null ? (
               <div className="flex flex-col items-center justify-center gap-2 py-20 text-center text-muted-foreground">
-                <CalendarClock className="h-12 w-12 text-[#012F6B]/25" />
+                <CalendarClock className="h-12 w-12 text-[#0070D0]/25" />
                 <p className="text-sm">Select a course to begin.</p>
+              </div>
+            ) : !canHostSelectedCourse ? (
+              <div className="flex flex-col items-center justify-center gap-3 py-16 text-center">
+                <Eye className="h-12 w-12 text-[#0070D0]/30" />
+                <p className="text-sm font-medium text-foreground">View only</p>
+                <p className="max-w-md text-sm text-muted-foreground">
+                  This course is assigned to another instructor. You can view upcoming sessions below,
+                  but only the assigned teacher can schedule or start live classes.
+                </p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => navigate("/dashboard/courses")}
+                >
+                  Open Course Management
+                </Button>
               </div>
             ) : (
               <form className="space-y-6" onSubmit={(e) => void handleScheduleSubmit(e)}>
@@ -590,7 +647,7 @@ const InstructorMaterials = () => {
                       value={meetingTitle}
                       onChange={(e) => setMeetingTitle(e.target.value)}
                       placeholder="Module 1 — Live session"
-                      className="h-11 border-[#012F6B]/15"
+                      className="h-11 border-[#0070D0]/15"
                     />
                   </div>
                   <div className="space-y-1.5 sm:w-36">
@@ -602,7 +659,7 @@ const InstructorMaterials = () => {
                       max={480}
                       value={meetingDuration}
                       onChange={(e) => setMeetingDuration(e.target.value)}
-                      className="h-11 border-[#012F6B]/15"
+                      className="h-11 border-[#0070D0]/15"
                     />
                   </div>
                 </div>
@@ -616,8 +673,8 @@ const InstructorMaterials = () => {
                       className={cn(
                         "rounded-full px-3 py-1 text-xs font-medium transition-colors",
                         Number(meetingDuration) === mins
-                          ? "bg-[#012F6B] text-white"
-                          : "bg-muted text-muted-foreground hover:bg-[#012F6B]/10 hover:text-[#012F6B]",
+                          ? "bg-[#0070D0] text-white"
+                          : "bg-muted text-muted-foreground hover:bg-[#0070D0]/10 hover:text-[#0070D0]",
                       )}
                     >
                       {mins} min
@@ -639,12 +696,12 @@ const InstructorMaterials = () => {
                   onChange={(e) => setClassNotes(e.target.value)}
                   placeholder="Agenda or notes for learners (optional)"
                   rows={2}
-                  className="resize-none border-[#012F6B]/15"
+                  className="resize-none border-[#0070D0]/15"
                 />
 
                 {(notifyableCount > 0 || notifyableStudents.length > 0) && (
                   <p className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Users className="h-4 w-4 text-[#012F6B]" />
+                    <Users className="h-4 w-4 text-[#0070D0]" />
                     <span>
                       <strong className="text-foreground">{notifyableCount || notifyableStudents.length}</strong> paid learners will be notified
                     </span>
@@ -652,7 +709,7 @@ const InstructorMaterials = () => {
                 )}
 
                 <Collapsible>
-                  <CollapsibleTrigger className="flex w-full items-center justify-between rounded-lg border border-dashed border-[#012F6B]/20 px-3 py-2 text-sm font-medium text-[#012F6B] hover:bg-[#012F6B]/5">
+                  <CollapsibleTrigger className="flex w-full items-center justify-between rounded-lg border border-dashed border-[#0070D0]/20 px-3 py-2 text-sm font-medium text-[#0070D0] hover:bg-[#0070D0]/5">
                     Meeting options
                     <ChevronDown className="h-4 w-4" />
                   </CollapsibleTrigger>
@@ -694,7 +751,7 @@ const InstructorMaterials = () => {
                       <Button
                         type="button"
                         size="sm"
-                        className="bg-[#012F6B] hover:bg-[#012F6B]/90"
+                        className="bg-[#0070D0] hover:bg-[#0070D0]/90"
                         onClick={() => {
                           openMeetingInNewTab(lastHostRoomPath, {
                             beginLaunch: false,
@@ -717,7 +774,7 @@ const InstructorMaterials = () => {
                 <Button
                   type="submit"
                   disabled={scheduling || !zoomConfigured || !classStartTime}
-                  className="h-11 w-full bg-[#012F6B] hover:bg-[#254D81] sm:w-auto sm:min-w-[200px]"
+                  className="h-11 w-full bg-[#0070D0] hover:bg-[#1A8AD8] sm:w-auto sm:min-w-[200px]"
                 >
                   {scheduling ? (
                     <>
@@ -738,17 +795,21 @@ const InstructorMaterials = () => {
       </div>
 
       {selectedCourseId && (
-        <Card className="rounded-2xl border-0 shadow-md ring-1 ring-[#012F6B]/10">
+        <Card className="rounded-2xl border-0 shadow-md ring-1 ring-[#0070D0]/10">
           <CardHeader className="flex flex-col gap-3 border-b sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <CardTitle className="flex items-center gap-2 text-base text-[#012F6B]">
+              <CardTitle className="flex items-center gap-2 text-base text-[#0070D0]">
                 <Radio className="h-5 w-5" />
                 Upcoming sessions
               </CardTitle>
               <p className="mt-0.5 text-xs text-muted-foreground">{selectedCourse?.title}</p>
             </div>
             <label className="flex cursor-pointer items-center gap-2 text-xs text-muted-foreground">
-              <Checkbox checked={startWithRecording} onCheckedChange={(v) => setStartWithRecording(Boolean(v))} />
+              <Checkbox
+                checked={startWithRecording}
+                disabled={!canHostSelectedCourse}
+                onCheckedChange={(v) => setStartWithRecording(Boolean(v))}
+              />
               Record when starting
             </label>
           </CardHeader>
@@ -765,17 +826,19 @@ const InstructorMaterials = () => {
                   const sharePath = session.share_path ?? session.embed_room_path ?? null;
                   const hostPath = session.host_room_path ?? materialEmbedRoom(session.id, 1);
                   const scheduledLabel = session.scheduled_at ?? session.start_time;
+                  const canHostSession =
+                    session.can_host !== false && (session.can_host === true || canHostSelectedCourse);
 
                   return (
                   <article
                     key={session.id}
-                    className="flex flex-col gap-3 rounded-xl border border-[#012F6B]/10 bg-gradient-to-r from-white to-[#012F6B]/[0.03] p-4 dark:from-card dark:to-[#012F6B]/10"
+                    className="flex flex-col gap-3 rounded-xl border border-[#0070D0]/10 bg-gradient-to-r from-white to-[#0070D0]/[0.03] p-4 dark:from-card dark:to-[#0070D0]/10"
                   >
                     <div className="min-w-0 flex-1">
                       <h3 className="truncate font-semibold">{session.title ?? "Live class"}</h3>
                       <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
                         <span className="inline-flex items-center gap-1.5">
-                          <Clock className="h-3.5 w-3.5 shrink-0 text-[#012F6B]" />
+                          <Clock className="h-3.5 w-3.5 shrink-0 text-[#0070D0]" />
                           {scheduledLabel ? formatClassTime(scheduledLabel) : "Scheduled"}
                         </span>
                         {session.duration_minutes ? (
@@ -783,6 +846,11 @@ const InstructorMaterials = () => {
                         ) : null}
                         {session.meeting_id ? (
                           <span className="font-mono text-[10px] opacity-70">ID {session.meeting_id}</span>
+                        ) : null}
+                        {!canHostSession ? (
+                          <Badge variant="outline" className="text-[10px] font-normal">
+                            View only
+                          </Badge>
                         ) : null}
                       </p>
                       {session.description && (
@@ -809,7 +877,7 @@ const InstructorMaterials = () => {
                           Copy share link
                         </Button>
                       )}
-                      {hostPath && (
+                      {canHostSession && hostPath && (
                         <Button
                           size="sm"
                           variant="outline"
@@ -822,10 +890,10 @@ const InstructorMaterials = () => {
                           Copy host link
                         </Button>
                       )}
-                      {(hostPath || session.meeting_id) && (
+                      {canHostSession && (hostPath || session.meeting_id) && (
                         <Button
                           size="sm"
-                          className="bg-[#012F6B] hover:bg-[#254D81]"
+                          className="bg-[#0070D0] hover:bg-[#1A8AD8]"
                           disabled={startingSessionId === session.id}
                           onClick={() => void handleStartSession(session)}
                         >
@@ -845,6 +913,7 @@ const InstructorMaterials = () => {
                           Preview
                         </Button>
                       )}
+                      {canHostSession && (
                       <Button
                         size="sm"
                         variant="ghost"
@@ -858,6 +927,7 @@ const InstructorMaterials = () => {
                           <Trash2 className="h-4 w-4" />
                         )}
                       </Button>
+                      )}
                     </div>
                   </article>
                   );

@@ -2661,6 +2661,7 @@ export type InstructorLiveClassSession = {
   is_upcoming?: boolean;
   is_live_now?: boolean;
   duration_minutes?: number;
+  can_host?: boolean;
 };
 
 export type InstructorLiveClassesData = {
@@ -2673,6 +2674,8 @@ export type InstructorLiveClassesData = {
     status?: string;
     duration?: string;
     paid_enrollments_count?: number;
+    can_host?: boolean;
+    assigned_to_me?: boolean;
   }>;
   sessions: InstructorLiveClassSession[];
 };
