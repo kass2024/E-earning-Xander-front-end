@@ -9,7 +9,7 @@ import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
-import { createCourse, getCourses, updateCourse, deleteCourse, assignCourseToUser, getUsers, getLearningPrograms, moveCourseToProgram, CoursePayload, UserPayload, type LearningProgramPayload } from "@/api/axios";
+import { createCourse, getCourses, updateCourse, deleteCourse, assignCourseToUser, unassignCourseFromUser, getUsers, getLearningPrograms, moveCourseToProgram, CoursePayload, UserPayload, type LearningProgramPayload } from "@/api/axios";
 import { useDashboardQuery } from "@/hooks/useDashboardQuery";
 import { fetchDashboardCached, invalidateDashboardCache } from "@/lib/dashboardCache";
 import { TableSkeleton } from "@/components/admin/TableSkeleton";
@@ -28,6 +28,26 @@ type Instructor = {
   email?: string;
   role?: string;
 };
+
+function courseTeachers(course: CourseRow): Instructor[] {
+  if (!Array.isArray(course.instructors)) return [];
+  return course.instructors
+    .filter((u): u is Instructor => typeof u?.id === "number")
+    .map((u) => ({
+      id: u.id,
+      name: u.name || u.email || `User #${u.id}`,
+      email: u.email ?? undefined,
+      role: u.role ?? undefined,
+    }));
+}
+
+function teacherRoleLabel(role?: string | null): string {
+  const value = String(role || "").toLowerCase();
+  if (value === "admin" || value === "staff") return "Admin";
+  if (value === "instructor") return "Instructor";
+  if (value === "partner_company") return "Partner";
+  return value ? value : "Teacher";
+}
 
 const CourseManagement = () => {
   const { toast } = useToast();
@@ -74,6 +94,7 @@ const CourseManagement = () => {
   const programs = Array.isArray(programsData) ? programsData : [];
   const [movingProgramCourseId, setMovingProgramCourseId] = useState<number | null>(null);
   const [assigningToInstructor, setAssigningToInstructor] = useState(false);
+  const [unassigningUserId, setUnassigningUserId] = useState<number | null>(null);
   const [details, setDetails] = useState<CourseDetailsFields>({ how_to_use: DEFAULT_HOW_TO_USE });
 
   const loadInstructorsList = async (): Promise<Instructor[]> => {
@@ -81,14 +102,25 @@ const CourseManagement = () => {
     try {
       const { data } = await fetchDashboardCached("users-list", getUsers, { force: true });
       const rows = (Array.isArray(data) ? data : []) as (UserPayload & { id: number })[];
+      const selfEmail = (localStorage.getItem("parrot_user_email") || "").trim().toLowerCase();
+      const teachableRoles = new Set(["instructor", "admin", "staff"]);
       const onlyInstructors: Instructor[] = rows
-        .filter((u) => u.role === "instructor")
+        .filter((u) => teachableRoles.has(String(u.role || "").toLowerCase()))
         .map((u) => ({
           id: u.id,
           name: u.name,
           email: u.email,
           role: u.role,
-        }));
+        }))
+        .sort((a, b) => {
+          const aSelf = (a.email || "").toLowerCase() === selfEmail ? 0 : 1;
+          const bSelf = (b.email || "").toLowerCase() === selfEmail ? 0 : 1;
+          if (aSelf !== bSelf) return aSelf - bSelf;
+          const aInst = a.role === "instructor" ? 0 : 1;
+          const bInst = b.role === "instructor" ? 0 : 1;
+          if (aInst !== bInst) return aInst - bInst;
+          return (a.name || "").localeCompare(b.name || "");
+        });
       setInstructors(onlyInstructors);
       return onlyInstructors;
     } catch (error: any) {
@@ -260,11 +292,15 @@ const CourseManagement = () => {
   };
   const handleOpenAssignDialog = async (course: CourseRow) => {
     if (!course.id) return;
-    setAssigningCourse(course);
+    // Prefer freshest list row so assigned teachers are visible immediately.
+    const latest = courses.find((c) => c.id === course.id) ?? course;
+    setAssigningCourse(latest);
     setAssignDialogOpen(true);
 
     const onlyInstructors = await loadInstructorsList();
-    setSelectedInstructorId(onlyInstructors[0]?.id ?? null);
+    const assignedIds = new Set(courseTeachers(latest).map((t) => t.id));
+    const firstAvailable = onlyInstructors.find((i) => !assignedIds.has(i.id));
+    setSelectedInstructorId(firstAvailable?.id ?? null);
   };
 
   const handleAssignToInstructor = async (instructorId: number) => {
@@ -294,8 +330,42 @@ const CourseManagement = () => {
     }
   };
 
+  const handleUnassignTeacher = async (userId: number) => {
+    if (!assigningCourse?.id) return;
+    try {
+      setUnassigningUserId(userId);
+      await unassignCourseFromUser(assigningCourse.id, userId);
+      toast({
+        variant: "success" as any,
+        title: "Assignment removed",
+        description: "This teacher is no longer assigned to the course.",
+        duration: 3500,
+      });
+      await loadCourses();
+      setAssigningCourse((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          instructors: (prev.instructors ?? []).filter((u) => u.id !== userId),
+        };
+      });
+    } catch (error: any) {
+      const message = error?.response?.data?.message || "Failed to remove assignment.";
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: message,
+        duration: 4000,
+      });
+    } finally {
+      setUnassigningUserId(null);
+    }
+  };
+
   const filteredInstructors = instructors.filter((inst) => {
     const query = instructorSearch.trim().toLowerCase();
+    const assignedIds = new Set(courseTeachers(assigningCourse ?? {}).map((t) => t.id));
+    if (assignedIds.has(inst.id)) return false;
     if (!query) return true;
     return (
       inst.name.toLowerCase().includes(query) ||
@@ -550,6 +620,7 @@ const CourseManagement = () => {
                     <TableHead className="w-[100px]">Price</TableHead>
                     <TableHead className="w-[140px]">Duration</TableHead>
                     <TableHead className="w-[110px]">Status</TableHead>
+                    <TableHead className="min-w-[180px]">Assigned to</TableHead>
                     <TableHead className="w-[140px] text-center">Action</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -558,6 +629,7 @@ const CourseManagement = () => {
                     const currentStatus = course.status ?? "Active";
                     const isInactive = currentStatus.toLowerCase() === "inactive";
                     const shortDescription = (course.description ?? "").slice(0, 80) + ((course.description ?? "").length > 80 ? "..." : "");
+                    const teachers = courseTeachers(course);
                     return (
                       <TableRow key={course.id ?? course.title} className="border-b border-border last:border-0">
                         <TableCell className="text-center text-muted-foreground">
@@ -596,6 +668,25 @@ const CourseManagement = () => {
                         <TableCell className="text-muted-foreground">{course.duration ?? "-"}</TableCell>
                         <TableCell>
                           <Badge variant={isInactive ? "outline" : "default"}>{currentStatus}</Badge>
+                        </TableCell>
+                        <TableCell>
+                          {teachers.length === 0 ? (
+                            <span className="text-xs text-muted-foreground">Unassigned</span>
+                          ) : (
+                            <div className="flex flex-col gap-1">
+                              {teachers.map((teacher) => (
+                                <div key={teacher.id} className="min-w-0">
+                                  <p className="truncate text-xs font-medium text-foreground">
+                                    {teacher.name}
+                                  </p>
+                                  <p className="truncate text-[11px] text-muted-foreground">
+                                    {teacherRoleLabel(teacher.role)}
+                                    {teacher.email ? ` · ${teacher.email}` : ""}
+                                  </p>
+                                </div>
+                              ))}
+                            </div>
+                          )}
                         </TableCell>
                         <TableCell className="text-center">
                           <div className="flex items-center justify-center gap-2">
@@ -688,12 +779,44 @@ const CourseManagement = () => {
       }}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>Assign Course to Instructor</DialogTitle>
+            <DialogTitle>Assign course teacher</DialogTitle>
             <DialogDescription>
-              {assigningCourse ? `Select an instructor for "${assigningCourse.title}".` : "Select an instructor."}
+              {assigningCourse
+                ? `Choose who will teach "${assigningCourse.title}" (instructors or main admin).`
+                : "Select a teacher."}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
+            {courseTeachers(assigningCourse ?? {}).length > 0 && (
+              <div className="rounded-md border border-[#0070D0]/15 bg-[#0070D0]/5 p-3 space-y-2">
+                <p className="text-xs font-medium text-foreground">Currently assigned</p>
+                {courseTeachers(assigningCourse ?? {}).map((teacher) => (
+                  <div key={teacher.id} className="flex items-center justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium">{teacher.name}</p>
+                      <p className="truncate text-xs text-muted-foreground">
+                        {teacherRoleLabel(teacher.role)}
+                        {teacher.email ? ` · ${teacher.email}` : ""}
+                      </p>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-8 shrink-0"
+                      disabled={unassigningUserId === teacher.id}
+                      onClick={() => void handleUnassignTeacher(teacher.id)}
+                    >
+                      {unassigningUserId === teacher.id ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        "Remove"
+                      )}
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
             <Input
               placeholder="Search instructors by name or email"
               value={instructorSearch}
@@ -715,13 +838,20 @@ const CourseManagement = () => {
                   onChange={(e) => setSelectedInstructorId(e.target.value ? Number(e.target.value) : null)}
                 >
                   <option value="" disabled>
-                    Select an instructor
+                    Select a teacher
                   </option>
-                  {filteredInstructors.map((inst) => (
-                    <option key={inst.id} value={inst.id}>
-                      {inst.name} {inst.email ? `(${inst.email})` : ""}
-                    </option>
-                  ))}
+                  {filteredInstructors.map((inst) => {
+                    const role = String(inst.role || "").toLowerCase();
+                    const roleLabel =
+                      role === "admin" || role === "staff" ? "Admin" : role === "instructor" ? "Instructor" : role;
+                    return (
+                      <option key={inst.id} value={inst.id}>
+                        {inst.name}
+                        {inst.email ? ` (${inst.email})` : ""}
+                        {roleLabel ? ` — ${roleLabel}` : ""}
+                      </option>
+                    );
+                  })}
                 </select>
               )}
             </div>

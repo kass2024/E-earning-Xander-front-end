@@ -92,6 +92,7 @@ const ADMIN_SECTIONS: Array<{ title: string; links: NavItem[] }> = [
     title: "Learning ops",
     links: [
       { to: "/dashboard/courses", label: "Courses", icon: BookOpen },
+      { to: "/dashboard/my-courses", label: "My Courses", icon: BookOpen },
       { to: "/dashboard/programs", label: "Programs", icon: FolderOpen },
       { to: "/dashboard/study-shifts", label: "Study Shifts", icon: Clock },
       { to: "/dashboard/instructors", label: "Instructors", icon: Users },

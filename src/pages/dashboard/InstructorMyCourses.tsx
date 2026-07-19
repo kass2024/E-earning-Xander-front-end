@@ -45,13 +45,17 @@ function statusVariant(status: string) {
   const s = status.toLowerCase();
   if (s === "pending") return "bg-amber-100 text-amber-800 border-amber-200";
   if (s === "inactive") return "bg-muted text-muted-foreground";
-  return "bg-[#012F6B]/10 text-[#012F6B] border-[#012F6B]/20";
+  return "bg-[#0070D0]/10 text-[#0070D0] border-[#0070D0]/20";
 }
 
 const InstructorMyCourses = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const email = resolveInstructorEmail();
+  const isPortalAdmin = ["admin", "staff", "partner_company"].includes(
+    (localStorage.getItem("parrot_user_role") || "").toLowerCase(),
+  );
+  const createCoursePath = isPortalAdmin ? "/dashboard/courses" : "/dashboard/instructor/create-course";
   const {
     data: assignedData,
     loading,
@@ -103,8 +107,8 @@ const InstructorMyCourses = () => {
     <div className="space-y-6 pb-8">
       <AdminPageHeader eyebrow="Teaching" title="My Courses" description="Manage your assigned programs.">
         <Button
-          onClick={() => navigate("/dashboard/instructor/create-course")}
-          className="bg-[#012F6B] hover:bg-[#254D81]"
+          onClick={() => navigate(createCoursePath)}
+          className="bg-[#0070D0] hover:bg-[#1A8AD8]"
         >
           <PlusCircle className="mr-2 h-4 w-4" />
           Create course
@@ -123,7 +127,7 @@ const InstructorMyCourses = () => {
         <div className="relative w-full sm:max-w-xs">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
-            className="h-10 pl-9 border-[#012F6B]/15"
+            className="h-10 pl-9 border-[#0070D0]/15"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search courses…"
@@ -133,17 +137,17 @@ const InstructorMyCourses = () => {
 
       {loading && !assignedData ? (
         <div className="flex justify-center py-20">
-          <Loader2 className="h-8 w-8 animate-spin text-[#012F6B]" />
+          <Loader2 className="h-8 w-8 animate-spin text-[#0070D0]" />
         </div>
       ) : filteredCourses.length === 0 ? (
         <Card className="border-dashed">
           <CardContent className="flex flex-col items-center gap-3 py-16 text-center">
-            <BookOpen className="h-12 w-12 text-[#012F6B]/25" />
+            <BookOpen className="h-12 w-12 text-[#0070D0]/25" />
             <p className="text-sm text-muted-foreground">
               {courses.length === 0 ? "No courses yet." : "No courses match your search."}
             </p>
             {courses.length === 0 && (
-              <Button onClick={() => navigate("/dashboard/instructor/create-course")} className="bg-[#012F6B]">
+              <Button onClick={() => navigate(createCoursePath)} className="bg-[#0070D0]">
                 <PlusCircle className="mr-2 h-4 w-4" />
                 Create your first course
               </Button>
@@ -157,9 +161,9 @@ const InstructorMyCourses = () => {
             return (
               <Card
                 key={course.id}
-                className="group overflow-hidden border-0 shadow-md ring-1 ring-[#012F6B]/10 transition-shadow hover:shadow-lg"
+                className="group overflow-hidden border-0 shadow-md ring-1 ring-[#0070D0]/10 transition-shadow hover:shadow-lg"
               >
-                <div className="h-1.5 bg-gradient-to-r from-[#012F6B] to-[#254D81]" />
+                <div className="h-1.5 bg-gradient-to-r from-[#0070D0] to-[#1A8AD8]" />
                 <CardContent className="p-5 space-y-4">
                   <div className="space-y-2">
                     <div className="flex flex-wrap items-center gap-2">
@@ -188,7 +192,7 @@ const InstructorMyCourses = () => {
                     <Button
                       size="sm"
                       variant="outline"
-                      className="h-8 border-[#012F6B]/20"
+                      className="h-8 border-[#0070D0]/20"
                       onClick={() => navigate(`/dashboard/instructor/edit-course/${course.id}`)}
                     >
                       <Pencil className="mr-1.5 h-3.5 w-3.5" />
@@ -196,7 +200,7 @@ const InstructorMyCourses = () => {
                     </Button>
                     <Button
                       size="sm"
-                      className="h-8 bg-[#012F6B] hover:bg-[#254D81]"
+                      className="h-8 bg-[#0070D0] hover:bg-[#1A8AD8]"
                       onClick={() => navigate(`/dashboard/materials?courseId=${course.id}`)}
                     >
                       <FolderOpen className="mr-1.5 h-3.5 w-3.5" />
