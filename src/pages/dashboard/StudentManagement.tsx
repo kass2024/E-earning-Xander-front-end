@@ -521,7 +521,7 @@ const StudentManagement = () => {
 
       // If this is a new student and admin selected courses, auto-enroll them
       if (!editingStudent && created && selectedCreateCourseIds.length > 0) {
-        const newId = (created as any).id as number | undefined;
+        const newId = ((created as any)?.student?.id ?? (created as any)?.id) as number | undefined;
         if (newId && Number.isFinite(newId)) {
           try {
             await Promise.all(
