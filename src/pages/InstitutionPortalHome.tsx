@@ -1,5 +1,5 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { useLocation, useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import { NavLink } from "@/components/NavLink";
 import InstitutionPortalShell from "@/components/institution-portal/InstitutionPortalShell";
@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useInstitutionPortal } from "@/hooks/useInstitutionPortal";
 import { HUB } from "@/lib/hubConfig";
+import { cn } from "@/lib/utils";
 import {
   AlertCircle,
   ArrowRight,
@@ -40,6 +41,7 @@ const InstitutionPortalHome = () => {
   const { slug: routeSlug = "" } = useParams<{ slug: string }>();
   const location = useLocation();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { data, loading, error, institution } = useInstitutionPortal(routeSlug);
   const portal = institution?.portal;
   const [searchQuery, setSearchQuery] = useState("");
@@ -51,6 +53,11 @@ const InstitutionPortalHome = () => {
       document.title = HUB.name;
     };
   }, [institution]);
+
+  useEffect(() => {
+    const fromUrl = (searchParams.get("q") || "").trim();
+    if (fromUrl) setSearchQuery(fromUrl);
+  }, [searchParams]);
 
   useEffect(() => {
     if (loading || !data) return;
@@ -159,15 +166,49 @@ const InstitutionPortalHome = () => {
   return (
     <InstitutionPortalShell institution={institution} activeSection="home">
       {/* Search — Busuu-style "I want to learn" */}
-      <section className="border-b border-slate-200/80 bg-white py-10 sm:py-12">
-        <div className="container mx-auto max-w-4xl px-4 text-center">
+      <section className="border-b border-slate-200/80 bg-white py-12 sm:py-16">
+        <div className="container mx-auto max-w-5xl px-4 text-center">
           <h2 className="text-2xl font-extrabold tracking-tight text-slate-900 sm:text-3xl">
-            I want to learn
+            I want to learn:
           </h2>
           <p className="mt-2 text-sm text-slate-500">
-            Search programs and courses published by {institution.name}
+            Programs published by {institution.name} only
           </p>
-          <form onSubmit={handleSearch} className="mx-auto mt-6 flex max-w-xl gap-2">
+
+          {(data.programs?.length ?? 0) > 0 && (
+            <div className="mx-auto mt-8 flex max-w-4xl flex-wrap items-center justify-center gap-2.5">
+              {data.programs!.slice(0, 12).map((program) => {
+                const active = searchQuery.trim().toLowerCase() === program.name.toLowerCase();
+                return (
+                  <button
+                    key={program.id}
+                    type="button"
+                    onClick={() => {
+                      setSearchQuery(program.name);
+                      document.getElementById("programs")?.scrollIntoView({
+                        behavior: "smooth",
+                        block: "start",
+                      });
+                    }}
+                    className={cn(
+                      "rounded-full px-4 py-2.5 text-sm font-semibold transition",
+                      active
+                        ? "text-white shadow-md"
+                        : "bg-slate-100 text-slate-800 hover:bg-slate-200",
+                    )}
+                    style={active ? { background: "var(--institution-primary)" } : undefined}
+                  >
+                    {program.name}
+                    <span className="ml-2 text-xs font-medium opacity-70">
+                      {program.courses?.length ?? 0}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
+          <form onSubmit={handleSearch} className="mx-auto mt-8 flex max-w-xl gap-2">
             <div className="relative flex-1">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
               <Input
@@ -534,6 +575,14 @@ const InstitutionPortalHome = () => {
                   className="rounded-full bg-white px-8 font-bold text-slate-900 hover:bg-white/90"
                 >
                   <NavLink to={joinUrl}>{portal?.cta_label ?? "Learn for free"}</NavLink>
+                </Button>
+                <Button
+                  asChild
+                  size="lg"
+                  variant="outline"
+                  className="rounded-full border-white/40 bg-transparent px-8 font-semibold text-white hover:bg-white/10"
+                >
+                  <NavLink to={`/i/${slug}/meeting-registration`}>Book meeting with us</NavLink>
                 </Button>
                 <Button
                   asChild

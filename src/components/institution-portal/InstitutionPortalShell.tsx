@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { NavLink } from "@/components/NavLink";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import type { PlatformInstitutionInfo } from "@/api/axios";
 import { resolveInstitutionLogoUrl } from "@/lib/institutionContext";
 import { portalThemeStyle, resolvePortalTheme } from "@/lib/institutionPortal";
@@ -14,12 +15,25 @@ import {
   MapPin,
   Menu,
   Phone,
+  Search,
   X,
 } from "lucide-react";
 
-export type PortalNavSection = "home" | "programs" | "about" | "contact" | "join" | "login";
+export type PortalNavSection =
+  | "home"
+  | "programs"
+  | "about"
+  | "contact"
+  | "meeting"
+  | "join"
+  | "login";
 
-const SECTION_IDS: PortalNavSection[] = ["home", "programs", "about", "contact"];
+const SECTION_IDS: Array<"home" | "programs" | "about" | "contact"> = [
+  "home",
+  "programs",
+  "about",
+  "contact",
+];
 
 type Props = {
   institution: PlatformInstitutionInfo;
@@ -53,6 +67,7 @@ const InstitutionPortalShell = ({
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [hashSection, setHashSection] = useState<PortalNavSection | null>(null);
+  const [headerSearch, setHeaderSearch] = useState("");
 
   const slug = institution.slug?.trim().toLowerCase() || "";
   const logo = resolveInstitutionLogoUrl(institution);
@@ -61,7 +76,9 @@ const InstitutionPortalShell = ({
   const homePath = slug ? portalHomePath(slug) : "/";
   const joinUrl = slug ? `/join/${slug}` : "/signup";
   const loginUrl = slug ? `/login/${slug}` : "/login";
+  const meetingUrl = slug ? `/i/${slug}/meeting-registration` : "/meeting-registration";
   const onPortalHome = location.pathname.replace(/\/$/, "") === homePath;
+  const onMeetingPage = location.pathname.replace(/\/$/, "") === meetingUrl.replace(/\/$/, "");
 
   useEffect(() => {
     const id = "institution-portal-font";
@@ -76,12 +93,17 @@ const InstitutionPortalShell = ({
   const navItems = useMemo(
     () =>
       [
-        { id: "home" as const, label: "Home", hash: "" },
-        { id: "programs" as const, label: "Programs", hash: "programs" },
-        { id: "about" as const, label: "About", hash: "about" },
-        { id: "contact" as const, label: "Contact", hash: "contact" },
+        { id: "home" as const, label: "Home", kind: "section" as const, hash: "" },
+        { id: "programs" as const, label: "Programs", kind: "section" as const, hash: "programs" },
+        { id: "about" as const, label: "About", kind: "section" as const, hash: "about" },
+        {
+          id: "meeting" as const,
+          label: "Book meeting with us",
+          kind: "route" as const,
+          to: meetingUrl,
+        },
       ] as const,
-    [],
+    [meetingUrl],
   );
 
   const goToSection = useCallback(
@@ -105,10 +127,23 @@ const InstitutionPortalShell = ({
     [homePath, navigate, onPortalHome],
   );
 
+  const handleHeaderSearch = (e: FormEvent) => {
+    e.preventDefault();
+    const q = headerSearch.trim();
+    setMobileOpen(false);
+    const target = q ? `${homePath}?q=${encodeURIComponent(q)}#programs` : `${homePath}#programs`;
+    if (onPortalHome) {
+      navigate(target, { replace: true });
+      window.setTimeout(() => scrollToSection("programs", "smooth"), 60);
+      return;
+    }
+    navigate(target);
+  };
+
   useEffect(() => {
     if (!onPortalHome) return;
     const raw = (location.hash || "").replace(/^#/, "").trim().toLowerCase();
-    if (!raw || !SECTION_IDS.includes(raw as PortalNavSection)) {
+    if (!raw || !SECTION_IDS.includes(raw as (typeof SECTION_IDS)[number])) {
       if (!location.hash) setHashSection("home");
       return;
     }
@@ -147,13 +182,16 @@ const InstitutionPortalShell = ({
     return () => observers.forEach((o) => o.disconnect());
   }, [onPortalHome, compactHero, institution.id]);
 
-  const currentSection: PortalNavSection =
-    hashSection ??
-    (activeSection === "join" || activeSection === "login" ? activeSection : activeSection);
+  const currentSection: PortalNavSection = onMeetingPage
+    ? "meeting"
+    : hashSection ??
+      (activeSection === "join" || activeSection === "login" || activeSection === "meeting"
+        ? activeSection
+        : activeSection);
 
   const linkClass = (section: PortalNavSection) =>
     cn(
-      "text-sm font-semibold transition-colors",
+      "whitespace-nowrap text-sm font-semibold transition-colors",
       currentSection === section
         ? "text-[var(--institution-primary)]"
         : "text-slate-600 hover:text-[var(--institution-primary)]",
@@ -162,57 +200,84 @@ const InstitutionPortalShell = ({
   return (
     <div
       className={cn(
-        "institution-portal min-h-screen flex flex-col bg-[#F7F8FA] text-slate-900",
+        "institution-portal min-h-screen flex flex-col bg-white text-slate-900",
         "font-[Manrope,ui-sans-serif,system-ui,sans-serif]",
         className,
       )}
       style={portalThemeStyle(theme)}
     >
-      <header className="sticky top-0 z-50 border-b border-slate-200/80 bg-white/90 backdrop-blur-md">
-        <div className="container mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3 sm:py-3.5">
+      <header className="sticky top-0 z-50 border-b border-slate-200/70 bg-white/95 backdrop-blur-md">
+        <div className="container mx-auto flex max-w-6xl items-center gap-3 px-4 py-3 lg:gap-5">
           <button
             type="button"
-            className="flex min-w-0 items-center gap-3 text-left"
+            className="flex min-w-0 shrink-0 items-center gap-3 text-left"
             onClick={() => goToSection("home", "")}
           >
             {logo ? (
               <img
                 src={logo}
                 alt=""
-                className="h-10 w-10 shrink-0 rounded-full border border-slate-200 object-cover sm:h-11 sm:w-11"
+                className="h-10 w-10 shrink-0 rounded-full border border-slate-200 object-cover"
               />
             ) : (
               <div
-                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white sm:h-11 sm:w-11"
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white"
                 style={{ background: "var(--institution-primary)" }}
               >
                 {institution.name.charAt(0).toUpperCase()}
               </div>
             )}
-            <div className="min-w-0">
-              <p className="truncate text-sm font-extrabold tracking-tight text-slate-900 sm:text-base">
+            <div className="hidden min-w-0 sm:block">
+              <p className="truncate text-sm font-extrabold tracking-tight text-slate-900">
                 {institution.name}
               </p>
               {portal?.tagline && (
-                <p className="hidden truncate text-[11px] text-slate-500 sm:block max-w-[240px]">{portal.tagline}</p>
+                <p className="truncate text-[11px] font-medium text-[var(--institution-accent)] max-w-[200px]">
+                  {portal.tagline}
+                </p>
               )}
             </div>
           </button>
 
-          <nav className="hidden items-center gap-7 lg:flex" aria-label="Institution website">
-            {navItems.map((item) => (
+          <form onSubmit={handleHeaderSearch} className="hidden flex-1 max-w-sm xl:flex">
+            <div className="relative w-full">
+              <Input
+                type="search"
+                value={headerSearch}
+                onChange={(e) => setHeaderSearch(e.target.value)}
+                placeholder="Search courses, exams, languages…"
+                className="h-10 rounded-full border-slate-200 bg-slate-50 pr-10 text-sm focus-visible:ring-[var(--institution-primary)]/25"
+              />
               <button
-                key={item.id}
-                type="button"
-                className={linkClass(item.id)}
-                onClick={() => goToSection(item.id, item.hash)}
+                type="submit"
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-[var(--institution-primary)]"
+                aria-label="Search programs"
               >
-                {item.label}
+                <Search className="h-4 w-4" />
               </button>
-            ))}
+            </div>
+          </form>
+
+          <nav className="ml-auto hidden items-center gap-5 xl:flex" aria-label="Institution website">
+            {navItems.map((item) =>
+              item.kind === "route" ? (
+                <NavLink key={item.id} to={item.to} className={linkClass(item.id)}>
+                  {item.label}
+                </NavLink>
+              ) : (
+                <button
+                  key={item.id}
+                  type="button"
+                  className={linkClass(item.id)}
+                  onClick={() => goToSection(item.id, item.hash)}
+                >
+                  {item.label}
+                </button>
+              ),
+            )}
           </nav>
 
-          <div className="hidden items-center gap-2 sm:flex">
+          <div className="hidden items-center gap-2 md:flex">
             <Button
               asChild
               variant="ghost"
@@ -227,7 +292,7 @@ const InstitutionPortalShell = ({
             <Button
               asChild
               size="sm"
-              className="rounded-full px-5 font-semibold text-[var(--institution-button-text)] hover:opacity-90"
+              className="rounded-full px-5 font-bold text-[var(--institution-button-text)] hover:opacity-90"
               style={{ background: "var(--institution-button-bg)" }}
             >
               <NavLink to={joinUrl}>Learn for free</NavLink>
@@ -236,7 +301,7 @@ const InstitutionPortalShell = ({
 
           <button
             type="button"
-            className="rounded-lg p-2 text-slate-700 lg:hidden"
+            className="rounded-lg p-2 text-slate-700 xl:hidden"
             onClick={() => setMobileOpen((v) => !v)}
             aria-label="Toggle menu"
           >
@@ -245,18 +310,41 @@ const InstitutionPortalShell = ({
         </div>
 
         {mobileOpen && (
-          <div className="border-t border-slate-100 bg-white px-4 py-4 lg:hidden">
+          <div className="border-t border-slate-100 bg-white px-4 py-4 xl:hidden">
+            <form onSubmit={handleHeaderSearch} className="mb-4">
+              <div className="relative">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <Input
+                  type="search"
+                  value={headerSearch}
+                  onChange={(e) => setHeaderSearch(e.target.value)}
+                  placeholder="Search courses, exams, languages…"
+                  className="h-11 rounded-full border-slate-200 bg-slate-50 pl-10"
+                />
+              </div>
+            </form>
             <nav className="flex flex-col gap-3" aria-label="Institution website mobile">
-              {navItems.map((item) => (
-                <button
-                  key={item.id}
-                  type="button"
-                  className={cn(linkClass(item.id), "text-left")}
-                  onClick={() => goToSection(item.id, item.hash)}
-                >
-                  {item.label}
-                </button>
-              ))}
+              {navItems.map((item) =>
+                item.kind === "route" ? (
+                  <NavLink
+                    key={item.id}
+                    to={item.to}
+                    className={cn(linkClass(item.id), "text-left")}
+                    onClick={() => setMobileOpen(false)}
+                  >
+                    {item.label}
+                  </NavLink>
+                ) : (
+                  <button
+                    key={item.id}
+                    type="button"
+                    className={cn(linkClass(item.id), "text-left")}
+                    onClick={() => goToSection(item.id, item.hash)}
+                  >
+                    {item.label}
+                  </button>
+                ),
+              )}
               <div className="mt-2 flex flex-col gap-2 border-t border-slate-100 pt-3">
                 <Button asChild variant="outline" className="w-full rounded-full">
                   <NavLink to={loginUrl} onClick={() => setMobileOpen(false)}>
@@ -265,7 +353,7 @@ const InstitutionPortalShell = ({
                 </Button>
                 <Button
                   asChild
-                  className="w-full rounded-full text-[var(--institution-button-text)] hover:opacity-90"
+                  className="w-full rounded-full font-bold text-[var(--institution-button-text)] hover:opacity-90"
                   style={{ background: "var(--institution-button-bg)" }}
                 >
                   <NavLink to={joinUrl} onClick={() => setMobileOpen(false)}>
@@ -281,38 +369,36 @@ const InstitutionPortalShell = ({
       {!compactHero && onPortalHome && portal && (
         <section
           id="home"
-          className="relative scroll-mt-24 overflow-hidden border-b border-slate-200/70"
+          className="relative scroll-mt-24 overflow-hidden"
           style={{
             background:
-              "radial-gradient(1200px 480px at 50% -10%, color-mix(in srgb, var(--institution-accent) 22%, white), transparent 60%), linear-gradient(180deg, #ffffff 0%, #F7F8FA 100%)",
+              "radial-gradient(900px 420px at 70% -5%, color-mix(in srgb, var(--institution-accent) 18%, white), transparent 55%), linear-gradient(180deg, #ffffff 0%, #F4F6F8 100%)",
           }}
         >
           {portal.hero_image_url && (
             <img
               src={portal.hero_image_url}
               alt=""
-              className="pointer-events-none absolute inset-0 h-full w-full object-cover opacity-[0.12]"
+              className="pointer-events-none absolute inset-0 h-full w-full object-cover opacity-[0.08]"
             />
           )}
-          <div className="container relative mx-auto max-w-4xl px-4 pb-16 pt-14 text-center sm:pb-20 sm:pt-20">
-            <p
-              className="mb-4 text-xs font-bold uppercase tracking-[0.22em]"
-              style={{ color: "var(--institution-accent)" }}
-            >
-              {institution.name}
-            </p>
-            <h1 className="text-4xl font-extrabold leading-[1.08] tracking-tight text-slate-900 sm:text-5xl md:text-6xl">
-              {portal.hero_title}
+          <div className="container relative mx-auto max-w-4xl px-4 pb-14 pt-16 text-center sm:pb-20 sm:pt-24">
+            <h1 className="text-[2.5rem] font-extrabold leading-[1.05] tracking-tight text-slate-900 sm:text-5xl md:text-6xl">
+              Learn with{" "}
+              <span style={{ color: "var(--institution-primary)" }}>{institution.name}</span>
             </h1>
-            <p className="mx-auto mt-5 max-w-2xl text-base text-slate-600 sm:text-lg">{portal.hero_subtitle}</p>
-            <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+            <p className="mx-auto mt-5 max-w-2xl text-base text-slate-600 sm:text-lg">
+              {portal.hero_subtitle ||
+                "Programs, live online classes, and expert-led training — built for real progress."}
+            </p>
+            <div className="mt-9 flex flex-wrap items-center justify-center gap-3">
               <Button
                 asChild
                 size="lg"
-                className="h-12 rounded-full px-8 text-base font-bold text-[var(--institution-button-text)] shadow-lg hover:opacity-90"
+                className="h-12 rounded-full px-9 text-base font-bold text-[var(--institution-button-text)] hover:opacity-90"
                 style={{
                   background: "var(--institution-button-bg)",
-                  boxShadow: "0 12px 30px color-mix(in srgb, var(--institution-primary) 25%, transparent)",
+                  boxShadow: "0 14px 32px color-mix(in srgb, var(--institution-primary) 22%, transparent)",
                 }}
               >
                 <NavLink to={joinUrl}>
@@ -326,11 +412,11 @@ const InstitutionPortalShell = ({
                 variant="outline"
                 className="h-12 rounded-full border-slate-300 bg-white px-8 text-base font-semibold text-slate-800 hover:bg-slate-50"
               >
-                <NavLink to={loginUrl}>Sign in to your account</NavLink>
+                <NavLink to={meetingUrl}>Book meeting with us</NavLink>
               </Button>
             </div>
             {portal.tagline && (
-              <p className="mt-6 text-sm font-medium text-slate-500">{portal.tagline}</p>
+              <p className="mt-7 text-sm font-medium text-slate-500">{portal.tagline}</p>
             )}
           </div>
         </section>
@@ -338,14 +424,14 @@ const InstitutionPortalShell = ({
 
       <main className="flex-1">{children}</main>
 
-      <footer className="border-t border-slate-200 bg-white">
+      <footer className="border-t border-slate-200 bg-[#F7F8FA]">
         <div className="container mx-auto max-w-6xl px-4 py-12">
           <div className="grid gap-10 md:grid-cols-[1.3fr_1fr_1fr]">
             <div>
               <h3 className="text-lg font-extrabold text-slate-900">{institution.name}</h3>
               {portal?.tagline && <p className="mt-2 text-sm text-slate-600">{portal.tagline}</p>}
               <p className="mt-3 max-w-sm text-sm text-slate-500">
-                Programs and enrollment for learners at {institution.name} — built for real progress.
+                Programs and enrollment for learners at {institution.name} only.
               </p>
             </div>
             <div>
@@ -353,13 +439,22 @@ const InstitutionPortalShell = ({
               <ul className="mt-3 space-y-2 text-sm">
                 {navItems.map((item) => (
                   <li key={item.id}>
-                    <button
-                      type="button"
-                      className="font-medium text-slate-700 hover:text-[var(--institution-primary)]"
-                      onClick={() => goToSection(item.id, item.hash)}
-                    >
-                      {item.label}
-                    </button>
+                    {item.kind === "route" ? (
+                      <NavLink
+                        to={item.to}
+                        className="font-medium text-slate-700 hover:text-[var(--institution-primary)]"
+                      >
+                        {item.label}
+                      </NavLink>
+                    ) : (
+                      <button
+                        type="button"
+                        className="font-medium text-slate-700 hover:text-[var(--institution-primary)]"
+                        onClick={() => goToSection(item.id, item.hash)}
+                      >
+                        {item.label}
+                      </button>
+                    )}
                   </li>
                 ))}
               </ul>
@@ -392,7 +487,11 @@ const InstitutionPortalShell = ({
                 <p className="flex items-center gap-2">
                   <Globe className="h-4 w-4 shrink-0 text-[var(--institution-primary)]" />
                   <a
-                    href={institution.website.startsWith("http") ? institution.website : `https://${institution.website}`}
+                    href={
+                      institution.website.startsWith("http")
+                        ? institution.website
+                        : `https://${institution.website}`
+                    }
                     target="_blank"
                     rel="noreferrer"
                     className="hover:underline"
@@ -403,11 +502,13 @@ const InstitutionPortalShell = ({
               )}
             </div>
           </div>
-          <div className="mt-10 flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-6 text-xs text-slate-500">
+          <div className="mt-10 flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 pt-6 text-xs text-slate-500">
             <span>
               © {new Date().getFullYear()} {institution.name}. All rights reserved.
             </span>
-            <span>Institution learning portal</span>
+            <NavLink to={joinUrl} className="font-semibold text-[var(--institution-primary)] hover:underline">
+              Learn for free
+            </NavLink>
           </div>
         </div>
       </footer>

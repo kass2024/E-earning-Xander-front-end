@@ -1,21 +1,13 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
-
+import { useParams } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-
 import { Input } from "@/components/ui/input";
-
 import { Label } from "@/components/ui/label";
-
 import { Button } from "@/components/ui/button";
-
 import { Textarea } from "@/components/ui/textarea";
-
 import { Checkbox } from "@/components/ui/checkbox";
-
 import { getAvailableSchedules, submitMeetingRegistration } from "@/api/axios";
-
 import Swal from "sweetalert2";
-
 import {
   User,
   Mail,
@@ -26,10 +18,12 @@ import {
   CheckCircle2,
   ChevronLeft,
   CalendarDays,
+  AlertCircle,
 } from "lucide-react";
-
 import { MeetingSchedulePicker } from "@/components/meeting/MeetingSchedulePicker";
 import { BookingConfirmedDialog } from "@/components/meeting/BookingConfirmedDialog";
+import InstitutionPortalShell from "@/components/institution-portal/InstitutionPortalShell";
+import { useInstitutionPortal } from "@/hooks/useInstitutionPortal";
 import {
   DEFAULT_MEETING_CALENDAR,
   DEFAULT_MEETING_SCHEDULES,
@@ -43,13 +37,9 @@ import {
   type MeetingCalendarConfig,
   type MeetingTimeSlot,
 } from "@/lib/meetingScheduleUtils";
-
 import { motion } from "framer-motion";
-
 import { Badge } from "@/components/ui/badge";
-
 import { cn } from "@/lib/utils";
-
 
 type CommonTimezone = {
   code: string;
@@ -65,14 +55,14 @@ const COMMON_TIMEZONES: CommonTimezone[] = [
     name: "Coordinated Universal Time",
     offset: "UTC+0",
     iana: "Etc/UTC",
-    label: "UTC ? Coordinated Universal Time (UTC+0)",
+    label: "UTC - Coordinated Universal Time (UTC+0)",
   },
   {
     code: "GMT",
     name: "Greenwich Mean Time",
     offset: "UTC+0",
     iana: "Europe/London",
-    label: "GMT ? Greenwich Mean Time (UTC+0)",
+    label: "GMT - Greenwich Mean Time (UTC+0)",
   },
   {
     code: "EAT",
@@ -93,105 +83,105 @@ const COMMON_TIMEZONES: CommonTimezone[] = [
     name: "Central Africa Time",
     offset: "UTC+2",
     iana: "Africa/Harare",
-    label: "CAT ? Central Africa Time (UTC+2)",
+    label: "CAT - Central Africa Time (UTC+2)",
   },
   {
     code: "WAT",
     name: "West Africa Time",
     offset: "UTC+1",
     iana: "Africa/Lagos",
-    label: "WAT ? West Africa Time (UTC+1)",
+    label: "WAT - West Africa Time (UTC+1)",
   },
   {
     code: "CET",
     name: "Central European Time",
     offset: "UTC+1",
     iana: "Europe/Berlin",
-    label: "CET ? Central European Time (UTC+1)",
+    label: "CET - Central European Time (UTC+1)",
   },
   {
     code: "EET",
     name: "Eastern European Time",
     offset: "UTC+2",
     iana: "Europe/Athens",
-    label: "EET ? Eastern European Time (UTC+2)",
+    label: "EET - Eastern European Time (UTC+2)",
   },
   {
     code: "BST",
     name: "British Summer Time",
     offset: "UTC+1",
     iana: "Europe/London",
-    label: "BST ? British Summer Time (UTC+1)",
+    label: "BST - British Summer Time (UTC+1)",
   },
   {
     code: "IST",
     name: "India Standard Time",
     offset: "UTC+5:30",
     iana: "Asia/Kolkata",
-    label: "IST ? India Standard Time (UTC+5:30)",
+    label: "IST - India Standard Time (UTC+5:30)",
   },
   {
     code: "GST",
     name: "Gulf Standard Time",
     offset: "UTC+4",
     iana: "Asia/Dubai",
-    label: "GST ? Gulf Standard Time (UTC+4)",
+    label: "GST - Gulf Standard Time (UTC+4)",
   },
   {
     code: "MSK",
     name: "Moscow Standard Time",
     offset: "UTC+3",
     iana: "Europe/Moscow",
-    label: "MSK ? Moscow Standard Time (UTC+3)",
+    label: "MSK - Moscow Standard Time (UTC+3)",
   },
   {
     code: "CST",
     name: "Central Standard Time",
     offset: "UTC-6",
     iana: "America/Chicago",
-    label: "CST ? Central Standard Time (UTC-6)",
+    label: "CST - Central Standard Time (UTC-6)",
   },
   {
     code: "EST",
     name: "Eastern Standard Time",
     offset: "UTC-5",
     iana: "America/New_York",
-    label: "EST ? Eastern Standard Time (UTC-5)",
+    label: "EST - Eastern Standard Time (UTC-5)",
   },
   {
     code: "MST",
     name: "Mountain Standard Time",
     offset: "UTC-7",
     iana: "America/Denver",
-    label: "MST ? Mountain Standard Time (UTC-7)",
+    label: "MST - Mountain Standard Time (UTC-7)",
   },
   {
     code: "PST",
     name: "Pacific Standard Time",
     offset: "UTC-8",
     iana: "America/Los_Angeles",
-    label: "PST ? Pacific Standard Time (UTC-8)",
+    label: "PST - Pacific Standard Time (UTC-8)",
   },
   {
     code: "JST",
     name: "Japan Standard Time",
     offset: "UTC+9",
     iana: "Asia/Tokyo",
-    label: "JST ? Japan Standard Time (UTC+9)",
+    label: "JST - Japan Standard Time (UTC+9)",
   },
   {
     code: "KST",
     name: "Korea Standard Time",
     offset: "UTC+9",
     iana: "Asia/Seoul",
-    label: "KST ? Korea Standard Time (UTC+9)",
+    label: "KST - Korea Standard Time (UTC+9)",
   },
   {
     code: "AEST",
     name: "Australian Eastern Standard Time",
     offset: "UTC+10",
     iana: "Australia/Sydney",
-    label: "AEST ? Australian Eastern Standard Time (UTC+10)",
+    label: "AEST - Australian Eastern Standard Time (UTC+10)",
   },
 ];
 
@@ -202,44 +192,34 @@ const BOOKING_REASONS = [
 ] as const;
 
 const MeetingRegistration = () => {
+  const { slug: routeSlug = "" } = useParams<{ slug?: string }>();
+  const institutionSlug = routeSlug.trim().toLowerCase();
+  const isInstitutionPortal = Boolean(institutionSlug);
+  const {
+    institution,
+    loading: institutionLoading,
+    error: institutionError,
+  } = useInstitutionPortal(institutionSlug);
 
   const toast = Swal.mixin({
-
     toast: true,
-
     position: "top-end",
-
     showConfirmButton: false,
-
     timer: 2500,
-
     timerProgressBar: true,
-
   });
 
-
-
   const [fullName, setFullName] = useState("");
-
   const [email, setEmail] = useState("");
-
   const [phone, setPhone] = useState("");
-
   const [learnerTimezone, setLearnerTimezone] = useState<string>(
     () => getBrowserTimezone() ?? "Africa/Nairobi"
   );
   const [timezoneManuallySet, setTimezoneManuallySet] = useState(false);
-
   const [reasonOption, setReasonOption] = useState<string>("");
-
   const [otherReason, setOtherReason] = useState("");
-
   const [agree, setAgree] = useState(false);
-
   const [submitting, setSubmitting] = useState(false);
-
-
-
   const [availableSchedules, setAvailableSchedules] = useState<any[]>([]);
   const [calendarConfig, setCalendarConfig] = useState<MeetingCalendarConfig>(DEFAULT_MEETING_CALENDAR);
   const [bookedSlots, setBookedSlots] = useState<BookedMeetingSlot[]>([]);
@@ -251,7 +231,6 @@ const MeetingRegistration = () => {
     timezoneLabel: string | null;
   } | null>(null);
 
-
   const timezoneOptions = useMemo(
     () =>
       buildTimezoneOptions(
@@ -262,8 +241,6 @@ const MeetingRegistration = () => {
       ),
     []
   );
-
-
 
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -277,14 +254,23 @@ const MeetingRegistration = () => {
   const fieldError = (key: string) =>
     errors[key] ? <p className="text-xs text-red-500 mt-1">{errors[key]}</p> : null;
 
-  const loadSchedules = async () => {
+  const loadSchedules = async (platformInstitutionId?: number | null) => {
     try {
-      const data = await getAvailableSchedules();
+      const data = await getAvailableSchedules({
+        platformInstitutionId: platformInstitutionId ?? null,
+      });
       const parsed = parseAvailableSchedulesResponse(data);
       setAvailableSchedules(parsed.schedules);
       setCalendarConfig(parsed.calendar);
       setBookedSlots(parsed.bookedSlots);
     } catch {
+      // Institution portals must not fall back to hub schedules.
+      if (isInstitutionPortal) {
+        setAvailableSchedules([]);
+        setCalendarConfig(DEFAULT_MEETING_CALENDAR);
+        setBookedSlots([]);
+        return;
+      }
       setAvailableSchedules(DEFAULT_MEETING_SCHEDULES);
       setCalendarConfig(DEFAULT_MEETING_CALENDAR);
       setBookedSlots([]);
@@ -292,15 +278,19 @@ const MeetingRegistration = () => {
   };
 
   useEffect(() => {
-    void loadSchedules();
-  }, []);
+    if (isInstitutionPortal) {
+      if (!institution?.id) return;
+      void loadSchedules(institution.id);
+      return;
+    }
+    void loadSchedules(null);
+  }, [isInstitutionPortal, institution?.id]);
 
   useEffect(() => {
     if (step !== 1) return;
-    void loadSchedules();
-  }, [step]);
-
-
+    if (isInstitutionPortal && !institution?.id) return;
+    void loadSchedules(isInstitutionPortal ? institution?.id ?? null : null);
+  }, [step, isInstitutionPortal, institution?.id]);
 
   useEffect(() => {
     if (timezoneManuallySet) return;
@@ -550,9 +540,36 @@ const MeetingRegistration = () => {
 
 
 
-  return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-50 via-white to-slate-50">
-      <main className="public-page-offset pb-16 px-4">
+  if (isInstitutionPortal && institutionLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-white">
+        <Loader2 className="h-9 w-9 animate-spin text-[#012F6B]" />
+      </div>
+    );
+  }
+
+  if (isInstitutionPortal && (institutionError || !institution)) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center px-4 text-center">
+        <AlertCircle className="mb-4 h-12 w-12 text-red-500" />
+        <h1 className="text-xl font-bold text-slate-800">Website unavailable</h1>
+        <p className="mt-2 max-w-md text-slate-600">
+          {institutionError ?? "This institution link is not valid."}
+        </p>
+      </div>
+    );
+  }
+
+  const bookingTitle = institution
+    ? `Book meeting with ${institution.name}`
+    : "Book meeting with us";
+  const bookingSubtitle = institution
+    ? `Choose a time for a meeting with ${institution.name}. Confirmation and join details will be emailed to you.`
+    : "Choose a time, share your details, and we will email you a confirmation with your secure online meeting link.";
+
+  const content = (
+    <div className={cn("min-h-screen", isInstitutionPortal ? "bg-transparent" : "bg-gradient-to-b from-slate-50 via-white to-slate-50")}>
+      <main className={cn(isInstitutionPortal ? "pb-16 px-4 pt-10" : "public-page-offset pb-16 px-4")}>
         <div className="container mx-auto max-w-5xl">
           <motion.div
             initial={{ opacity: 0, y: 16 }}
@@ -563,10 +580,8 @@ const MeetingRegistration = () => {
               <Video className="h-3.5 w-3.5 mr-1.5" />
               Book a session
             </Badge>
-            <h1 className="text-3xl md:text-4xl font-bold text-[#012F6B] mb-2">Book meeting with us</h1>
-            <p className="text-slate-600 max-w-2xl mx-auto">
-              Choose a time, share your details, and we will email you a confirmation with your secure online meeting link.
-            </p>
+            <h1 className="text-3xl md:text-4xl font-bold text-[#012F6B] mb-2">{bookingTitle}</h1>
+            <p className="text-slate-600 max-w-2xl mx-auto">{bookingSubtitle}</p>
 
             <div className="mt-8 flex items-center justify-center gap-2 sm:gap-4">
               <div className={cn("flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold uppercase tracking-wider transition-colors", step === 1 ? "bg-[#012F6B] text-white shadow-md shadow-[#012F6B]/20" : "bg-white text-slate-500 border border-slate-200")}>
@@ -810,7 +825,7 @@ const MeetingRegistration = () => {
                         {submitting ? (
                           <span className="flex items-center justify-center gap-2">
                             <Loader2 className="h-4 w-4 animate-spin" />
-                            Confirming?
+                            Confirming…
                           </span>
                         ) : (
                           "Confirm booking"
@@ -837,9 +852,17 @@ const MeetingRegistration = () => {
     </div>
   );
 
+  if (institution) {
+    return (
+      <InstitutionPortalShell institution={institution} activeSection="meeting" compactHero>
+        {content}
+      </InstitutionPortalShell>
+    );
+  }
+
+  return content;
+
 };
-
-
 
 export default MeetingRegistration;
 

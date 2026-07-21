@@ -563,8 +563,15 @@ export type AvailableSchedulesResponse = {
   calendar: MeetingCalendarConfig;
 };
 
-export const getAvailableSchedules = async () => {
-  const response = await api.get(`/available-schedules`);
+export const getAvailableSchedules = async (opts?: {
+  platformInstitutionId?: number | null;
+}) => {
+  const response = await api.get(`/available-schedules`, {
+    params:
+      opts?.platformInstitutionId && opts.platformInstitutionId > 0
+        ? { platform_institution_id: opts.platformInstitutionId }
+        : undefined,
+  });
   return response.data as AvailableScheduleRow[] | AvailableSchedulesResponse;
 };
 

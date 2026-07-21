@@ -72,6 +72,7 @@ const App = () => (
               <Route path="/signup" element={<Signup />} />
               <Route path="/join/:slug" element={<Signup />} />
               <Route path="/i/:slug" element={<InstitutionPortalHome />} />
+              <Route path="/i/:slug/meeting-registration" element={<MeetingRegistration />} />
               <Route path="/institution-signup" element={<InstitutionSignup />} />
               <Route path="/institution-signup/success" element={<InstitutionSignupSuccess />} />
               {/* Single layout route — keeps sidebar/shell mounted across sidebar navigation */}
