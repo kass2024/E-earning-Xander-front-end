@@ -326,6 +326,17 @@ const LiveCohortHostStudio = () => {
     }
   };
 
+  const handleUnmuteParticipant = (entry: LiveZoomCohortQueueEntry) => {
+    const ok = hostControlsRef.current?.unmuteByName(entry.display_name);
+    if (!ok) {
+      toast({
+        variant: "destructive",
+        title: "Unmute failed",
+        description: "Could not find that participant in the live call yet.",
+      });
+    }
+  };
+
   const handleStopVideoParticipant = (entry: LiveZoomCohortQueueEntry) => {
     const ok = hostControlsRef.current?.stopVideoByName(entry.display_name);
     if (!ok) {
@@ -610,6 +621,7 @@ const LiveCohortHostStudio = () => {
         onRelease={() => void handleRelease()}
         onAdmitEntry={(entryId) => void handleAdmitEntry(entryId)}
         onMuteParticipant={handleMuteParticipant}
+        onUnmuteParticipant={handleUnmuteParticipant}
         onStopVideoParticipant={handleStopVideoParticipant}
         onRemoveParticipant={(entry) => void handleRemoveParticipant(entry)}
         onToggleRecording={(action, meta) => void handleRecording(action, meta)}

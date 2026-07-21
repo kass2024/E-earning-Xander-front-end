@@ -85,6 +85,7 @@ export type DailyRemoteParticipantSnapshot = {
 
 export type DailyHostControls = {
   muteByName: (userName: string) => boolean;
+  unmuteByName: (userName: string) => boolean;
   stopVideoByName: (userName: string) => boolean;
   removeByName: (userName: string) => boolean;
   findByName: (userName: string) => DailyRemoteParticipantSnapshot | null;
@@ -1133,6 +1134,58 @@ export function DailyMeetingRoom({
               });
               return;
             }
+            if (type === "host-force-mute") {
+              const targetSid = String(data.sessionId || "").trim();
+              const mySid = localSessionIdRef.current;
+              if (targetSid && mySid && targetSid !== mySid) return;
+              desiredMicRef.current = false;
+              void call.setLocalAudio(false);
+              setMicOn(false);
+              toast({ title: "Muted by host", description: "Your microphone was turned off by the host." });
+              return;
+            }
+            if (type === "host-request-unmute") {
+              const targetSid = String(data.sessionId || "").trim();
+              const mySid = localSessionIdRef.current;
+              if (targetSid && mySid && targetSid !== mySid) return;
+              const granted = Array.isArray(data.canSend)
+                ? (data.canSend as DailySendPermission[])
+                : data.canSend instanceof Set
+                  ? (Array.from(data.canSend) as DailySendPermission[])
+                  : data.canSend === true
+                    ? true
+                    : (["audio"] as DailySendPermission[]);
+              speakingGrantActiveRef.current = true;
+              setSpeakingState("approved");
+              setLocalPermissions((prev) => ({
+                ...(prev || {}),
+                canSend: granted === true ? true : granted.length > 0 ? granted : (["audio"] as DailySendPermission[]),
+              }));
+              const unmuteFromHost = async (attempt = 0): Promise<void> => {
+                try {
+                  desiredMicRef.current = true;
+                  await call.setLocalAudio(true);
+                  const local = call.participants()?.local;
+                  if (!local?.audio && attempt < 8) {
+                    window.setTimeout(() => void unmuteFromHost(attempt + 1), 250);
+                    return;
+                  }
+                  setMicOn(true);
+                  setSpeakingState("speaking");
+                  setAudioTrackEpoch((n) => n + 1);
+                  setApprovalBanner("Host unmuted you — you are live.");
+                } catch {
+                  if (attempt < 8) {
+                    window.setTimeout(() => void unmuteFromHost(attempt + 1), 300);
+                    return;
+                  }
+                  setApprovalBanner("Host allowed your mic. Press Unmute to speak.");
+                }
+              };
+              toast({ title: "Host unmuted you", description: "Your microphone is being turned on." });
+              window.setTimeout(() => void unmuteFromHost(0), 200);
+              return;
+            }
             if (type === "hand-raised") {
               if (!trustedHostRef.current) return;
               const sid = String(data.sessionId || "").trim();
@@ -1463,10 +1516,46 @@ export function DailyMeetingRoom({
     if (!call || !sessionId) return false;
     try {
       call.updateParticipant(sessionId, { setAudio: false });
+      call.sendAppMessage({ type: "host-force-mute", sessionId }, "*");
       toast({ title: "Muted", description: "Participant microphone turned off." });
       return true;
     } catch {
       toast({ variant: "destructive", title: "Mute failed" });
+      return false;
+    }
+  };
+
+  /** Host unmute: restore send permission (webinar) + turn mic on + notify guest client. */
+  const hostUnmuteParticipant = (sessionId: string) => {
+    const call = callRef.current;
+    if (!call || !sessionId) return false;
+    try {
+      const canSendUpdate =
+        meetingMode === "webinar"
+          ? toDailyCanSendUpdate(["audio"] as string[])
+          : toDailyCanSendUpdate(["audio", "video"] as string[]);
+
+      call.updateParticipant(sessionId, {
+        setAudio: true,
+        updatePermissions: {
+          canSend: canSendUpdate as boolean | Set<"audio" | "video" | "screenVideo" | "screenAudio">,
+        },
+      });
+      call.sendAppMessage(
+        {
+          type: "host-request-unmute",
+          sessionId,
+          canSend: meetingMode === "webinar" ? ["audio"] : ["audio", "video"],
+        },
+        "*",
+      );
+      toast({
+        title: "Unmuted",
+        description: "Participant can speak again. Their mic was turned back on.",
+      });
+      return true;
+    } catch {
+      toast({ variant: "destructive", title: "Unmute failed" });
       return false;
     }
   };
@@ -1511,6 +1600,10 @@ export function DailyMeetingRoom({
       muteByName: (userName) => {
         const match = findRemoteByName(userName);
         return match ? hostMuteParticipant(String(match.session_id)) : false;
+      },
+      unmuteByName: (userName) => {
+        const match = findRemoteByName(userName);
+        return match ? hostUnmuteParticipant(String(match.session_id)) : false;
       },
       stopVideoByName: (userName) => {
         const match = findRemoteByName(userName);
@@ -2121,15 +2214,25 @@ export function DailyMeetingRoom({
                         />
                         {trustedHost ? (
                           <div className="absolute right-2 top-2 z-20 flex gap-1 rounded-lg bg-black/70 p-1 opacity-90 hover:opacity-100">
-                            <button
-                              type="button"
-                              title="Mute"
-                              className="rounded p-1.5 text-white hover:bg-white/15 disabled:opacity-40"
-                              disabled={!p.audio}
-                              onClick={() => hostMuteParticipant(p.session_id)}
-                            >
-                              <MicOff className="h-3.5 w-3.5" />
-                            </button>
+                            {p.audio ? (
+                              <button
+                                type="button"
+                                title="Mute"
+                                className="rounded p-1.5 text-white hover:bg-white/15"
+                                onClick={() => hostMuteParticipant(p.session_id)}
+                              >
+                                <MicOff className="h-3.5 w-3.5" />
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                title="Unmute"
+                                className="rounded p-1.5 text-emerald-300 hover:bg-emerald-500/20"
+                                onClick={() => hostUnmuteParticipant(p.session_id)}
+                              >
+                                <Mic className="h-3.5 w-3.5" />
+                              </button>
+                            )}
                             <button
                               type="button"
                               title="Stop video"
@@ -2219,15 +2322,25 @@ export function DailyMeetingRoom({
                           </div>
                           {trustedHost ? (
                             <div className="mt-2 flex flex-wrap gap-1">
-                              <Button
-                                size="sm"
-                                variant="secondary"
-                                className="h-7 bg-[#2d2d2d] text-[11px] text-zinc-100"
-                                onClick={() => hostMuteParticipant(p.session_id)}
-                                disabled={!p.audio}
-                              >
-                                Mute
-                              </Button>
+                              {p.audio ? (
+                                <Button
+                                  size="sm"
+                                  variant="secondary"
+                                  className="h-7 bg-[#2d2d2d] text-[11px] text-zinc-100"
+                                  onClick={() => hostMuteParticipant(p.session_id)}
+                                >
+                                  Mute
+                                </Button>
+                              ) : (
+                                <Button
+                                  size="sm"
+                                  variant="secondary"
+                                  className="h-7 bg-emerald-700/80 text-[11px] text-white hover:bg-emerald-600"
+                                  onClick={() => hostUnmuteParticipant(p.session_id)}
+                                >
+                                  Unmute
+                                </Button>
+                              )}
                               <Button
                                 size="sm"
                                 variant="secondary"

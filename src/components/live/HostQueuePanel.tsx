@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import {
   CheckSquare,
   Loader2,
+  Mic,
   MicOff,
   Radio,
   Square,
@@ -41,6 +42,7 @@ type Props = {
   onRelease: () => void;
   onAdmitEntry: (entryId: number) => void;
   onMuteParticipant?: (entry: LiveZoomCohortQueueEntry) => void;
+  onUnmuteParticipant?: (entry: LiveZoomCohortQueueEntry) => void;
   onStopVideoParticipant?: (entry: LiveZoomCohortQueueEntry) => void;
   onRemoveParticipant?: (entry: LiveZoomCohortQueueEntry) => void;
   onToggleRecording: (action: "start" | "stop", meta?: { clientHandled?: boolean }) => void;
@@ -62,6 +64,7 @@ export function HostQueuePanel({
   onRelease,
   onAdmitEntry,
   onMuteParticipant,
+  onUnmuteParticipant,
   onStopVideoParticipant,
   onRemoveParticipant,
   onToggleRecording,
@@ -74,7 +77,9 @@ export function HostQueuePanel({
   }, [inSession, current]);
   const inSessionCount = sessionPeople.length;
   const selectedWaiting = selectedIds.filter((id) => waiting.some((w) => w.id === id));
-  const canModerateSession = Boolean(onMuteParticipant || onStopVideoParticipant || onRemoveParticipant);
+  const canModerateSession = Boolean(
+    onMuteParticipant || onUnmuteParticipant || onStopVideoParticipant || onRemoveParticipant,
+  );
 
   const toggleSelected = (id: number) => {
     setSelectedIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
@@ -173,6 +178,19 @@ export function HostQueuePanel({
                           >
                             <MicOff className="mr-1 h-3 w-3" />
                             Mute
+                          </Button>
+                        ) : null}
+                        {onUnmuteParticipant ? (
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            className="h-7 bg-emerald-700/80 px-2 text-[10px] text-white hover:bg-emerald-600"
+                            disabled={actionLoading}
+                            onClick={() => onUnmuteParticipant(person)}
+                            title="Unmute microphone"
+                          >
+                            <Mic className="mr-1 h-3 w-3" />
+                            Unmute
                           </Button>
                         ) : null}
                         {onStopVideoParticipant ? (
