@@ -350,11 +350,14 @@ const ZoomManagement = ({ initialMeetingType = "meeting" }: ZoomManagementProps)
       setSelectedStaffEmails([]);
 
       await loadData(true);
-    } catch {
+    } catch (err: unknown) {
+      const apiMessage = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
       toast({
         variant: "destructive",
         title: "Error",
-        description: isWebinar ? "Failed to create webinar" : "Failed to create meeting",
+        description:
+          apiMessage ||
+          (isWebinar ? "Failed to create webinar" : "Failed to create meeting"),
       });
     } finally {
       setCreating(false);
