@@ -7,14 +7,13 @@ import { resolveInstitutionLogoUrl } from "@/lib/institutionContext";
 import { portalThemeStyle, resolvePortalTheme } from "@/lib/institutionPortal";
 import { cn } from "@/lib/utils";
 import {
-  BookOpen,
+  ArrowRight,
   Globe,
   LogIn,
   Mail,
   MapPin,
   Menu,
   Phone,
-  UserPlus,
   X,
 } from "lucide-react";
 
@@ -40,9 +39,7 @@ function scrollToSection(sectionId: string, behavior: ScrollBehavior = "smooth")
     return;
   }
   const el = document.getElementById(sectionId);
-  if (el) {
-    el.scrollIntoView({ behavior, block: "start" });
-  }
+  if (el) el.scrollIntoView({ behavior, block: "start" });
 }
 
 const InstitutionPortalShell = ({
@@ -65,6 +62,16 @@ const InstitutionPortalShell = ({
   const joinUrl = slug ? `/join/${slug}` : "/signup";
   const loginUrl = slug ? `/login/${slug}` : "/login";
   const onPortalHome = location.pathname.replace(/\/$/, "") === homePath;
+
+  useEffect(() => {
+    const id = "institution-portal-font";
+    if (document.getElementById(id)) return;
+    const link = document.createElement("link");
+    link.id = id;
+    link.rel = "stylesheet";
+    link.href = "https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap";
+    document.head.appendChild(link);
+  }, []);
 
   const navItems = useMemo(
     () =>
@@ -98,7 +105,6 @@ const InstitutionPortalShell = ({
     [homePath, navigate, onPortalHome],
   );
 
-  // Scroll when arriving on /i/:slug#section (from login/join or refresh).
   useEffect(() => {
     if (!onPortalHome) return;
     const raw = (location.hash || "").replace(/^#/, "").trim().toLowerCase();
@@ -111,10 +117,8 @@ const InstitutionPortalShell = ({
     return () => window.clearTimeout(t);
   }, [onPortalHome, location.hash, location.pathname]);
 
-  // Highlight menu from scroll position on the portal home page.
   useEffect(() => {
     if (!onPortalHome || compactHero) return;
-
     const observers: IntersectionObserver[] = [];
     const ratios = new Map<string, number>();
 
@@ -149,17 +153,23 @@ const InstitutionPortalShell = ({
 
   const linkClass = (section: PortalNavSection) =>
     cn(
-      "text-sm font-medium transition-colors",
-      currentSection === section ? "text-white" : "text-white/80 hover:text-white",
+      "text-sm font-semibold transition-colors",
+      currentSection === section
+        ? "text-[var(--institution-primary)]"
+        : "text-slate-600 hover:text-[var(--institution-primary)]",
     );
 
   return (
     <div
-      className={cn("min-h-screen flex flex-col bg-slate-50", className)}
+      className={cn(
+        "institution-portal min-h-screen flex flex-col bg-[#F7F8FA] text-slate-900",
+        "font-[Manrope,ui-sans-serif,system-ui,sans-serif]",
+        className,
+      )}
       style={portalThemeStyle(theme)}
     >
-      <header className="sticky top-0 z-50 border-b border-white/10 bg-[var(--institution-hero-bg)] text-white shadow-lg">
-        <div className="container mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3 sm:py-4">
+      <header className="sticky top-0 z-50 border-b border-slate-200/80 bg-white/90 backdrop-blur-md">
+        <div className="container mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3 sm:py-3.5">
           <button
             type="button"
             className="flex min-w-0 items-center gap-3 text-left"
@@ -169,22 +179,27 @@ const InstitutionPortalShell = ({
               <img
                 src={logo}
                 alt=""
-                className="h-10 w-10 shrink-0 rounded-lg border border-white/20 bg-white object-cover sm:h-11 sm:w-11"
+                className="h-10 w-10 shrink-0 rounded-full border border-slate-200 object-cover sm:h-11 sm:w-11"
               />
             ) : (
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white/15 text-sm font-bold sm:h-11 sm:w-11">
+              <div
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white sm:h-11 sm:w-11"
+                style={{ background: "var(--institution-primary)" }}
+              >
                 {institution.name.charAt(0).toUpperCase()}
               </div>
             )}
             <div className="min-w-0">
-              <p className="truncate text-sm font-bold sm:text-base">{institution.name}</p>
+              <p className="truncate text-sm font-extrabold tracking-tight text-slate-900 sm:text-base">
+                {institution.name}
+              </p>
               {portal?.tagline && (
-                <p className="hidden truncate text-[11px] text-white/75 sm:block max-w-[220px]">{portal.tagline}</p>
+                <p className="hidden truncate text-[11px] text-slate-500 sm:block max-w-[240px]">{portal.tagline}</p>
               )}
             </div>
           </button>
 
-          <nav className="hidden items-center gap-6 lg:flex" aria-label="Institution website">
+          <nav className="hidden items-center gap-7 lg:flex" aria-label="Institution website">
             {navItems.map((item) => (
               <button
                 key={item.id}
@@ -200,26 +215,28 @@ const InstitutionPortalShell = ({
           <div className="hidden items-center gap-2 sm:flex">
             <Button
               asChild
-              variant="secondary"
+              variant="ghost"
               size="sm"
-              className="rounded-full bg-white/10 text-white hover:bg-white/20 border-0"
+              className="rounded-full font-semibold text-slate-700 hover:bg-slate-100"
             >
               <NavLink to={loginUrl}>
                 <LogIn className="mr-1.5 h-4 w-4" />
-                Log in
+                Sign in
               </NavLink>
             </Button>
-            <Button asChild size="sm" className="rounded-full bg-white text-[var(--institution-primary)] hover:bg-white/90">
-              <NavLink to={joinUrl}>
-                <UserPlus className="mr-1.5 h-4 w-4" />
-                Register
-              </NavLink>
+            <Button
+              asChild
+              size="sm"
+              className="rounded-full px-5 font-semibold text-[var(--institution-button-text)] hover:opacity-90"
+              style={{ background: "var(--institution-button-bg)" }}
+            >
+              <NavLink to={joinUrl}>Learn for free</NavLink>
             </Button>
           </div>
 
           <button
             type="button"
-            className="rounded-lg p-2 text-white lg:hidden"
+            className="rounded-lg p-2 text-slate-700 lg:hidden"
             onClick={() => setMobileOpen((v) => !v)}
             aria-label="Toggle menu"
           >
@@ -228,7 +245,7 @@ const InstitutionPortalShell = ({
         </div>
 
         {mobileOpen && (
-          <div className="border-t border-white/10 bg-[var(--institution-hero-bg)] px-4 py-4 lg:hidden">
+          <div className="border-t border-slate-100 bg-white px-4 py-4 lg:hidden">
             <nav className="flex flex-col gap-3" aria-label="Institution website mobile">
               {navItems.map((item) => (
                 <button
@@ -240,18 +257,19 @@ const InstitutionPortalShell = ({
                   {item.label}
                 </button>
               ))}
-              <div className="mt-2 flex flex-col gap-2 border-t border-white/10 pt-3">
-                <Button asChild variant="secondary" className="w-full bg-white/10 text-white hover:bg-white/20 border-0">
+              <div className="mt-2 flex flex-col gap-2 border-t border-slate-100 pt-3">
+                <Button asChild variant="outline" className="w-full rounded-full">
                   <NavLink to={loginUrl} onClick={() => setMobileOpen(false)}>
-                    Log in
+                    Sign in
                   </NavLink>
                 </Button>
                 <Button
                   asChild
-                  className="w-full bg-[var(--institution-button-bg)] text-[var(--institution-button-text)] hover:opacity-90"
+                  className="w-full rounded-full text-[var(--institution-button-text)] hover:opacity-90"
+                  style={{ background: "var(--institution-button-bg)" }}
                 >
                   <NavLink to={joinUrl} onClick={() => setMobileOpen(false)}>
-                    Register
+                    Learn for free
                   </NavLink>
                 </Button>
               </div>
@@ -261,34 +279,59 @@ const InstitutionPortalShell = ({
       </header>
 
       {!compactHero && onPortalHome && portal && (
-        <section id="home" className="relative scroll-mt-24 overflow-hidden bg-[var(--institution-hero-bg)] text-white">
+        <section
+          id="home"
+          className="relative scroll-mt-24 overflow-hidden border-b border-slate-200/70"
+          style={{
+            background:
+              "radial-gradient(1200px 480px at 50% -10%, color-mix(in srgb, var(--institution-accent) 22%, white), transparent 60%), linear-gradient(180deg, #ffffff 0%, #F7F8FA 100%)",
+          }}
+        >
           {portal.hero_image_url && (
-            <>
-              <img src={portal.hero_image_url} alt="" className="absolute inset-0 h-full w-full object-cover opacity-30" />
-              <div className="absolute inset-0 bg-gradient-to-r from-[var(--institution-hero-bg)] via-[var(--institution-hero-bg)]/90 to-[var(--institution-hero-bg)]/75" />
-            </>
+            <img
+              src={portal.hero_image_url}
+              alt=""
+              className="pointer-events-none absolute inset-0 h-full w-full object-cover opacity-[0.12]"
+            />
           )}
-          <div className="container relative mx-auto max-w-6xl px-4 py-14 sm:py-20">
-            <p className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-white/70">{portal.tagline}</p>
-            <h1 className="max-w-3xl text-3xl font-bold leading-tight sm:text-4xl md:text-5xl">{portal.hero_title}</h1>
-            <p className="mt-4 max-w-2xl text-base text-white/85 sm:text-lg">{portal.hero_subtitle}</p>
-            <div className="mt-8 flex flex-wrap gap-3">
+          <div className="container relative mx-auto max-w-4xl px-4 pb-16 pt-14 text-center sm:pb-20 sm:pt-20">
+            <p
+              className="mb-4 text-xs font-bold uppercase tracking-[0.22em]"
+              style={{ color: "var(--institution-accent)" }}
+            >
+              {institution.name}
+            </p>
+            <h1 className="text-4xl font-extrabold leading-[1.08] tracking-tight text-slate-900 sm:text-5xl md:text-6xl">
+              {portal.hero_title}
+            </h1>
+            <p className="mx-auto mt-5 max-w-2xl text-base text-slate-600 sm:text-lg">{portal.hero_subtitle}</p>
+            <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
               <Button
                 asChild
                 size="lg"
-                className="rounded-full bg-[var(--institution-button-bg)] text-[var(--institution-button-text)] hover:opacity-90 shadow-md"
+                className="h-12 rounded-full px-8 text-base font-bold text-[var(--institution-button-text)] shadow-lg hover:opacity-90"
+                style={{
+                  background: "var(--institution-button-bg)",
+                  boxShadow: "0 12px 30px color-mix(in srgb, var(--institution-primary) 25%, transparent)",
+                }}
               >
-                <NavLink to={joinUrl}>{portal.cta_label}</NavLink>
+                <NavLink to={joinUrl}>
+                  {portal.cta_label || "Learn for free"}
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </NavLink>
               </Button>
               <Button
                 asChild
                 size="lg"
                 variant="outline"
-                className="rounded-full border-white/40 bg-transparent text-white hover:bg-white/10"
+                className="h-12 rounded-full border-slate-300 bg-white px-8 text-base font-semibold text-slate-800 hover:bg-slate-50"
               >
                 <NavLink to={loginUrl}>Sign in to your account</NavLink>
               </Button>
             </div>
+            {portal.tagline && (
+              <p className="mt-6 text-sm font-medium text-slate-500">{portal.tagline}</p>
+            )}
           </div>
         </section>
       )}
@@ -296,23 +339,23 @@ const InstitutionPortalShell = ({
       <main className="flex-1">{children}</main>
 
       <footer className="border-t border-slate-200 bg-white">
-        <div className="container mx-auto max-w-6xl px-4 py-10">
-          <div className="grid gap-8 md:grid-cols-[1.2fr_1fr_1fr]">
+        <div className="container mx-auto max-w-6xl px-4 py-12">
+          <div className="grid gap-10 md:grid-cols-[1.3fr_1fr_1fr]">
             <div>
-              <h3 className="text-lg font-bold text-[var(--institution-primary)]">{institution.name}</h3>
+              <h3 className="text-lg font-extrabold text-slate-900">{institution.name}</h3>
               {portal?.tagline && <p className="mt-2 text-sm text-slate-600">{portal.tagline}</p>}
-              <p className="mt-3 text-sm text-slate-500">
-                Programs, enrollment, and support for learners at {institution.name} only.
+              <p className="mt-3 max-w-sm text-sm text-slate-500">
+                Programs and enrollment for learners at {institution.name} — built for real progress.
               </p>
             </div>
             <div>
-              <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Explore</p>
+              <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Explore</p>
               <ul className="mt-3 space-y-2 text-sm">
                 {navItems.map((item) => (
                   <li key={item.id}>
                     <button
                       type="button"
-                      className="text-slate-700 hover:text-[var(--institution-primary)]"
+                      className="font-medium text-slate-700 hover:text-[var(--institution-primary)]"
                       onClick={() => goToSection(item.id, item.hash)}
                     >
                       {item.label}
@@ -322,7 +365,7 @@ const InstitutionPortalShell = ({
               </ul>
             </div>
             <div className="space-y-2 text-sm text-slate-600">
-              <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Contact</p>
+              <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Contact</p>
               {institution.contact_email && (
                 <p className="flex items-center gap-2">
                   <Mail className="h-4 w-4 shrink-0 text-[var(--institution-primary)]" />
@@ -358,19 +401,13 @@ const InstitutionPortalShell = ({
                   </a>
                 </p>
               )}
-              {!institution.contact_email && !institution.contact_phone && !institution.address && (
-                <p className="text-slate-500">Contact details will appear when published by {institution.name}.</p>
-              )}
             </div>
           </div>
-          <div className="mt-8 flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-6 text-xs text-slate-500">
+          <div className="mt-10 flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-6 text-xs text-slate-500">
             <span>
               © {new Date().getFullYear()} {institution.name}. All rights reserved.
             </span>
-            <span className="inline-flex items-center gap-1">
-              <BookOpen className="h-3.5 w-3.5" />
-              Institution portal
-            </span>
+            <span>Institution learning portal</span>
           </div>
         </div>
       </footer>
