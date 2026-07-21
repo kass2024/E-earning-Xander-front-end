@@ -104,6 +104,7 @@ const Signup = () => {
   const [searchParams] = useSearchParams();
   const isInstructorSignup = searchParams.get("role") === "instructor";
   const institutionSlugParam = (routeSlug || searchParams.get("institution") || searchParams.get("inst") || "").trim().toLowerCase();
+  const isInstitutionPortalSignup = Boolean(institutionSlugParam);
   const isInstitutionLocked = Boolean(institutionSlugParam && !isInstructorSignup);
   const { toast } = useToast();
   const brand = hubBrand();
@@ -132,7 +133,7 @@ const Signup = () => {
   const [institutionChoices, setInstitutionChoices] = useState<PlatformInstitutionInfo[]>([]);
   const [selectedInstitutionId, setSelectedInstitutionId] = useState<InstitutionChoice | null>(null);
   const [lockedInstitution, setLockedInstitution] = useState<PlatformInstitutionInfo | null>(null);
-  const [lockedInstitutionLoading, setLockedInstitutionLoading] = useState(isInstitutionLocked);
+  const [lockedInstitutionLoading, setLockedInstitutionLoading] = useState(isInstitutionPortalSignup);
   const [lockedInstitutionError, setLockedInstitutionError] = useState<string | null>(null);
 
   const selectedInstitutionParam = useMemo((): number | null => {
@@ -244,7 +245,7 @@ const Signup = () => {
   }, [isInstitutionLocked, lockedInstitution]);
 
   useEffect(() => {
-    if (isInstructorSignup || !isInstitutionLocked) return;
+    if (!isInstitutionPortalSignup) return;
     let mounted = true;
     setLockedInstitutionLoading(true);
     setLockedInstitutionError(null);
@@ -255,7 +256,7 @@ const Signup = () => {
         setLockedInstitution(inst);
         setSelectedInstitutionId(inst.id);
         saveInstitutionContext(inst, false);
-        setStep(2);
+        if (!isInstructorSignup) setStep(2);
       })
       .catch(() => {
         if (!mounted) return;
@@ -267,14 +268,14 @@ const Signup = () => {
     return () => {
       mounted = false;
     };
-  }, [isInstructorSignup, isInstitutionLocked, institutionSlugParam]);
+  }, [isInstructorSignup, isInstitutionPortalSignup, institutionSlugParam]);
 
   useEffect(() => {
-    if (isInstructorSignup || isInstitutionLocked) return;
+    if (isInstructorSignup || isInstitutionPortalSignup) return;
     getPublicInstitutionChoices()
       .then((list) => setInstitutionChoices(Array.isArray(list) ? list : []))
       .catch(() => setInstitutionChoices([]));
-  }, [isInstructorSignup, isInstitutionLocked]);
+  }, [isInstructorSignup, isInstitutionPortalSignup]);
 
   const updateStoredCourses = (courses: SelectedCourse[]) => {
     try {
@@ -500,7 +501,8 @@ const Signup = () => {
           password,
           phone || undefined,
           country || undefined,
-          goal || undefined
+          goal || undefined,
+          lockedInstitution?.id ?? null
         );
 
         showFormMessage({
@@ -509,7 +511,7 @@ const Signup = () => {
           description:
             "Your instructor account is pending admin approval. You can sign in once approved.",
         });
-        setTimeout(() => navigate(isInstitutionLocked ? `/login/${institutionSlugParam}` : "/login"), 2500);
+        setTimeout(() => navigate(isInstitutionPortalSignup ? `/login/${institutionSlugParam}` : "/login"), 2500);
         setLoading(false);
         return;
       }
@@ -587,7 +589,7 @@ const Signup = () => {
       !opts?.error && !opts?.success && "border-slate-200 hover:border-slate-300"
     );
 
-  const useInstitutionJoinChrome = isInstitutionLocked && !isInstructorSignup;
+  const useInstitutionJoinChrome = isInstitutionPortalSignup;
   const showInstitutionJoinShell = useInstitutionJoinChrome && Boolean(lockedInstitution) && !lockedInstitutionError;
   const portalTheme = resolvePortalTheme(lockedInstitution);
   const brandStyle = {
@@ -672,7 +674,13 @@ const Signup = () => {
                 <button
                   type="button"
                   className="text-[var(--brand-primary)] font-semibold underline-offset-2 hover:underline"
-                  onClick={() => navigate("/signup?role=instructor")}
+                  onClick={() =>
+                    navigate(
+                      isInstitutionPortalSignup
+                        ? `/join/${institutionSlugParam}?role=instructor`
+                        : "/signup?role=instructor"
+                    )
+                  }
                 >
                   Apply as instructor
                 </button>

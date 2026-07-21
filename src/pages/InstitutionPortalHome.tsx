@@ -5,8 +5,22 @@ import { NavLink } from "@/components/NavLink";
 import InstitutionPortalShell from "@/components/institution-portal/InstitutionPortalShell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { SafeImage } from "@/components/ui/SafeImage";
 import { useInstitutionPortal } from "@/hooks/useInstitutionPortal";
+import { formatCoursePrice } from "@/lib/apiConfig";
+import { DEFAULT_IMAGE } from "@/lib/defaultImages";
 import { HUB } from "@/lib/hubConfig";
+import {
+  EXAM_PROGRAMS,
+  HOME_IMAGES,
+  HOME_MISSION,
+  LANGUAGE_PROGRAMS,
+  LIVE_FEATURES,
+  STUDENT_FEATURES,
+  TESTIMONIALS,
+} from "@/lib/homeContent";
+import { getFeaturedCourseImage } from "@/lib/homeImages";
 import { cn } from "@/lib/utils";
 import {
   AlertCircle,
@@ -14,8 +28,8 @@ import {
   Award,
   BookOpen,
   CheckCircle2,
-  Clock3,
-  Globe,
+  ChevronLeft,
+  ChevronRight,
   Headphones,
   Loader2,
   Mail,
@@ -25,17 +39,14 @@ import {
   Search,
   Shield,
   Sparkles,
+  Star,
+  Users,
   Video,
+  VolumeX,
 } from "lucide-react";
 
-const CARD_TONES = [
-  "from-[#E8F6F1] to-[#F4FCFA]",
-  "from-[#EEF2FF] to-[#F8FAFF]",
-  "from-[#FFF4E8] to-[#FFFBF5]",
-  "from-[#F3E8FF] to-[#FBF7FF]",
-  "from-[#E8F4FF] to-[#F5FBFF]",
-  "from-[#FFE8F0] to-[#FFF7FA]",
-];
+const BUSUU_GREEN = "#C8F042";
+const BUSUU_BLUE = "#4B8BF5";
 
 const InstitutionPortalHome = () => {
   const { slug: routeSlug = "" } = useParams<{ slug: string }>();
@@ -45,6 +56,7 @@ const InstitutionPortalHome = () => {
   const { data, loading, error, institution } = useInstitutionPortal(routeSlug);
   const portal = institution?.portal;
   const [searchQuery, setSearchQuery] = useState("");
+  const [carouselIndex, setCarouselIndex] = useState(0);
 
   useEffect(() => {
     if (!institution) return;
@@ -73,6 +85,23 @@ const InstitutionPortalHome = () => {
     return () => window.clearTimeout(t);
   }, [loading, data, location.hash]);
 
+  const allCourses = useMemo(() => {
+    const rows: Array<{
+      id: number;
+      title: string;
+      description?: string | null;
+      duration?: string | null;
+      price?: number | string | null;
+      programName: string;
+    }> = [];
+    for (const program of data?.programs ?? []) {
+      for (const course of program.courses ?? []) {
+        rows.push({ ...course, programName: program.name });
+      }
+    }
+    return rows;
+  }, [data?.programs]);
+
   const filteredPrograms = useMemo(() => {
     const programs = data?.programs ?? [];
     const q = searchQuery.trim().toLowerCase();
@@ -85,10 +114,12 @@ const InstitutionPortalHome = () => {
     });
   }, [data?.programs, searchQuery]);
 
+  const featuredCourses = useMemo(() => allCourses.slice(0, 6), [allCourses]);
+
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#F7F8FA]">
-        <Loader2 className="h-9 w-9 animate-spin text-[var(--institution-primary,#012F6B)]" />
+      <div className="flex min-h-screen items-center justify-center bg-white">
+        <Loader2 className="h-9 w-9 animate-spin text-[#4B8BF5]" />
       </div>
     );
   }
@@ -105,7 +136,9 @@ const InstitutionPortalHome = () => {
 
   const slug = institution.slug;
   const joinUrl = `/join/${slug}`;
+  const teachUrl = `/join/${slug}?role=instructor`;
   const loginUrl = `/login/${slug}`;
+  const meetingUrl = `/i/${slug}/meeting-registration`;
   const features = (portal?.features ?? []).filter((f) => f.title.trim() || f.description.trim());
   const websiteHref = institution.website
     ? institution.website.startsWith("http")
@@ -118,24 +151,6 @@ const InstitutionPortalHome = () => {
     document.getElementById("programs")?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
-  const defaultFeatures = [
-    {
-      title: "Real progress",
-      description: `Structured programs from ${institution.name} for practical skills you can use immediately.`,
-      icon: Sparkles,
-    },
-    {
-      title: "Live online classes",
-      description: "Join interactive sessions with instructors and classmates from anywhere.",
-      icon: Video,
-    },
-    {
-      title: "Supportive learning",
-      description: "Track courses, quizzes, and certificates in one learner dashboard.",
-      icon: CheckCircle2,
-    },
-  ];
-
   const displayFeatures =
     features.length > 0
       ? features.map((f, i) => ({
@@ -143,70 +158,97 @@ const InstitutionPortalHome = () => {
           description: f.description,
           icon: [Sparkles, Video, CheckCircle2][i % 3],
         }))
-      : defaultFeatures;
+      : [
+          {
+            title: "Real people",
+            description: `Learn authentic skills for real-world situations with ${institution.name}.`,
+            icon: Sparkles,
+          },
+          {
+            title: "Supportive community",
+            description: "Learn together in live classes and get feedback from instructors.",
+            icon: Users,
+          },
+          {
+            title: "Express yourself",
+            description: "Build grammar, exam skills, and confidence in expertly designed programs.",
+            icon: BookOpen,
+          },
+        ];
 
-  const testimonials = [
-    {
-      quote: `${institution.name} made it easy to stay consistent and finally finish the courses I started.`,
-      name: "Alex M.",
-      context: "Learner",
-    },
-    {
-      quote: "Live classes and clear programs helped me prepare with confidence.",
-      name: "Samira K.",
-      context: "Exam prep",
-    },
-    {
-      quote: "Enrollment was simple, and everything I needed was in one place.",
-      name: "Jordan P.",
-      context: "Career skills",
-    },
+  const carouselItems =
+    (data.programs?.length ?? 0) > 0
+      ? data.programs!.map((p, i) => ({
+          id: p.id,
+          label: p.name,
+          count: `${p.courses?.length ?? 0} courses`,
+          image: getFeaturedCourseImage(i, p.name, null),
+        }))
+      : LANGUAGE_PROGRAMS.map((lang, i) => ({
+          id: i,
+          label: lang.title,
+          count: lang.subtitle,
+          image: lang.image,
+        }));
+
+  const visibleCarousel = [
+    carouselItems[(carouselIndex - 1 + carouselItems.length) % carouselItems.length],
+    carouselItems[carouselIndex % carouselItems.length],
+    carouselItems[(carouselIndex + 1) % carouselItems.length],
+    carouselItems[(carouselIndex + 2) % carouselItems.length],
+    carouselItems[(carouselIndex + 3) % carouselItems.length],
   ];
 
   return (
     <InstitutionPortalShell institution={institution} activeSection="home">
-      {/* Search — Busuu-style "I want to learn" */}
-      <section className="border-b border-slate-200/80 bg-white py-12 sm:py-16">
+      {/* I want to learn — Busuu pills */}
+      <section className="bg-white py-14 sm:py-16">
         <div className="container mx-auto max-w-5xl px-4 text-center">
-          <h2 className="text-2xl font-extrabold tracking-tight text-slate-900 sm:text-3xl">
+          <h2 className="text-3xl font-extrabold tracking-tight text-slate-900 sm:text-4xl">
             I want to learn:
           </h2>
-          <p className="mt-2 text-sm text-slate-500">
-            Programs published by {institution.name} only
-          </p>
+          <p className="mt-2 text-sm text-slate-500">Programs published by {institution.name}</p>
 
-          {(data.programs?.length ?? 0) > 0 && (
-            <div className="mx-auto mt-8 flex max-w-4xl flex-wrap items-center justify-center gap-2.5">
-              {data.programs!.slice(0, 12).map((program) => {
-                const active = searchQuery.trim().toLowerCase() === program.name.toLowerCase();
-                return (
-                  <button
-                    key={program.id}
-                    type="button"
-                    onClick={() => {
-                      setSearchQuery(program.name);
-                      document.getElementById("programs")?.scrollIntoView({
-                        behavior: "smooth",
-                        block: "start",
-                      });
-                    }}
-                    className={cn(
-                      "rounded-full px-4 py-2.5 text-sm font-semibold transition",
-                      active
-                        ? "text-white shadow-md"
-                        : "bg-slate-100 text-slate-800 hover:bg-slate-200",
-                    )}
-                    style={active ? { background: "var(--institution-primary)" } : undefined}
+          <div className="mx-auto mt-8 flex max-w-4xl flex-wrap items-center justify-center gap-3">
+            {(data.programs?.length ? data.programs : LANGUAGE_PROGRAMS.map((l, i) => ({
+              id: i,
+              name: l.title,
+              courses: [] as Array<{ id: number; title: string }>,
+            }))).slice(0, 14).map((program) => {
+              const active = searchQuery.trim().toLowerCase() === program.name.toLowerCase();
+              const count =
+                "courses" in program && Array.isArray(program.courses)
+                  ? `${program.courses.length} courses`
+                  : "";
+              return (
+                <button
+                  key={program.id}
+                  type="button"
+                  onClick={() => {
+                    setSearchQuery(program.name);
+                    document.getElementById("programs")?.scrollIntoView({ behavior: "smooth", block: "start" });
+                  }}
+                  className={cn(
+                    "flex min-w-[140px] items-center gap-3 rounded-full border px-4 py-2.5 text-left transition",
+                    active
+                      ? "border-[#4B8BF5] bg-[#4B8BF5]/10 shadow-sm"
+                      : "border-slate-200 bg-white hover:border-slate-300",
+                  )}
+                >
+                  <span
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-extrabold text-white"
+                    style={{ background: BUSUU_BLUE }}
                   >
-                    {program.name}
-                    <span className="ml-2 text-xs font-medium opacity-70">
-                      {program.courses?.length ?? 0}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          )}
+                    {program.name.charAt(0).toUpperCase()}
+                  </span>
+                  <span>
+                    <span className="block text-sm font-extrabold text-slate-900">{program.name}</span>
+                    {count && <span className="block text-xs text-slate-500">{count}</span>}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
 
           <form onSubmit={handleSearch} className="mx-auto mt-8 flex max-w-xl gap-2">
             <div className="relative flex-1">
@@ -215,13 +257,13 @@ const InstitutionPortalHome = () => {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Subject, exam, or course..."
-                className="h-12 rounded-full border-slate-200 bg-slate-50 pl-10 text-base shadow-sm focus-visible:ring-[var(--institution-primary)]"
+                className="h-12 rounded-full border-slate-200 bg-slate-50 pl-10"
               />
             </div>
             <Button
               type="submit"
-              className="h-12 rounded-full px-6 font-bold text-[var(--institution-button-text)] hover:opacity-90"
-              style={{ background: "var(--institution-button-bg)" }}
+              className="h-12 rounded-full px-6 font-extrabold text-white"
+              style={{ background: BUSUU_BLUE }}
             >
               Search
             </Button>
@@ -229,66 +271,207 @@ const InstitutionPortalHome = () => {
         </div>
       </section>
 
-      {/* Trust strip */}
-      <section className="border-b border-slate-200/80 bg-[#F7F8FA] py-5">
+      {/* Trust */}
+      <section className="border-y border-slate-100 bg-[#F7F8FA] py-5">
         <div className="container mx-auto grid max-w-5xl grid-cols-1 gap-3 px-4 sm:grid-cols-3">
           {[
-            { icon: Headphones, label: "24/7 online access" },
-            { icon: Shield, label: "Secure enrollment" },
-            { icon: Award, label: "Expert-led programs" },
+            { icon: Headphones, label: "24/7 Online Support" },
+            { icon: Shield, label: "Secure Stripe Payments" },
+            { icon: Award, label: "Fully Accredited Programs" },
           ].map((item) => (
             <div
               key={item.label}
-              className="flex items-center justify-center gap-2 rounded-2xl bg-white px-4 py-3 text-sm font-semibold text-slate-700 shadow-sm ring-1 ring-slate-100"
+              className="flex items-center justify-center gap-2 rounded-2xl bg-white px-4 py-3 text-sm font-semibold text-slate-700 shadow-sm"
             >
-              <item.icon className="h-4 w-4 text-[var(--institution-primary)]" />
+              <item.icon className="h-4 w-4 text-[#4B8BF5]" />
               {item.label}
             </div>
           ))}
         </div>
       </section>
 
-      {/* Stats */}
+      {/* Stats — Busuu cards */}
       <section className="bg-white py-12 sm:py-14">
         <div className="container mx-auto max-w-6xl px-4">
-          <div className="grid grid-cols-2 gap-6 sm:grid-cols-4">
+          <div className="grid gap-4 sm:grid-cols-3">
             {[
-              { value: String(data.stats.programs_count), label: "Programs" },
-              { value: String(data.stats.courses_count), label: "Courses" },
-              { value: "Live", label: "Online classes" },
-              { value: "24/7", label: "Learning access" },
+              {
+                value: `${data.stats.programs_count}+`,
+                label: "published programs at this institution",
+                icon: <Sparkles className="h-5 w-5 text-emerald-500" />,
+              },
+              {
+                value: `${data.stats.courses_count}+`,
+                label: "courses available for enrollment",
+                icon: <Video className="h-5 w-5 text-[#4B8BF5]" />,
+              },
+              {
+                value: "Live",
+                label: "online classes with expert instructors",
+                icon: <Star className="h-5 w-5 text-orange-400" />,
+              },
             ].map((stat) => (
-              <div key={stat.label} className="text-center">
-                <p
-                  className="text-3xl font-extrabold tracking-tight sm:text-4xl"
-                  style={{ color: "var(--institution-primary)" }}
-                >
-                  {stat.value}
-                </p>
-                <p className="mt-1 text-xs font-bold uppercase tracking-wider text-slate-500">{stat.label}</p>
+              <div key={stat.label} className="rounded-[1.75rem] bg-[#F4F5F7] px-6 py-8">
+                <div className="flex items-start justify-between gap-3">
+                  <p className="text-3xl font-extrabold tracking-tight text-slate-900 sm:text-4xl">
+                    {stat.value}
+                  </p>
+                  {stat.icon}
+                </div>
+                <p className="mt-3 text-sm text-slate-500">{stat.label}</p>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Programs — Busuu language-card style */}
+      {/* Real-world skills carousel */}
+      <section className="bg-white pb-14">
+        <div className="container mx-auto max-w-6xl px-4">
+          <div className="overflow-hidden rounded-[2rem] bg-[#F4F5F7] px-4 py-12 sm:px-8 sm:py-14">
+            <div className="mx-auto max-w-2xl text-center">
+              <h2 className="text-3xl font-extrabold tracking-tight text-slate-900 sm:text-4xl">
+                Learn real-world skills
+              </h2>
+              <p className="mt-3 text-slate-600">
+                See programs and courses from {institution.name} and build confidence for study, work, and exams.
+              </p>
+            </div>
+
+            <div className="relative mt-10">
+              <button
+                type="button"
+                className="absolute left-0 top-1/2 z-10 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white shadow-md"
+                onClick={() =>
+                  setCarouselIndex((i) => (i - 1 + carouselItems.length) % carouselItems.length)
+                }
+                aria-label="Previous"
+              >
+                <ChevronLeft className="h-5 w-5" />
+              </button>
+              <button
+                type="button"
+                className="absolute right-0 top-1/2 z-10 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white shadow-md"
+                onClick={() => setCarouselIndex((i) => (i + 1) % carouselItems.length)}
+                aria-label="Next"
+              >
+                <ChevronRight className="h-5 w-5" />
+              </button>
+
+              <div className="mx-auto flex max-w-5xl items-end justify-center gap-3 overflow-hidden px-12">
+                {visibleCarousel.map((item, idx) => {
+                  const center = idx === 2;
+                  return (
+                    <div
+                      key={`${item.id}-${idx}`}
+                      className={cn(
+                        "relative overflow-hidden rounded-[1.5rem] transition-all duration-300",
+                        center ? "h-72 w-44 sm:h-80 sm:w-52" : "h-56 w-32 opacity-80 sm:h-64 sm:w-40",
+                        (idx === 0 || idx === 4) && "hidden opacity-40 sm:block",
+                      )}
+                    >
+                      <SafeImage
+                        src={item.image}
+                        fallback={DEFAULT_IMAGE}
+                        alt={item.label}
+                        className="h-full w-full object-cover"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
+                      <div className="absolute bottom-3 left-1/2 flex -translate-x-1/2 items-center gap-2 rounded-full bg-white px-3 py-1.5 shadow-md">
+                        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#4B8BF5] text-[10px] font-bold text-white">
+                          {item.label.charAt(0)}
+                        </span>
+                        <span>
+                          <span className="block text-[11px] font-extrabold uppercase tracking-wide text-slate-900">
+                            {item.label}
+                          </span>
+                          <span className="block text-[10px] text-slate-500">{item.count}</span>
+                        </span>
+                      </div>
+                      <div className="absolute bottom-16 left-1/2 flex h-8 w-8 -translate-x-1/2 items-center justify-center rounded-full bg-white/90 text-slate-700">
+                        <VolumeX className="h-3.5 w-3.5" />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="mt-10 text-center">
+              <Button
+                asChild
+                size="lg"
+                className="rounded-full px-10 font-extrabold text-white shadow-lg"
+                style={{ background: BUSUU_BLUE }}
+              >
+                <NavLink to={joinUrl}>Learn for free</NavLink>
+              </Button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Mission */}
+      <section className="bg-white py-14 sm:py-16">
+        <div className="container mx-auto max-w-6xl px-4">
+          <div className="grid items-center gap-10 lg:grid-cols-2">
+            <div className="relative overflow-hidden rounded-[2rem] shadow-lg aspect-[4/3]">
+              <SafeImage
+                src={HOME_IMAGES.marketplace}
+                fallback={DEFAULT_IMAGE}
+                alt="Learning community"
+                className="h-full w-full object-cover"
+              />
+            </div>
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#4B8BF5]">Our mission</p>
+              <h2 className="mt-2 text-3xl font-extrabold tracking-tight text-slate-900">
+                Learn anytime, anywhere with {institution.name}
+              </h2>
+              <p className="mt-4 text-slate-600">{portal?.about || HOME_MISSION.mission}</p>
+              <ul className="mt-6 space-y-3">
+                {[
+                  "Language training for study, work, and travel",
+                  "International exam preparation",
+                  "Live online classes with approved instructors",
+                  "Secure enrollment and Stripe payments",
+                ].map((item) => (
+                  <li key={item} className="flex items-start gap-3 text-slate-600">
+                    <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-[#4B8BF5]" />
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
+              <Button
+                type="button"
+                className="mt-8 rounded-full px-8 font-bold text-white"
+                style={{ background: BUSUU_BLUE }}
+                onClick={() =>
+                  document.getElementById("about")?.scrollIntoView({ behavior: "smooth", block: "start" })
+                }
+              >
+                Learn about us
+              </Button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Programs */}
       <section id="programs" className="scroll-mt-24 bg-[#F7F8FA] py-14 sm:py-16">
         <div className="container mx-auto max-w-6xl px-4">
           <div className="mb-10 text-center">
-            <p className="text-xs font-bold uppercase tracking-[0.2em] text-[var(--institution-accent)]">
-              Our programs
-            </p>
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#4B8BF5]">Our courses</p>
             <h2 className="mt-2 text-3xl font-extrabold tracking-tight text-slate-900 sm:text-4xl">
-              Choose what to learn at {institution.name}
+              Find the best programs for you
             </h2>
             <p className="mx-auto mt-3 max-w-2xl text-slate-600">
-              Only programs and courses published by this institution appear here.
+              Only programs published by {institution.name} appear here.
             </p>
           </div>
 
           {filteredPrograms.length === 0 ? (
-            <div className="rounded-3xl border border-dashed border-slate-300 bg-white px-6 py-14 text-center text-slate-500">
+            <div className="rounded-[2rem] border border-dashed border-slate-300 bg-white px-6 py-14 text-center text-slate-500">
               <BookOpen className="mx-auto mb-3 h-10 w-10 text-slate-300" />
               {searchQuery.trim()
                 ? `No programs match “${searchQuery.trim()}”.`
@@ -296,96 +479,161 @@ const InstitutionPortalHome = () => {
             </div>
           ) : (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {filteredPrograms.map((program, index) => {
-                const courseCount = program.courses?.length ?? 0;
-                return (
-                  <motion.div
-                    key={program.id}
-                    initial={{ opacity: 0, y: 14 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ delay: index * 0.04 }}
-                    className={`group relative overflow-hidden rounded-3xl bg-gradient-to-br ${CARD_TONES[index % CARD_TONES.length]} p-5 shadow-sm ring-1 ring-black/5 transition hover:-translate-y-0.5 hover:shadow-md`}
+              {filteredPrograms.map((program, index) => (
+                <motion.div
+                  key={program.id}
+                  initial={{ opacity: 0, y: 12 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: index * 0.04 }}
+                  className="rounded-[1.75rem] bg-white p-5 shadow-sm ring-1 ring-slate-100"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <h3 className="text-lg font-extrabold text-slate-900">{program.name}</h3>
+                    <span className="rounded-full bg-[#4B8BF5]/10 px-2.5 py-1 text-[11px] font-bold text-[#2F6FE0]">
+                      {program.courses?.length ?? 0} courses
+                    </span>
+                  </div>
+                  {program.description && (
+                    <p className="mt-2 line-clamp-2 text-sm text-slate-600">{program.description}</p>
+                  )}
+                  <Button
+                    asChild
+                    size="sm"
+                    className="mt-5 rounded-full font-extrabold text-[#1A2E05]"
+                    style={{ background: BUSUU_GREEN }}
                   >
-                    <div className="flex items-start justify-between gap-3">
-                      <h3 className="text-lg font-extrabold text-slate-900">{program.name}</h3>
-                      <span
-                        className="shrink-0 rounded-full px-2.5 py-1 text-[11px] font-bold text-white"
-                        style={{ background: "var(--institution-primary)" }}
-                      >
-                        {courseCount} {courseCount === 1 ? "course" : "courses"}
-                      </span>
+                    <NavLink to={joinUrl}>
+                      Enroll
+                      <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
+                    </NavLink>
+                  </Button>
+                </motion.div>
+              ))}
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* Featured courses */}
+      {featuredCourses.length > 0 && (
+        <section className="bg-white py-14 sm:py-16">
+          <div className="container mx-auto max-w-6xl px-4">
+            <div className="mb-10 text-center">
+              <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#4B8BF5]">Featured</p>
+              <h2 className="mt-2 text-3xl font-extrabold text-slate-900">Popular courses at {institution.name}</h2>
+            </div>
+            <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+              {featuredCourses.map((course, index) => (
+                <div
+                  key={course.id}
+                  className="flex h-full flex-col overflow-hidden rounded-[1.5rem] border border-slate-200 bg-white shadow-sm"
+                >
+                  <div className="aspect-[16/10] overflow-hidden">
+                    <SafeImage
+                      src={getFeaturedCourseImage(index, course.title, null)}
+                      fallback={DEFAULT_IMAGE}
+                      alt={course.title}
+                      className="h-full w-full object-cover"
+                    />
+                  </div>
+                  <div className="flex flex-1 flex-col p-4">
+                    <div className="mb-2 flex items-center gap-1">
+                      {[1, 2, 3, 4, 5].map((i) => (
+                        <Star key={i} className="h-3.5 w-3.5 fill-[#C8F042] text-[#C8F042]" />
+                      ))}
                     </div>
-                    {program.description && (
-                      <p className="mt-2 line-clamp-2 text-sm text-slate-600">{program.description}</p>
-                    )}
-                    {courseCount > 0 ? (
-                      <ul className="mt-4 space-y-1.5 text-sm text-slate-700">
-                        {program.courses!.slice(0, 4).map((course) => (
-                          <li key={course.id} className="flex items-start gap-2">
-                            <span
-                              className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full"
-                              style={{ background: "var(--institution-primary)" }}
-                            />
-                            <span>
-                              {course.title}
-                              {course.duration ? (
-                                <span className="ml-1.5 inline-flex items-center gap-1 text-xs text-slate-500">
-                                  <Clock3 className="h-3 w-3" />
-                                  {course.duration}
-                                </span>
-                              ) : null}
-                            </span>
-                          </li>
-                        ))}
-                        {courseCount > 4 && (
-                          <li className="text-xs text-slate-500">+{courseCount - 4} more courses</li>
-                        )}
-                      </ul>
-                    ) : (
-                      <p className="mt-4 text-sm text-slate-500">Courses coming soon.</p>
-                    )}
+                    <h3 className="mb-1 font-bold text-slate-900">{course.title}</h3>
+                    <p className="mb-3 text-xs text-slate-500">{course.programName}</p>
+                    <p className="mb-4 mt-auto text-sm font-bold text-slate-900">
+                      {formatCoursePrice(course.price)}
+                    </p>
                     <Button
                       asChild
                       size="sm"
-                      className="mt-5 rounded-full font-semibold text-[var(--institution-button-text)] hover:opacity-90"
-                      style={{ background: "var(--institution-button-bg)" }}
+                      className="rounded-full font-extrabold text-[#1A2E05]"
+                      style={{ background: BUSUU_GREEN }}
                     >
-                      <NavLink to={joinUrl}>
-                        Enroll
-                        <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
-                      </NavLink>
+                      <NavLink to={joinUrl}>Enroll Now</NavLink>
                     </Button>
-                  </motion.div>
-                );
-              })}
+                  </div>
+                </div>
+              ))}
             </div>
-          )}
+          </div>
+        </section>
+      )}
 
-          <div className="mt-10 text-center">
-            <Button
-              asChild
-              size="lg"
-              className="rounded-full px-8 font-bold text-[var(--institution-button-text)] hover:opacity-90"
-              style={{ background: "var(--institution-button-bg)" }}
-            >
-              <NavLink to={joinUrl}>
-                {portal?.cta_label ?? "Start enrollment"}
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </NavLink>
-            </Button>
+      {/* Exam prep */}
+      <section className="bg-[#F7F8FA] py-14 sm:py-16">
+        <div className="container mx-auto max-w-6xl px-4">
+          <div className="mb-10 text-center">
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#4B8BF5]">International exams</p>
+            <h2 className="mt-2 text-3xl font-extrabold text-slate-900">Prepare for global admissions</h2>
+          </div>
+          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {EXAM_PROGRAMS.map((program) => (
+              <button
+                key={program.title}
+                type="button"
+                className="overflow-hidden rounded-[1.5rem] border border-slate-200 bg-white text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+                onClick={() => navigate(joinUrl)}
+              >
+                <div className="aspect-[16/10] overflow-hidden">
+                  <SafeImage
+                    src={program.image}
+                    fallback={DEFAULT_IMAGE}
+                    alt={program.title}
+                    className="h-full w-full object-cover"
+                  />
+                </div>
+                <div className="p-4">
+                  <h3 className="font-bold text-slate-900">{program.title}</h3>
+                  <p className="mt-1 text-sm text-slate-600">{program.desc}</p>
+                </div>
+              </button>
+            ))}
           </div>
         </div>
       </section>
 
-      {/* What makes us different */}
+      {/* Languages */}
       <section className="bg-white py-14 sm:py-16">
         <div className="container mx-auto max-w-6xl px-4">
           <div className="mb-10 text-center">
-            <p className="text-xs font-bold uppercase tracking-[0.2em] text-[var(--institution-accent)]">
-              Why learners choose us
-            </p>
-            <h2 className="mt-2 text-3xl font-extrabold tracking-tight text-slate-900 sm:text-4xl">
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#4B8BF5]">Language courses</p>
+            <h2 className="mt-2 text-3xl font-extrabold text-slate-900">Master a new language</h2>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {LANGUAGE_PROGRAMS.map((lang) => (
+              <button
+                key={lang.title}
+                type="button"
+                className="group relative h-56 overflow-hidden rounded-[1.5rem] shadow-md"
+                onClick={() => navigate(joinUrl)}
+              >
+                <SafeImage
+                  src={lang.image}
+                  fallback={DEFAULT_IMAGE}
+                  alt={lang.title}
+                  className="absolute inset-0 h-full w-full object-cover transition duration-500 group-hover:scale-105"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
+                <div className="absolute bottom-0 left-0 right-0 p-5 text-white">
+                  <h3 className="text-lg font-bold">{lang.title}</h3>
+                  <p className="text-sm text-white/80">{lang.subtitle}</p>
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* What makes different */}
+      <section className="bg-[#F7F8FA] py-14 sm:py-16">
+        <div className="container mx-auto max-w-6xl px-4">
+          <div className="mb-10 text-center">
+            <h2 className="text-3xl font-extrabold text-slate-900 sm:text-4xl">
               What makes {institution.name} different?
             </h2>
           </div>
@@ -393,80 +641,94 @@ const InstitutionPortalHome = () => {
             {displayFeatures.map((feature, index) => {
               const Icon = feature.icon;
               return (
-                <motion.div
-                  key={`${feature.title}-${index}`}
-                  initial={{ opacity: 0, y: 12 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: index * 0.05 }}
-                  className="rounded-3xl border border-slate-100 bg-[#F7F8FA] p-6"
-                >
+                <div key={`${feature.title}-${index}`} className="rounded-[1.75rem] bg-white p-6 shadow-sm">
                   <div
                     className="mb-4 flex h-11 w-11 items-center justify-center rounded-2xl text-white"
-                    style={{ background: "var(--institution-primary)" }}
+                    style={{ background: BUSUU_BLUE }}
                   >
                     <Icon className="h-5 w-5" />
                   </div>
                   <h3 className="text-lg font-extrabold text-slate-900">{feature.title}</h3>
                   <p className="mt-2 text-sm leading-relaxed text-slate-600">{feature.description}</p>
-                </motion.div>
+                </div>
               );
             })}
           </div>
         </div>
       </section>
 
-      {/* Live learning */}
-      <section className="border-y border-slate-200 bg-[#F7F8FA] py-14 sm:py-16">
+      {/* Student features */}
+      <section className="bg-white py-14 sm:py-16">
         <div className="container mx-auto max-w-6xl px-4">
-          <div className="overflow-hidden rounded-[2rem] bg-white p-8 shadow-sm ring-1 ring-slate-100 sm:p-10 md:grid md:grid-cols-[1.2fr_0.8fr] md:items-center md:gap-10">
-            <div>
-              <p className="text-xs font-bold uppercase tracking-[0.2em] text-[var(--institution-accent)]">
-                Live learning
+          <div className="mb-10 text-center">
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#4B8BF5]">Student portal</p>
+            <h2 className="mt-2 text-3xl font-extrabold text-slate-900">Everything you need to succeed</h2>
+          </div>
+          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {STUDENT_FEATURES.map((feature) => (
+              <div key={feature.title} className="overflow-hidden rounded-[1.5rem] border border-slate-200 bg-white shadow-sm">
+                <div className="h-32 overflow-hidden">
+                  <SafeImage
+                    src={feature.image}
+                    fallback={DEFAULT_IMAGE}
+                    alt={feature.title}
+                    className="h-full w-full object-cover"
+                  />
+                </div>
+                <div className="p-4">
+                  <h3 className="font-semibold text-slate-900">{feature.title}</h3>
+                  <p className="mt-1 text-sm text-slate-600">{feature.desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Live learning */}
+      <section className="bg-white py-14 sm:py-16">
+        <div className="container mx-auto max-w-6xl px-4">
+          <div
+            className="overflow-hidden rounded-[2rem] px-6 py-10 text-white sm:px-10 sm:py-12 lg:grid lg:grid-cols-2 lg:items-center lg:gap-10"
+            style={{ background: `linear-gradient(135deg, ${BUSUU_BLUE}, #2F6FE0)` }}
+          >
+            <div className="relative mb-8 overflow-hidden rounded-[1.5rem] lg:mb-0 lg:order-1">
+              <SafeImage
+                src={HOME_IMAGES.liveClass}
+                fallback={DEFAULT_IMAGE}
+                alt="Live online class"
+                className="aspect-[4/3] w-full object-cover"
+              />
+              <Badge className="absolute left-4 top-4 gap-1 border-0 bg-red-500 text-white hover:bg-red-500">
+                <span className="h-2 w-2 animate-pulse rounded-full bg-white" />
+                Live
+              </Badge>
+            </div>
+            <div className="lg:order-2">
+              <p className="text-sm font-bold uppercase tracking-wider text-white/80">Live learning</p>
+              <h2 className="mt-2 text-3xl font-extrabold">Interactive online classes</h2>
+              <p className="mt-3 text-white/85">
+                Join real-time sessions with instructors at {institution.name}, ask questions, and access lessons afterward.
               </p>
-              <h2 className="mt-2 text-3xl font-extrabold tracking-tight text-slate-900">
-                Interactive online classes
-              </h2>
-              <p className="mt-3 max-w-xl text-slate-600">
-                Enroll at {institution.name} to access live sessions, course materials, and your learner
-                dashboard — all in one place.
-              </p>
-              <ul className="mt-5 space-y-2 text-sm text-slate-700">
-                {[
-                  "Live classes with instructors",
-                  "Progress tracking and certificates",
-                  "Secure learner login for this institution only",
-                ].map((line) => (
-                  <li key={line} className="flex items-center gap-2">
-                    <CheckCircle2 className="h-4 w-4 text-[var(--institution-primary)]" />
-                    {line}
+              <ul className="mt-5 space-y-2">
+                {LIVE_FEATURES.map((item) => (
+                  <li key={item} className="flex items-center gap-2 text-sm text-white/90">
+                    <Video className="h-4 w-4 text-[#C8F042]" />
+                    {item}
                   </li>
                 ))}
               </ul>
               <div className="mt-7 flex flex-wrap gap-3">
                 <Button
                   asChild
-                  className="rounded-full font-bold text-[var(--institution-button-text)] hover:opacity-90"
-                  style={{ background: "var(--institution-button-bg)" }}
+                  className="rounded-full font-extrabold text-[#1A2E05]"
+                  style={{ background: BUSUU_GREEN }}
                 >
-                  <NavLink to={joinUrl}>Start learning today</NavLink>
+                  <NavLink to={meetingUrl}>Book meeting with us</NavLink>
                 </Button>
-                <Button asChild variant="outline" className="rounded-full border-slate-300 bg-white font-semibold">
-                  <NavLink to={loginUrl}>Sign in</NavLink>
+                <Button asChild className="rounded-full bg-white/15 font-semibold text-white hover:bg-white/25">
+                  <NavLink to={joinUrl}>Get Started</NavLink>
                 </Button>
-              </div>
-            </div>
-            <div
-              className="mt-8 flex min-h-[180px] items-center justify-center rounded-3xl p-6 md:mt-0"
-              style={{
-                background:
-                  "linear-gradient(145deg, color-mix(in srgb, var(--institution-primary) 88%, black), color-mix(in srgb, var(--institution-accent) 70%, white))",
-              }}
-            >
-              <div className="text-center text-white">
-                <Video className="mx-auto mb-3 h-10 w-10 opacity-90" />
-                <p className="text-lg font-extrabold">Learn for real life</p>
-                <p className="mt-1 text-sm text-white/80">Join {institution.name} online</p>
               </div>
             </div>
           </div>
@@ -474,75 +736,99 @@ const InstitutionPortalHome = () => {
       </section>
 
       {/* Testimonials */}
-      <section className="bg-white py-14 sm:py-16">
+      <section className="bg-[#F7F8FA] py-14 sm:py-16">
         <div className="container mx-auto max-w-6xl px-4">
           <div className="mb-10 text-center">
-            <p className="text-xs font-bold uppercase tracking-[0.2em] text-[var(--institution-accent)]">
-              Learner stories
-            </p>
-            <h2 className="mt-2 text-3xl font-extrabold tracking-tight text-slate-900 sm:text-4xl">
+            <h2 className="text-3xl font-extrabold text-slate-900 sm:text-4xl">
               Why learners love {institution.name}
             </h2>
           </div>
           <div className="grid gap-5 md:grid-cols-3">
-            {testimonials.map((item, index) => (
-              <motion.blockquote
-                key={item.name}
-                initial={{ opacity: 0, y: 12 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: index * 0.05 }}
-                className="rounded-3xl border border-slate-100 bg-[#F7F8FA] p-6"
-              >
-                <Quote className="mb-3 h-5 w-5 text-[var(--institution-primary)]" />
-                <p className="text-sm leading-relaxed text-slate-700">“{item.quote}”</p>
-                <footer className="mt-4">
-                  <p className="text-sm font-extrabold text-slate-900">{item.name}</p>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{item.context}</p>
+            {TESTIMONIALS.map((t) => (
+              <blockquote key={t.name} className="rounded-[1.75rem] bg-white p-6 shadow-sm">
+                <Quote className="mb-3 h-5 w-5 text-[#4B8BF5]" />
+                <p className="text-sm leading-relaxed text-slate-700">“{t.text}”</p>
+                <footer className="mt-4 flex items-center gap-3">
+                  <SafeImage
+                    src={t.image}
+                    fallback={DEFAULT_IMAGE}
+                    alt={t.name}
+                    className="h-10 w-10 rounded-full object-cover"
+                  />
+                  <div>
+                    <p className="text-sm font-extrabold text-slate-900">{t.name}</p>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{t.role}</p>
+                  </div>
                 </footer>
-              </motion.blockquote>
+              </blockquote>
             ))}
           </div>
         </div>
       </section>
 
-      {/* About */}
-      <section id="about" className="scroll-mt-24 border-t border-slate-200 bg-[#F7F8FA] py-14 sm:py-16">
+      {/* Teach with us */}
+      <section className="bg-white py-14 sm:py-16">
         <div className="container mx-auto max-w-6xl px-4">
-          <div className="grid gap-10 lg:grid-cols-[1.2fr_0.8fr] lg:items-start">
-            <div>
-              <p className="text-xs font-bold uppercase tracking-[0.2em] text-[var(--institution-accent)]">
-                About us
+          <div className="grid overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-lg lg:grid-cols-2">
+            <div className="flex flex-col justify-center p-8 sm:p-10">
+              <Badge className="mb-4 w-fit border-0 bg-[#C8F042]/30 text-[#1A2E05]">For instructors</Badge>
+              <h2 className="text-2xl font-extrabold text-slate-900 sm:text-3xl">Teach with us</h2>
+              <p className="mt-4 text-slate-600">
+                Apply to become an instructor at {institution.name}. Host live classes, manage students, and grow with
+                this institution — not the main marketplace partner signup.
               </p>
-              <h2 className="mt-2 text-3xl font-extrabold tracking-tight text-slate-900">{institution.name}</h2>
-              <p className="mt-5 whitespace-pre-line text-base leading-relaxed text-slate-600">{portal?.about}</p>
+              <div className="mt-7 flex flex-wrap gap-3">
+                <Button
+                  asChild
+                  className="rounded-full font-extrabold text-[#1A2E05]"
+                  style={{ background: BUSUU_GREEN }}
+                >
+                  <NavLink to={teachUrl}>
+                    Teach with us
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </NavLink>
+                </Button>
+                <Button asChild variant="outline" className="rounded-full font-semibold">
+                  <NavLink to={loginUrl}>Instructor login</NavLink>
+                </Button>
+              </div>
             </div>
-            <div className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-100">
+            <div className="relative min-h-[240px]">
+              <SafeImage
+                src={HOME_IMAGES.certificate}
+                fallback={DEFAULT_IMAGE}
+                alt="Teaching"
+                className="absolute inset-0 h-full w-full object-cover"
+              />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* About */}
+      <section id="about" className="scroll-mt-24 bg-[#F7F8FA] py-14 sm:py-16">
+        <div className="container mx-auto max-w-6xl px-4">
+          <div className="grid gap-10 lg:grid-cols-[1.2fr_0.8fr]">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#4B8BF5]">About us</p>
+              <h2 className="mt-2 text-3xl font-extrabold text-slate-900">{institution.name}</h2>
+              <p className="mt-5 whitespace-pre-line text-base leading-relaxed text-slate-600">
+                {portal?.about}
+              </p>
+            </div>
+            <div className="rounded-[1.75rem] bg-white p-6 shadow-sm">
               <p className="text-sm font-extrabold text-slate-900">At a glance</p>
               <ul className="mt-4 space-y-3 text-sm text-slate-700">
                 <li>
-                  <span className="font-semibold text-slate-900">Institution:</span> {institution.name}
+                  <span className="font-semibold">Programs:</span> {data.stats.programs_count}
                 </li>
                 <li>
-                  <span className="font-semibold text-slate-900">Published programs:</span>{" "}
-                  {data.stats.programs_count}
-                </li>
-                <li>
-                  <span className="font-semibold text-slate-900">Active courses:</span>{" "}
-                  {data.stats.courses_count}
+                  <span className="font-semibold">Courses:</span> {data.stats.courses_count}
                 </li>
                 {institution.address && (
                   <li className="flex items-start gap-2">
-                    <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-[var(--institution-primary)]" />
+                    <MapPin className="mt-0.5 h-4 w-4 text-[#4B8BF5]" />
                     {institution.address}
-                  </li>
-                )}
-                {websiteHref && (
-                  <li className="flex items-center gap-2">
-                    <Globe className="h-4 w-4 shrink-0 text-[var(--institution-primary)]" />
-                    <a href={websiteHref} target="_blank" rel="noreferrer" className="hover:underline">
-                      {institution.website?.replace(/^https?:\/\//, "")}
-                    </a>
                   </li>
                 )}
               </ul>
@@ -551,100 +837,59 @@ const InstitutionPortalHome = () => {
         </div>
       </section>
 
-      {/* Contact / final CTA */}
+      {/* Final CTA / contact */}
       <section
         id="contact"
         className="scroll-mt-24 py-16 text-white sm:py-20"
-        style={{
-          background:
-            "linear-gradient(135deg, var(--institution-hero-bg), color-mix(in srgb, var(--institution-primary) 85%, black))",
-        }}
+        style={{ background: `linear-gradient(135deg, ${BUSUU_BLUE}, #1E5AD4)` }}
       >
-        <div className="container mx-auto max-w-6xl px-4">
-          <div className="grid gap-10 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
-            <div>
-              <p className="text-sm font-bold uppercase tracking-[0.2em] text-white/70">Contact</p>
-              <h2 className="mt-2 text-3xl font-extrabold sm:text-4xl">Ready to learn with {institution.name}?</h2>
-              <p className="mt-3 max-w-xl text-white/85">
-                Create your learner account or sign in to access programs published by this institution.
-              </p>
-              <div className="mt-8 flex flex-wrap gap-3">
-                <Button
-                  asChild
-                  size="lg"
-                  className="rounded-full bg-white px-8 font-bold text-slate-900 hover:bg-white/90"
-                >
-                  <NavLink to={joinUrl}>{portal?.cta_label ?? "Learn for free"}</NavLink>
-                </Button>
-                <Button
-                  asChild
-                  size="lg"
-                  variant="outline"
-                  className="rounded-full border-white/40 bg-transparent px-8 font-semibold text-white hover:bg-white/10"
-                >
-                  <NavLink to={`/i/${slug}/meeting-registration`}>Book meeting with us</NavLink>
-                </Button>
-                <Button
-                  asChild
-                  size="lg"
-                  variant="outline"
-                  className="rounded-full border-white/40 bg-transparent px-8 font-semibold text-white hover:bg-white/10"
-                >
-                  <NavLink to={loginUrl}>Sign in</NavLink>
-                </Button>
-              </div>
-            </div>
-
-            <div className="rounded-3xl border border-white/20 bg-white/10 p-6 backdrop-blur-sm">
-              <p className="text-sm font-bold text-white">Contact details</p>
-              <ul className="mt-4 space-y-3 text-sm text-white/90">
-                {institution.contact_email && (
-                  <li className="flex items-center gap-3">
-                    <Mail className="h-4 w-4 shrink-0 text-white/80" />
-                    <a href={`mailto:${institution.contact_email}`} className="hover:underline">
-                      {institution.contact_email}
-                    </a>
-                  </li>
-                )}
-                {institution.contact_phone && (
-                  <li className="flex items-center gap-3">
-                    <Phone className="h-4 w-4 shrink-0 text-white/80" />
-                    <a href={`tel:${institution.contact_phone}`} className="hover:underline">
-                      {institution.contact_phone}
-                    </a>
-                  </li>
-                )}
-                {institution.address && (
-                  <li className="flex items-start gap-3">
-                    <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-white/80" />
-                    <span>{institution.address}</span>
-                  </li>
-                )}
-                {websiteHref && (
-                  <li className="flex items-center gap-3">
-                    <Globe className="h-4 w-4 shrink-0 text-white/80" />
-                    <a href={websiteHref} target="_blank" rel="noreferrer" className="hover:underline">
-                      {institution.website?.replace(/^https?:\/\//, "")}
-                    </a>
-                  </li>
-                )}
-                {!institution.contact_email && !institution.contact_phone && !institution.address && !websiteHref && (
-                  <li className="text-white/75">
-                    Contact information will appear here once {institution.name} publishes it.
-                  </li>
-                )}
-              </ul>
-              <Button
-                type="button"
-                variant="secondary"
-                className="mt-6 w-full rounded-full bg-white font-semibold text-slate-900 hover:bg-white/90"
-                onClick={() => navigate(joinUrl)}
-              >
-                Get started
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
-            </div>
+        <div className="container mx-auto max-w-6xl px-4 text-center">
+          <BookOpen className="mx-auto mb-5 h-10 w-10 text-[#C8F042]" />
+          <h2 className="text-3xl font-extrabold sm:text-4xl">
+            Ready to study with {institution.name}?
+          </h2>
+          <p className="mx-auto mt-3 max-w-xl text-white/85">
+            Get started as a student, or teach with us as an instructor — all for this institution only.
+          </p>
+          <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+            <Button
+              asChild
+              size="lg"
+              className="rounded-full px-8 font-extrabold text-[#1A2E05]"
+              style={{ background: BUSUU_GREEN }}
+            >
+              <NavLink to={joinUrl}>Get Started</NavLink>
+            </Button>
+            <Button asChild size="lg" className="rounded-full bg-white/15 px-8 font-semibold text-white hover:bg-white/25">
+              <NavLink to={teachUrl}>Teach with us</NavLink>
+            </Button>
+            <Button asChild size="lg" className="rounded-full bg-[#1F2937] px-8 font-semibold text-white hover:bg-black">
+              <NavLink to={loginUrl}>Sign in</NavLink>
+            </Button>
           </div>
+          {(institution.contact_email || institution.contact_phone) && (
+            <div className="mt-8 flex flex-wrap items-center justify-center gap-4 text-sm text-white/85">
+              {institution.contact_email && (
+                <a href={`mailto:${institution.contact_email}`} className="inline-flex items-center gap-2 hover:underline">
+                  <Mail className="h-4 w-4" />
+                  {institution.contact_email}
+                </a>
+              )}
+              {institution.contact_phone && (
+                <a href={`tel:${institution.contact_phone}`} className="inline-flex items-center gap-2 hover:underline">
+                  <Phone className="h-4 w-4" />
+                  {institution.contact_phone}
+                </a>
+              )}
+            </div>
+          )}
+          {websiteHref && (
+            <p className="mt-3 text-sm text-white/70">
+              <a href={websiteHref} target="_blank" rel="noreferrer" className="hover:underline">
+                {institution.website?.replace(/^https?:\/\//, "")}
+              </a>
+            </p>
+          )}
         </div>
       </section>
     </InstitutionPortalShell>

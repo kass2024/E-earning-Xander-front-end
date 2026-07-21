@@ -1310,7 +1310,8 @@ export const registerInstructor = async (
   password: string,
   phone?: string,
   country?: string,
-  primaryGoal?: string
+  primaryGoal?: string,
+  platformInstitutionId?: number | null
 ) => {
   const response = await api.post(`/auth/register-instructor`, {
     name,
@@ -1319,6 +1320,9 @@ export const registerInstructor = async (
     phone,
     country,
     primary_goal: primaryGoal,
+    ...(platformInstitutionId && platformInstitutionId > 0
+      ? { platform_institution_id: platformInstitutionId }
+      : {}),
   });
   return response.data as {
     message: string;
