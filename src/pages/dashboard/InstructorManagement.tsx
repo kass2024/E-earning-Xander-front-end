@@ -336,7 +336,7 @@ const InstructorManagement = () => {
         description: `"${course.title}" assigned to ${selectedInstructor.name}.`,
         duration: 4000,
       });
-      await refreshSelectedInstructor();
+      await Promise.all([refreshSelectedInstructor(), loadCourses()]);
     } catch (error: any) {
       const message = error?.response?.data?.message || "Failed to assign course to instructor.";
       toast({

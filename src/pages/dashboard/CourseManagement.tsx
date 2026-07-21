@@ -515,7 +515,6 @@ const CourseManagement = () => {
                     onChange={(e) => setStatus(e.target.value)}
                   >
                     <option value="Active">Active</option>
-                    <option value="Pending">Pending (awaiting approval)</option>
                     <option value="Inactive">Inactive</option>
                   </select>
                 </div>
