@@ -33,6 +33,7 @@ import {
   getTimeSlotsForDate,
   isDateBlocked,
   isMonthBlocked,
+  listUpcomingBookableDays,
   monthHasBookableDates,
   resolveLearnerTimezone,
   resolveMeetingSchedules,
@@ -111,6 +112,11 @@ export function MeetingSchedulePicker({
     if (!selectedDate) return [];
     return getTimeSlotsForDate(selectedDate, activeSchedules, zone, bookedSlots);
   }, [selectedDate, activeSchedules, zone, bookedSlots]);
+
+  const upcomingDays = useMemo(
+    () => listUpcomingBookableDays(activeSchedules, zone, calendar, bookedSlots, 14),
+    [activeSchedules, zone, calendar, bookedSlots]
+  );
 
   const durationSchedule = useMemo(
     () => resolveDurationSchedule(activeSchedules, selectedDate, selectedSlot, zone),
@@ -212,6 +218,46 @@ export function MeetingSchedulePicker({
         {/* Right: date & time selection */}
         <div className="flex flex-col p-6 md:p-8">
           <h3 className="text-lg font-bold text-[var(--institution-primary,#012F6B)]">Select a Date &amp; Time</h3>
+
+          {!hasNoSchedules && upcomingDays.length > 0 && (
+            <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50/80 p-3">
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                Open days ({upcomingDays.length})
+              </p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {upcomingDays.map((day) => {
+                  const selected =
+                    selectedDate != null && dateKey(selectedDate, zone) === day.dateKey;
+                  return (
+                    <button
+                      key={day.dateKey}
+                      type="button"
+                      onClick={() => {
+                        setSelectedDate(day.date);
+                        setMonth(new Date(day.date.getFullYear(), day.date.getMonth(), 1));
+                        onSelectSlot(null);
+                      }}
+                      className={cn(
+                        "rounded-full border px-3 py-1.5 text-left text-xs font-semibold transition",
+                        selected
+                          ? "border-[var(--institution-primary,#012F6B)] bg-[var(--institution-primary,#012F6B)] text-white"
+                          : "border-slate-200 bg-white text-slate-700 hover:border-[var(--institution-primary,#012F6B)]/40"
+                      )}
+                    >
+                      <span className="block">{day.label}</span>
+                      <span className={cn("block font-medium", selected ? "text-white/90" : "text-slate-500")}>
+                        {day.slotCount} {day.slotCount === 1 ? "time" : "times"} · {day.timeRangeLabel}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="mt-2 text-[11px] leading-snug text-slate-500">
+                Only days with remaining future times appear here and on the calendar. Morning
+                windows disappear after those times pass.
+              </p>
+            </div>
+          )}
 
           {hasNoSchedules ? (
             <div className="mt-8 flex flex-1 flex-col items-center justify-center rounded-xl border border-dashed border-slate-200 p-8 text-center">
@@ -321,11 +367,9 @@ export function MeetingSchedulePicker({
                   }}
                 />
 
-                <p className="mt-3 flex items-center gap-2 text-xs text-slate-600">
-                  <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-[var(--institution-primary,#012F6B)]/15 ring-2 ring-inset ring-[var(--institution-primary,#012F6B)]/40 text-[10px] font-bold text-[var(--institution-primary,#012F6B)]">
-                    12
-                  </span>
-                  Highlighted dates have open meeting slots — click one to choose a time.
+                <p className="mt-3 text-xs text-slate-600">
+                  <span className="font-semibold text-[var(--institution-primary,#012F6B)]">Highlighted</span>
+                  {" "}dates still have open times — pick one, then choose a start time on the right.
                 </p>
 
                 <Popover open={timezoneOpen} onOpenChange={setTimezoneOpen}>
@@ -370,10 +414,31 @@ export function MeetingSchedulePicker({
                 <div className="flex min-h-[280px] flex-1 flex-col lg:pl-8">
                   {!selectedDateLabel ? null : timeSlots.length === 0 ? (
                     <div className="flex flex-1 flex-col items-center justify-center text-center">
-                      <p className="font-medium text-slate-700">No times available</p>
+                      <p className="font-medium text-slate-700">No times left on this day</p>
                       <p className="mt-1 text-sm text-slate-500">
-                        Try another date or email {CONTACT_EMAIL}
+                        {upcomingDays.length > 0
+                          ? `Next open day: ${upcomingDays[0].label} (${upcomingDays[0].timeRangeLabel}).`
+                          : `Try another highlighted date or email ${CONTACT_EMAIL}.`}
                       </p>
+                      {upcomingDays[0] && (
+                        <button
+                          type="button"
+                          className="mt-3 text-sm font-semibold text-[var(--institution-primary,#012F6B)] hover:underline"
+                          onClick={() => {
+                            setSelectedDate(upcomingDays[0].date);
+                            setMonth(
+                              new Date(
+                                upcomingDays[0].date.getFullYear(),
+                                upcomingDays[0].date.getMonth(),
+                                1
+                              )
+                            );
+                            onSelectSlot(null);
+                          }}
+                        >
+                          Jump to {upcomingDays[0].label}
+                        </button>
+                      )}
                     </div>
                   ) : (
                     <>

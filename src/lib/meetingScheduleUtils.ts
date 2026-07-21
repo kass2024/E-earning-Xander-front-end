@@ -382,7 +382,7 @@ export function getTimeSlotsForDate(
     const slotStarts = new Set<string>();
 
     const tryAddSlot = (at: DateTime) => {
-      if (at.plus({ minutes: slotMinutes }) > endAt || at < windowStart) return;
+      if (!at.isValid || at.plus({ minutes: slotMinutes }) > endAt || at < windowStart) return;
       const learnerLocal = at.setZone(zone);
       const startsAt = at.toUTC().toISO() ?? at.toISO() ?? "";
       if (!startsAt || slotStarts.has(startsAt)) return;
@@ -408,12 +408,101 @@ export function getTimeSlotsForDate(
       cursor = cursor.plus({ minutes: slotMinutes });
     }
 
-    // When end time has minutes (e.g. 5:30 PM), include the last slot that ends exactly at close.
-    // Hourly steps from 7:00 AM would otherwise stop at 4:00 PM and miss 4:30-5:30 PM.
-    tryAddSlot(endAt.minus({ minutes: slotMinutes }));
+    // Include a last slot that ends exactly at close (e.g. 4:30–5:30) only when it
+    // does not overlap an already-generated start (avoids 6:30 + 6:40 for a 60‑min
+    // meeting inside a 70‑min window).
+    const aligned = endAt.minus({ minutes: slotMinutes });
+    if (aligned.isValid && aligned >= windowStart) {
+      const overlapsExisting = [...slotStarts].some((iso) => {
+        const existing = DateTime.fromISO(iso, { zone: "utc" }).setZone(sourceZone);
+        if (!existing.isValid) return true;
+        return Math.abs(existing.diff(aligned, "minutes").minutes) < slotMinutes;
+      });
+      if (!overlapsExisting) {
+        tryAddSlot(aligned);
+      }
+    }
   }
 
   return slots.sort((a, b) => a.startsAt.localeCompare(b.startsAt));
+}
+
+export type UpcomingBookableDay = {
+  dateKey: string;
+  date: Date;
+  label: string;
+  slotCount: number;
+  firstSlotLabel: string;
+  lastSlotLabel: string;
+  timeRangeLabel: string;
+};
+
+/** Upcoming calendar days that still have at least one bookable start time. */
+export function listUpcomingBookableDays(
+  schedules: AvailableScheduleRow[],
+  learnerTimezone: string,
+  calendar: MeetingCalendarConfig = DEFAULT_MEETING_CALENDAR,
+  bookedSlots: BookedMeetingSlot[] = [],
+  limit = 21
+): UpcomingBookableDay[] {
+  const zone = resolveLearnerTimezone(learnerTimezone);
+  const today = DateTime.now().setZone(zone).startOf("day");
+  const keys = new Set<string>();
+
+  for (const schedule of schedules) {
+    if (!isScheduleActive(schedule)) continue;
+    const key = normalizeScheduleDate(schedule.available_on_date ?? undefined);
+    if (key) keys.add(key);
+  }
+
+  const out: UpcomingBookableDay[] = [];
+  for (const key of [...keys].sort()) {
+    const dt = DateTime.fromISO(key, { zone });
+    if (!dt.isValid || dt < today) continue;
+    const date = new Date(dt.year, dt.month - 1, dt.day);
+    if (isDateBlocked(date, calendar, zone)) continue;
+    const daySlots = getTimeSlotsForDate(date, schedules, zone, bookedSlots);
+    if (daySlots.length === 0) continue;
+
+    const first = daySlots[0].label;
+    const last = daySlots[daySlots.length - 1].label;
+    out.push({
+      dateKey: key,
+      date,
+      label: dt.toFormat("ccc, LLL d"),
+      slotCount: daySlots.length,
+      firstSlotLabel: first,
+      lastSlotLabel: last,
+      timeRangeLabel: first === last ? first : `${first} – ${last}`,
+    });
+    if (out.length >= limit) break;
+  }
+
+  return out;
+}
+
+export type DateBookingStatus = "none" | "past_day" | "exhausted" | "bookable";
+
+/** Admin + learner: why a configured day does or does not appear on the booking calendar. */
+export function dateBookingStatus(
+  schedules: AvailableScheduleRow[],
+  date: Date,
+  learnerTimezone: string,
+  calendar: MeetingCalendarConfig = DEFAULT_MEETING_CALENDAR,
+  bookedSlots: BookedMeetingSlot[] = []
+): DateBookingStatus {
+  const zone = resolveLearnerTimezone(learnerTimezone);
+  if (!dateHasConfiguredAvailability(schedules, date, zone)) return "none";
+  if (isDateBlocked(date, calendar, zone)) return "none";
+
+  const key = dateKey(date, zone);
+  const startOfDay = DateTime.fromISO(key, { zone }).startOf("day");
+  if (!startOfDay.isValid) return "none";
+  if (startOfDay < DateTime.now().setZone(zone).startOf("day")) return "past_day";
+
+  return getTimeSlotsForDate(date, schedules, zone, bookedSlots).length > 0
+    ? "bookable"
+    : "exhausted";
 }
 
 export function formatSelectedMeeting(

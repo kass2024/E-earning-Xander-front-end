@@ -4,10 +4,11 @@ import { DateTime } from "luxon";
 import type { AvailableScheduleRow } from "@/api/axios";
 import {
   bookingsForDate,
+  dateBookingStatus,
   dateKey,
+  getTimeSlotsForDate,
   isDateBlocked,
   meetingDurationMinutes,
-  normalizeScheduleDate,
   scheduleWindowMinutes,
   schedulesForDate,
   type BookedMeetingSlot,
@@ -248,11 +249,30 @@ export function ScheduleWeekGrid({
                     const style = blockStyle(window.startMin, window.endMin);
                     const start = parseTimeParts(schedule.start_time);
                     const end = parseTimeParts(schedule.end_time);
+                    const status = isCohort
+                      ? "bookable"
+                      : dateBookingStatus(schedules, day, adminZone, calendar, bookedSlots);
+                    const remaining = isCohort
+                      ? 0
+                      : getTimeSlotsForDate(day, [schedule], adminZone, bookedSlots).length;
+                    const statusLabel =
+                      status === "past_day"
+                        ? "Ended — hidden on booking"
+                        : status === "exhausted"
+                          ? "No times left today"
+                          : remaining > 0
+                            ? `${remaining} open on booking`
+                            : "Open for booking";
                     return (
                       <button
                         key={schedule.id}
                         type="button"
-                        className="absolute inset-x-0.5 z-10 overflow-hidden rounded-md border border-[#012F6B]/25 bg-[#012F6B]/12 px-1.5 py-0.5 text-left text-[0.65rem] font-medium text-[#012F6B] shadow-sm transition hover:bg-[#012F6B]/20"
+                        className={cn(
+                          "absolute inset-x-0.5 z-10 overflow-hidden rounded-md border px-1.5 py-0.5 text-left text-[0.65rem] font-medium shadow-sm transition",
+                          status === "bookable"
+                            ? "border-[#012F6B]/25 bg-[#012F6B]/12 text-[#012F6B] hover:bg-[#012F6B]/20"
+                            : "border-slate-300 bg-slate-100 text-slate-600 hover:bg-slate-200"
+                        )}
                         style={style}
                         onClick={(e) => {
                           e.stopPropagation();
@@ -270,7 +290,7 @@ export function ScheduleWeekGrid({
                         {isCohort ? (
                           <span className="block truncate opacity-80">Cohort session</span>
                         ) : (
-                          <span className="block truncate opacity-80">Open for booking</span>
+                          <span className="block truncate opacity-80">{statusLabel}</span>
                         )}
                       </button>
                     );

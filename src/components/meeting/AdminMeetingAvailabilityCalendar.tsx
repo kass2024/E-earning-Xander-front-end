@@ -45,7 +45,7 @@ import {
   bookingsInDateRange,
   buildTimezoneOptions,
   dateHasBookings,
-  dateHasConfiguredAvailability,
+  dateBookingStatus,
   dateKey,
   expandAvailabilityDates,
   filterBookableAvailabilityDates,
@@ -455,8 +455,20 @@ export function AdminMeetingAvailabilityCalendar({
                 }}
                 modifiers={{
                   available: (date) =>
-                    dateHasConfiguredAvailability(schedules, date, displayZone) &&
+                    dateBookingStatus(schedules, date, displayZone, calendar, bookedSlots) ===
+                      "bookable" &&
                     (isCohort || !isDateBlocked(date, calendar, displayZone)),
+                  exhausted: (date) => {
+                    if (isCohort) return false;
+                    const status = dateBookingStatus(
+                      schedules,
+                      date,
+                      displayZone,
+                      calendar,
+                      bookedSlots
+                    );
+                    return status === "exhausted" || status === "past_day";
+                  },
                   booked: (date) =>
                     !isCohort &&
                     dateHasBookings(date, bookedSlots, displayZone) &&
@@ -466,6 +478,8 @@ export function AdminMeetingAvailabilityCalendar({
                 modifiersClassNames={{
                   available:
                     "font-semibold text-[#012F6B] after:absolute after:bottom-1 after:left-1/2 after:h-1 after:w-1 after:-translate-x-1/2 after:rounded-full after:bg-emerald-500 after:content-['']",
+                  exhausted:
+                    "font-medium text-slate-400 after:absolute after:bottom-1 after:left-1/2 after:h-1 after:w-1 after:-translate-x-1/2 after:rounded-full after:bg-slate-400 after:content-['']",
                   booked:
                     "after:absolute after:bottom-1 after:left-[62%] after:h-1 after:w-1 after:-translate-x-1/2 after:rounded-full after:bg-amber-500 after:content-['']",
                   blocked: "text-red-400 line-through decoration-red-300",
@@ -490,7 +504,11 @@ export function AdminMeetingAvailabilityCalendar({
               <div className="mx-auto mt-4 flex max-w-3xl flex-wrap gap-4 text-xs text-muted-foreground">
                 <span className="flex items-center gap-1.5">
                   <span className="h-2 w-2 rounded-full bg-emerald-500" />
-                  Open for booking
+                  Still on booking page
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="h-2 w-2 rounded-full bg-slate-400" />
+                  Configured but ended / no times left
                 </span>
                 {!isCohort && (
                   <>
