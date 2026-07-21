@@ -770,7 +770,7 @@ const InstructorManagement = () => {
             <DialogTitle>Manage Courses</DialogTitle>
             <DialogDescription>
               {selectedInstructor
-                ? `Assign or unassign courses for ${selectedInstructor.name}.`
+                ? `Assign or unassign courses for ${selectedInstructor.name}. One person per course — unassign first to reassign.`
                 : "Select an instructor to manage courses."}
             </DialogDescription>
           </DialogHeader>
@@ -808,6 +808,15 @@ const InstructorManagement = () => {
                       const status = course.status ?? "Active";
                       const isInactive = status.toLowerCase() === "inactive";
                       const isAssigned = course.id ? assignedCourseIds.has(course.id) : false;
+                      const courseTeachers = (
+                        (course as CourseRow & { instructors?: Array<{ id: number; name?: string }> }).instructors ?? []
+                      ).filter((t) => t?.id);
+                      const heldByOther =
+                        !isAssigned &&
+                        courseTeachers.some((t) => t.id !== selectedInstructor?.id);
+                      const holderNames = courseTeachers
+                        .map((t) => t.name || `User #${t.id}`)
+                        .join(", ");
                       const isBusy =
                         course.id &&
                         (assigningCourseId === course.id || unassigningCourseId === course.id);
@@ -843,6 +852,13 @@ const InstructorManagement = () => {
                                     "Unassign"
                                   )}
                                 </Button>
+                              </div>
+                            ) : heldByOther ? (
+                              <div className="flex flex-col items-center gap-1">
+                                <Badge variant="outline" className="max-w-[160px] truncate" title={holderNames}>
+                                  Held by {holderNames || "another teacher"}
+                                </Badge>
+                                <span className="text-[10px] text-muted-foreground">Unassign them first</span>
                               </div>
                             ) : (
                               <Button

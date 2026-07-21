@@ -781,14 +781,16 @@ const CourseManagement = () => {
             <DialogTitle>Assign course teacher</DialogTitle>
             <DialogDescription>
               {assigningCourse
-                ? `Choose who will teach "${assigningCourse.title}" (instructors or main admin).`
+                ? courseTeachers(assigningCourse).length > 0
+                  ? `Unassign the current teacher from "${assigningCourse.title}" before assigning someone else.`
+                  : `Choose who will teach "${assigningCourse.title}" (one person only).`
                 : "Select a teacher."}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
             {courseTeachers(assigningCourse ?? {}).length > 0 && (
               <div className="rounded-md border border-[#0070D0]/15 bg-[#0070D0]/5 p-3 space-y-2">
-                <p className="text-xs font-medium text-foreground">Currently assigned</p>
+                <p className="text-xs font-medium text-foreground">Currently assigned (unassign to change)</p>
                 {courseTeachers(assigningCourse ?? {}).map((teacher) => (
                   <div key={teacher.id} className="flex items-center justify-between gap-2">
                     <div className="min-w-0">
@@ -809,13 +811,15 @@ const CourseManagement = () => {
                       {unassigningUserId === teacher.id ? (
                         <Loader2 className="h-3.5 w-3.5 animate-spin" />
                       ) : (
-                        "Remove"
+                        "Unassign"
                       )}
                     </Button>
                   </div>
                 ))}
               </div>
             )}
+            {courseTeachers(assigningCourse ?? {}).length === 0 && (
+              <>
             <Input
               placeholder="Search instructors by name or email"
               value={instructorSearch}
@@ -854,6 +858,8 @@ const CourseManagement = () => {
                 </select>
               )}
             </div>
+              </>
+            )}
           </div>
           <DialogFooter>
             <DialogClose asChild>
@@ -861,6 +867,7 @@ const CourseManagement = () => {
                 Close
               </Button>
             </DialogClose>
+            {courseTeachers(assigningCourse ?? {}).length === 0 && (
             <Button
               type="button"
               variant="default"
@@ -880,6 +887,7 @@ const CourseManagement = () => {
                 "Assign"
               )}
             </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
