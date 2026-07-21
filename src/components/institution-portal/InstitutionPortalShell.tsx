@@ -1,4 +1,4 @@
-import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { NavLink } from "@/components/NavLink";
 import { Button } from "@/components/ui/button";
@@ -81,6 +81,7 @@ const InstitutionPortalShell = ({
 }: Props) => {
   const navigate = useNavigate();
   const location = useLocation();
+  const headerRef = useRef<HTMLElement>(null);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [hashSection, setHashSection] = useState<PortalNavSection | null>(null);
   const [headerSearch, setHeaderSearch] = useState("");
@@ -107,6 +108,28 @@ const InstitutionPortalShell = ({
     link.href = "https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap";
     document.head.appendChild(link);
   }, []);
+
+  useEffect(() => {
+    const header = headerRef.current;
+    if (!header) return;
+
+    const syncHeaderHeight = () => {
+      document.documentElement.style.setProperty(
+        "--institution-header-height",
+        `${header.offsetHeight}px`,
+      );
+    };
+
+    syncHeaderHeight();
+    const observer = new ResizeObserver(syncHeaderHeight);
+    observer.observe(header);
+    window.addEventListener("resize", syncHeaderHeight);
+
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", syncHeaderHeight);
+    };
+  }, [mobileOpen]);
 
   const navItems = useMemo(
     () =>
@@ -228,8 +251,11 @@ const InstitutionPortalShell = ({
         ["--busuu-green" as string]: BUSUU.green,
       }}
     >
-      {/* Same header layout as main platform Navbar */}
-      <header className="sticky top-0 z-50 border-b border-slate-200 bg-white shadow-md">
+      {/* Fixed like hub Navbar so it stays put while the page scrolls */}
+      <header
+        ref={headerRef}
+        className="fixed top-0 left-0 right-0 z-[100] border-b border-slate-200 bg-white shadow-md"
+      >
         <div className="container mx-auto px-4">
           <div className="relative flex h-16 items-center justify-between gap-3 md:h-[72px]">
             <button
@@ -388,11 +414,16 @@ const InstitutionPortalShell = ({
           </div>
         )}
       </header>
+      <div
+        aria-hidden
+        className="shrink-0"
+        style={{ height: "var(--institution-header-height, 4.5rem)" }}
+      />
 
       {showBusuuHero && portal && (
         <section
           id="home"
-          className="relative scroll-mt-24 overflow-hidden text-white"
+          className="relative scroll-mt-[var(--institution-header-height,4.5rem)] overflow-hidden text-white"
           style={{
             background: `linear-gradient(160deg, ${theme.primary} 0%, ${theme.primaryDark} 55%, ${theme.heroBg} 100%)`,
           }}

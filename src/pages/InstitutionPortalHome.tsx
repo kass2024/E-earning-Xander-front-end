@@ -489,7 +489,7 @@ const InstitutionPortalHome = () => {
       </section>
 
       {/* Programs */}
-      <section id="programs" className="scroll-mt-24 bg-[#F7F8FA] py-14 sm:py-16">
+      <section id="programs" className="scroll-mt-[var(--institution-header-height,4.5rem)] bg-[#F7F8FA] py-14 sm:py-16">
         <div className="container mx-auto max-w-6xl px-4">
           <div className="mb-10 text-center">
             <p className="text-xs font-bold uppercase tracking-[0.2em] text-[var(--institution-primary,#4B8BF5)]">Our courses</p>
@@ -841,7 +841,7 @@ const InstitutionPortalHome = () => {
       </section>
 
       {/* About */}
-      <section id="about" className="scroll-mt-24 bg-[#F7F8FA] py-14 sm:py-16">
+      <section id="about" className="scroll-mt-[var(--institution-header-height,4.5rem)] bg-[#F7F8FA] py-14 sm:py-16">
         <div className="container mx-auto max-w-6xl px-4">
           <div className="grid gap-10 lg:grid-cols-[1.2fr_0.8fr]">
             <div>
@@ -875,7 +875,7 @@ const InstitutionPortalHome = () => {
       {/* Final CTA / contact */}
       <section
         id="contact"
-        className="scroll-mt-24 py-16 text-white sm:py-20"
+        className="scroll-mt-[var(--institution-header-height,4.5rem)] py-16 text-white sm:py-20"
         style={{ background: `linear-gradient(135deg, ${BUSUU_BLUE}, #1E5AD4)` }}
       >
         <div className="container mx-auto max-w-6xl px-4 text-center">
