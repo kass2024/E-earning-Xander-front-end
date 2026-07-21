@@ -296,6 +296,7 @@ export type MeetingRegistrationPayload = {
   meeting_at?: string | null;
   schedule_label?: string | null;
   destination_countries?: string;
+  platform_institution_id?: number | null;
 };
 
 export const submitMeetingRegistration = async (payload: MeetingRegistrationPayload) => {

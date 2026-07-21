@@ -497,6 +497,8 @@ const MeetingRegistration = () => {
         country: learnerTimezone,
         learner_timezone: learnerTimezone,
         notes: bookingReason,
+        platform_institution_id:
+          isInstitutionPortal && institution?.id ? Number(institution.id) : null,
       });
 
       clearDraft();
