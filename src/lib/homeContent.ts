@@ -83,6 +83,62 @@ export const LANGUAGE_PROGRAMS = [
   },
 ] as const;
 
+/** Busuu-style muted autoplay loops of people speaking (institution portal carousel). */
+export const LANGUAGE_SPEAKING_CLIPS = [
+  {
+    title: "English",
+    subtitle: "Real conversations",
+    poster: HOME_UNIQUE_IMAGES.langEnglish,
+    video: "/speaking/speaker-1.mp4",
+  },
+  {
+    title: "French",
+    subtitle: "DELF / DALF",
+    poster: HOME_UNIQUE_IMAGES.langFrench,
+    video: "/speaking/speaker-2.mp4",
+  },
+  {
+    title: "German",
+    subtitle: "Goethe · TestDaF",
+    poster: HOME_UNIQUE_IMAGES.langGerman,
+    video: "/speaking/speaker-1.mp4",
+  },
+  {
+    title: "Korean",
+    subtitle: "TOPIK prep",
+    poster: HOME_UNIQUE_IMAGES.langKorean,
+    video: "/speaking/speaker-2.mp4",
+  },
+  {
+    title: "Chinese",
+    subtitle: "HSK pathways",
+    poster: HOME_UNIQUE_IMAGES.langChinese,
+    video: "/speaking/speaker-1.mp4",
+  },
+  {
+    title: "Japanese",
+    subtitle: "JLPT & more",
+    poster: HOME_UNIQUE_IMAGES.langJapanese,
+    video: "/speaking/speaker-2.mp4",
+  },
+  {
+    title: "Spanish",
+    subtitle: "Everyday fluency",
+    poster: HOME_UNIQUE_IMAGES.langEnglish,
+    video: "/speaking/speaker-1.mp4",
+  },
+] as const;
+
+/** Attractive “I want to learn” pills when the institution has no published courses yet. */
+export const LEARN_PILL_FALLBACK = [
+  { name: "English", subtitle: "Start speaking with confidence" },
+  { name: "French", subtitle: "DELF · DALF · TCF pathways" },
+  { name: "German", subtitle: "Goethe · TestDaF prep" },
+  { name: "Korean", subtitle: "TOPIK & conversation" },
+  { name: "Chinese", subtitle: "HSK levels A1–C1" },
+  { name: "Japanese & More", subtitle: "JLPT · Spanish · Arabic" },
+] as const;
+
 export const STUDENT_FEATURES = [
   {
     title: "Student Dashboard",

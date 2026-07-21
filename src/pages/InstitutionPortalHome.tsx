@@ -16,6 +16,8 @@ import {
   HOME_IMAGES,
   HOME_MISSION,
   LANGUAGE_PROGRAMS,
+  LANGUAGE_SPEAKING_CLIPS,
+  LEARN_PILL_FALLBACK,
   LIVE_FEATURES,
   STUDENT_FEATURES,
   TESTIMONIALS,
@@ -116,6 +118,49 @@ const InstitutionPortalHome = () => {
 
   const featuredCourses = useMemo(() => allCourses.slice(0, 6), [allCourses]);
 
+  const learnPills = useMemo(() => {
+    if (allCourses.length > 0) {
+      return allCourses.slice(0, 14).map((course) => ({
+        id: course.id,
+        name: course.title,
+        subtitle: course.programName,
+        query: course.title,
+      }));
+    }
+    // Attractive language fallback — never show "0 courses".
+    return LEARN_PILL_FALLBACK.map((item, i) => ({
+      id: -(i + 1),
+      name: item.name,
+      subtitle: item.subtitle,
+      query: item.name,
+    }));
+  }, [allCourses]);
+
+  const carouselItems = useMemo(() => {
+    // Busuu-style speaking videos; overlay labels from institution programs when available.
+    const programs = data?.programs ?? [];
+    return LANGUAGE_SPEAKING_CLIPS.map((clip, i) => {
+      const program = programs[i];
+      return {
+        id: program?.id ?? i,
+        label: program?.name ?? clip.title,
+        count: program && (program.courses?.length ?? 0) > 0
+          ? `${program.courses.length} course${program.courses!.length === 1 ? "" : "s"}`
+          : clip.subtitle,
+        poster: clip.poster,
+        video: clip.video,
+      };
+    });
+  }, [data?.programs]);
+
+  useEffect(() => {
+    if (carouselItems.length < 2) return;
+    const timer = window.setInterval(() => {
+      setCarouselIndex((i) => (i + 1) % carouselItems.length);
+    }, 4500);
+    return () => window.clearInterval(timer);
+  }, [carouselItems.length]);
+
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-white">
@@ -176,21 +221,6 @@ const InstitutionPortalHome = () => {
           },
         ];
 
-  const carouselItems =
-    (data.programs?.length ?? 0) > 0
-      ? data.programs!.map((p, i) => ({
-          id: p.id,
-          label: p.name,
-          count: `${p.courses?.length ?? 0} courses`,
-          image: getFeaturedCourseImage(i, p.name, null),
-        }))
-      : LANGUAGE_PROGRAMS.map((lang, i) => ({
-          id: i,
-          label: lang.title,
-          count: lang.subtitle,
-          image: lang.image,
-        }));
-
   const visibleCarousel = [
     carouselItems[(carouselIndex - 1 + carouselItems.length) % carouselItems.length],
     carouselItems[carouselIndex % carouselItems.length],
@@ -207,25 +237,21 @@ const InstitutionPortalHome = () => {
           <h2 className="text-3xl font-extrabold tracking-tight text-slate-900 sm:text-4xl">
             I want to learn:
           </h2>
-          <p className="mt-2 text-sm text-slate-500">Programs published by {institution.name}</p>
+          <p className="mt-2 text-sm text-slate-500">
+            {allCourses.length > 0
+              ? `Courses published by ${institution.name}`
+              : `Explore what you can learn with ${institution.name}`}
+          </p>
 
           <div className="mx-auto mt-8 flex max-w-4xl flex-wrap items-center justify-center gap-3">
-            {(data.programs?.length ? data.programs : LANGUAGE_PROGRAMS.map((l, i) => ({
-              id: i,
-              name: l.title,
-              courses: [] as Array<{ id: number; title: string }>,
-            }))).slice(0, 14).map((program) => {
-              const active = searchQuery.trim().toLowerCase() === program.name.toLowerCase();
-              const count =
-                "courses" in program && Array.isArray(program.courses)
-                  ? `${program.courses.length} courses`
-                  : "";
+            {learnPills.map((pill) => {
+              const active = searchQuery.trim().toLowerCase() === pill.query.toLowerCase();
               return (
                 <button
-                  key={program.id}
+                  key={pill.id}
                   type="button"
                   onClick={() => {
-                    setSearchQuery(program.name);
+                    setSearchQuery(pill.query);
                     document.getElementById("programs")?.scrollIntoView({ behavior: "smooth", block: "start" });
                   }}
                   className={cn(
@@ -239,11 +265,11 @@ const InstitutionPortalHome = () => {
                     className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-extrabold text-white"
                     style={{ background: BUSUU_BLUE }}
                   >
-                    {program.name.charAt(0).toUpperCase()}
+                    {pill.name.charAt(0).toUpperCase()}
                   </span>
                   <span>
-                    <span className="block text-sm font-extrabold text-slate-900">{program.name}</span>
-                    {count && <span className="block text-xs text-slate-500">{count}</span>}
+                    <span className="block text-sm font-extrabold text-slate-900">{pill.name}</span>
+                    <span className="block text-xs text-slate-500">{pill.subtitle}</span>
                   </span>
                 </button>
               );
@@ -370,11 +396,16 @@ const InstitutionPortalHome = () => {
                         (idx === 0 || idx === 4) && "hidden opacity-40 sm:block",
                       )}
                     >
-                      <SafeImage
-                        src={item.image}
-                        fallback={DEFAULT_IMAGE}
-                        alt={item.label}
-                        className="h-full w-full object-cover"
+                      <video
+                        key={item.video}
+                        className="absolute inset-0 h-full w-full object-cover"
+                        src={item.video}
+                        poster={item.poster}
+                        autoPlay
+                        muted
+                        loop
+                        playsInline
+                        preload="metadata"
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
                       <div className="absolute bottom-3 left-1/2 flex -translate-x-1/2 items-center gap-2 rounded-full bg-white px-3 py-1.5 shadow-md">
