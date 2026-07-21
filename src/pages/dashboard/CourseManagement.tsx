@@ -103,7 +103,7 @@ const CourseManagement = () => {
       const { data } = await fetchDashboardCached("users-list", getUsers, { force: true });
       const rows = (Array.isArray(data) ? data : []) as (UserPayload & { id: number })[];
       const selfEmail = (localStorage.getItem("parrot_user_email") || "").trim().toLowerCase();
-      const teachableRoles = new Set(["instructor", "admin", "staff"]);
+      const teachableRoles = new Set(["instructor", "admin", "staff", "partner_company"]);
       const onlyInstructors: Instructor[] = rows
         .filter((u) => teachableRoles.has(String(u.role || "").toLowerCase()))
         .map((u) => ({
