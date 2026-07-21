@@ -766,38 +766,42 @@ const InstitutionPortalHome = () => {
         </div>
       </section>
 
-      {/* Teach with us */}
-      <section className="bg-white py-14 sm:py-16">
+      {/* Instructor CTA — same layout as main platform */}
+      <section className="bg-white py-16 md:py-20">
         <div className="container mx-auto max-w-6xl px-4">
-          <div className="grid overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-lg lg:grid-cols-2">
-            <div className="flex flex-col justify-center p-8 sm:p-10">
-              <Badge className="mb-4 w-fit border-0 bg-[#C8F042]/30 text-[#1A2E05]">For instructors</Badge>
-              <h2 className="text-2xl font-extrabold text-slate-900 sm:text-3xl">Teach with us</h2>
-              <p className="mt-4 text-slate-600">
-                Apply to become an instructor at {institution.name}. Host live classes, manage students, and grow with
-                this institution — not the main marketplace partner signup.
+          <div className="grid overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-lg lg:grid-cols-2">
+            <div className="flex flex-col justify-center p-8 md:p-10">
+              <Badge className="mb-4 w-fit border-[#F2A65A]/30 bg-[#F2A65A]/15 text-[#012F6B]">
+                For instructors
+              </Badge>
+              <h2 className="mb-4 text-2xl font-bold text-[#012F6B] md:text-3xl">
+                Teach on our marketplace
+              </h2>
+              <p className="mb-6 leading-relaxed text-slate-600">
+                Approved instructors create courses, host live classes, manage students, and earn from every
+                enrollment — while {institution.name} handles platform support and payments for this institution.
               </p>
-              <div className="mt-7 flex flex-wrap gap-3">
-                <Button
-                  asChild
-                  className="rounded-full font-extrabold text-[#1A2E05]"
-                  style={{ background: BUSUU_GREEN }}
-                >
+              <div className="flex flex-wrap gap-3">
+                <Button asChild className="rounded-md bg-[#012F6B] px-6 text-white hover:bg-[#0a3d7a]">
                   <NavLink to={teachUrl}>
-                    Teach with us
+                    Apply as instructor
                     <ArrowRight className="ml-2 h-4 w-4" />
                   </NavLink>
                 </Button>
-                <Button asChild variant="outline" className="rounded-full font-semibold">
+                <Button
+                  asChild
+                  variant="outline"
+                  className="rounded-md border-[#012F6B] text-[#012F6B] hover:bg-[#012F6B]/5"
+                >
                   <NavLink to={loginUrl}>Instructor login</NavLink>
                 </Button>
               </div>
             </div>
-            <div className="relative min-h-[240px]">
+            <div className="relative min-h-[260px] lg:min-h-[300px]">
               <SafeImage
                 src={HOME_IMAGES.certificate}
                 fallback={DEFAULT_IMAGE}
-                alt="Teaching"
+                alt="Teaching and certification"
                 className="absolute inset-0 h-full w-full object-cover"
               />
             </div>
@@ -849,22 +853,30 @@ const InstitutionPortalHome = () => {
             Ready to study with {institution.name}?
           </h2>
           <p className="mx-auto mt-3 max-w-xl text-white/85">
-            Get started as a student, or teach with us as an instructor — all for this institution only.
+            Get started as a student at {institution.name}, or apply as an instructor for this institution.
           </p>
           <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
             <Button
               asChild
               size="lg"
-              className="rounded-full px-8 font-extrabold text-[#1A2E05]"
-              style={{ background: BUSUU_GREEN }}
+              className="rounded-md bg-white px-8 font-semibold text-[#012F6B] hover:bg-white/90"
             >
               <NavLink to={joinUrl}>Get Started</NavLink>
             </Button>
-            <Button asChild size="lg" className="rounded-full bg-white/15 px-8 font-semibold text-white hover:bg-white/25">
-              <NavLink to={teachUrl}>Teach with us</NavLink>
+            <Button
+              asChild
+              size="lg"
+              className="rounded-md bg-[#F2A65A] px-8 font-semibold text-[#012F6B] hover:bg-[#e69545]"
+            >
+              <NavLink to={teachUrl}>Apply as instructor</NavLink>
             </Button>
-            <Button asChild size="lg" className="rounded-full bg-[#1F2937] px-8 font-semibold text-white hover:bg-black">
-              <NavLink to={loginUrl}>Sign in</NavLink>
+            <Button
+              asChild
+              size="lg"
+              variant="outline"
+              className="rounded-md border-white/40 bg-transparent px-8 font-semibold text-white hover:bg-white/10"
+            >
+              <NavLink to={loginUrl}>Log In</NavLink>
             </Button>
           </div>
           {(institution.contact_email || institution.contact_phone) && (

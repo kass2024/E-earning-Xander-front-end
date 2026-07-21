@@ -115,9 +115,8 @@ const InstitutionPortalShell = ({
         { id: "programs" as const, label: "Programs", kind: "section" as const, hash: "programs" },
         { id: "about" as const, label: "About", kind: "section" as const, hash: "about" },
         { id: "meeting" as const, label: "Book meeting with us", kind: "route" as const, to: meetingUrl },
-        { id: "teach" as const, label: "Teach with us", kind: "route" as const, to: teachUrl },
       ] as const,
-    [meetingUrl, teachUrl],
+    [meetingUrl],
   );
 
   const goToSection = useCallback(
@@ -196,16 +195,10 @@ const InstitutionPortalShell = ({
     ? "meeting"
     : hashSection ?? activeSection;
 
-  const linkClass = (section: PortalNavSection, onBlue = false) =>
+  const linkClass = (section: PortalNavSection) =>
     cn(
-      "whitespace-nowrap text-sm font-semibold transition-colors",
-      currentSection === section
-        ? onBlue
-          ? "text-white"
-          : "text-[#2F6FE0]"
-        : onBlue
-          ? "text-white/85 hover:text-white"
-          : "text-slate-600 hover:text-[#2F6FE0]",
+      "whitespace-nowrap text-sm font-medium transition-colors text-slate-600 hover:text-[#012F6B]",
+      currentSection === section && "text-[#012F6B] font-semibold",
     );
 
   const heroTitle = portal?.hero_title?.trim() || `Learn with ${institution.name}`;
@@ -235,138 +228,135 @@ const InstitutionPortalShell = ({
         ["--busuu-green" as string]: BUSUU.green,
       }}
     >
-      <header
-        className={cn(
-          "sticky top-0 z-50",
-          showBusuuHero
-            ? "border-b border-white/10 bg-[#4B8BF5]/95 backdrop-blur-md"
-            : "border-b border-slate-200/80 bg-white/95 backdrop-blur-md",
-        )}
-      >
-        <div className="container mx-auto flex max-w-6xl items-center gap-3 px-4 py-3.5">
-          <button
-            type="button"
-            className="flex min-w-0 shrink-0 items-center gap-2.5 text-left"
-            onClick={() => goToSection("home", "")}
-          >
-            {logo ? (
-              <img
-                src={logo}
-                alt=""
-                className="h-9 w-9 shrink-0 rounded-full border border-white/30 object-cover bg-white"
-              />
-            ) : (
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white text-sm font-extrabold text-[#2F6FE0]">
-                {institution.name.charAt(0).toUpperCase()}
-              </div>
-            )}
-            <span
-              className={cn(
-                "truncate text-base font-extrabold tracking-tight",
-                showBusuuHero ? "text-white" : "text-slate-900",
-              )}
-            >
-              {institution.name}
-            </span>
-          </button>
-
-          <form onSubmit={handleHeaderSearch} className="ml-auto hidden max-w-xs flex-1 lg:flex xl:max-w-sm">
-            <div className="relative w-full">
-              <Input
-                type="search"
-                value={headerSearch}
-                onChange={(e) => setHeaderSearch(e.target.value)}
-                placeholder="Search courses, exams, languages…"
-                className={cn(
-                  "h-10 rounded-full pr-10 text-sm",
-                  showBusuuHero
-                    ? "border-white/25 bg-white/15 text-white placeholder:text-white/70 focus-visible:ring-white/40"
-                    : "border-slate-200 bg-slate-50",
-                )}
-              />
-              <button
-                type="submit"
-                className={cn(
-                  "absolute right-2.5 top-1/2 -translate-y-1/2",
-                  showBusuuHero ? "text-white/80" : "text-slate-500",
-                )}
-                aria-label="Search"
-              >
-                <Search className="h-4 w-4" />
-              </button>
-            </div>
-          </form>
-
-          <div className="hidden items-center gap-2 md:flex">
-            <Button
-              asChild
-              size="sm"
-              className={cn(
-                "rounded-full px-5 font-bold",
-                showBusuuHero
-                  ? "bg-[#1F2937] text-white hover:bg-black"
-                  : "bg-slate-900 text-white hover:bg-black",
-              )}
-            >
-              <NavLink to={loginUrl}>Sign in</NavLink>
-            </Button>
-            <Button
-              asChild
-              size="sm"
-              className="rounded-full px-5 font-extrabold text-[#1A2E05] hover:opacity-90"
-              style={{ background: BUSUU.green }}
-            >
-              <NavLink to={joinUrl}>Learn for free</NavLink>
-            </Button>
+      {/* Same header layout as main platform Navbar */}
+      <header className="sticky top-0 z-50 border-b border-slate-200 bg-white shadow-md">
+        <div className="container mx-auto px-4">
+          <div className="relative flex h-16 items-center justify-between gap-3 md:h-[72px]">
             <button
               type="button"
-              className={cn(
-                "flex h-10 w-10 items-center justify-center rounded-full",
-                showBusuuHero ? "bg-[#1F2937] text-white" : "bg-slate-900 text-white",
-              )}
-              onClick={() => setMobileOpen((v) => !v)}
-              aria-label="Open menu"
+              className="flex min-w-0 shrink-0 items-center gap-2.5 text-left text-[#012F6B] hover:opacity-90"
+              onClick={() => goToSection("home", "")}
             >
-              {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+              {logo ? (
+                <img
+                  src={logo}
+                  alt=""
+                  className="h-10 w-10 shrink-0 rounded-full border border-slate-200 object-cover shadow-sm md:h-11 md:w-11"
+                />
+              ) : (
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-[#012F6B] text-sm font-bold text-white shadow-sm md:h-11 md:w-11">
+                  {institution.name.charAt(0).toUpperCase()}
+                </div>
+              )}
+              <div className="hidden min-w-0 flex-col items-start leading-tight sm:flex">
+                <span className="truncate text-sm font-bold text-[#012F6B] md:text-base">
+                  {institution.name}
+                </span>
+                <span className="truncate text-[10px] font-medium text-[#F2A65A] md:text-xs max-w-[220px]">
+                  {portal?.tagline || "Study. Learn. Succeed."}
+                </span>
+              </div>
             </button>
-          </div>
 
-          <button
-            type="button"
-            className={cn(
-              "ml-auto flex h-10 w-10 items-center justify-center rounded-full md:hidden",
-              showBusuuHero ? "bg-[#1F2937] text-white" : "bg-slate-900 text-white",
-            )}
-            onClick={() => setMobileOpen((v) => !v)}
-            aria-label="Toggle menu"
-          >
-            {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-          </button>
-        </div>
-
-        {mobileOpen && (
-          <div
-            className={cn(
-              "border-t px-4 py-4",
-              showBusuuHero ? "border-white/15 bg-[#3F7FE8]" : "border-slate-100 bg-white",
-            )}
-          >
-            <form onSubmit={handleHeaderSearch} className="mb-4">
-              <Input
-                type="search"
-                value={headerSearch}
-                onChange={(e) => setHeaderSearch(e.target.value)}
-                placeholder="Search courses, exams, languages…"
-                className="h-11 rounded-full"
-              />
+            <form onSubmit={handleHeaderSearch} className="mx-4 hidden max-w-md flex-1 lg:flex">
+              <div className="relative flex-1">
+                <Input
+                  type="search"
+                  value={headerSearch}
+                  onChange={(e) => setHeaderSearch(e.target.value)}
+                  placeholder="Search courses, exams, languages…"
+                  className="h-10 rounded-md border-slate-200 bg-white pr-10 focus-visible:border-[#012F6B] focus-visible:ring-[#012F6B]/20"
+                />
+                <button
+                  type="submit"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-[#012F6B] hover:text-[#F2A65A]"
+                  aria-label="Search"
+                >
+                  <Search className="h-4 w-4" />
+                </button>
+              </div>
             </form>
-            <nav className="flex flex-col gap-3" aria-label="Institution menu">
+
+            <nav className="hidden items-center gap-6 lg:flex" aria-label="Institution website">
               {navItems.map((item) =>
                 item.kind === "route" ? (
                   <NavLink
                     key={item.id}
                     to={item.to}
-                    className={linkClass(item.id, showBusuuHero)}
+                    className={linkClass(item.id)}
+                    activeClassName="text-[#012F6B] font-semibold"
+                  >
+                    {item.label}
+                  </NavLink>
+                ) : (
+                  <button
+                    key={item.id}
+                    type="button"
+                    className={linkClass(item.id)}
+                    onClick={() => goToSection(item.id, item.hash)}
+                  >
+                    {item.label}
+                  </button>
+                ),
+              )}
+            </nav>
+
+            <div className="hidden shrink-0 items-center gap-2 md:flex">
+              <Button
+                asChild
+                size="sm"
+                variant="outline"
+                className="h-10 rounded-md border-[#012F6B] bg-white px-5 font-semibold text-[#012F6B] hover:bg-[#012F6B]/5"
+              >
+                <NavLink to={loginUrl}>Log In</NavLink>
+              </Button>
+              <Button
+                asChild
+                size="sm"
+                className="h-10 rounded-md bg-[#012F6B] px-5 font-semibold text-white hover:bg-[#0a3d7a]"
+              >
+                <NavLink to={joinUrl}>Get Started</NavLink>
+              </Button>
+            </div>
+
+            <button
+              type="button"
+              className="p-1 text-[#012F6B] lg:hidden"
+              onClick={() => setMobileOpen((v) => !v)}
+              aria-label="Toggle menu"
+            >
+              {mobileOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+            </button>
+          </div>
+        </div>
+
+        {mobileOpen && (
+          <div className="border-t border-slate-100 bg-white px-4 py-4 lg:hidden">
+            <form onSubmit={handleHeaderSearch} className="mb-4">
+              <div className="relative">
+                <Input
+                  type="search"
+                  value={headerSearch}
+                  onChange={(e) => setHeaderSearch(e.target.value)}
+                  placeholder="Search courses, exams, languages…"
+                  className="h-11 rounded-md border-slate-200 pr-10"
+                />
+                <button
+                  type="submit"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-[#012F6B]"
+                  aria-label="Search"
+                >
+                  <Search className="h-4 w-4" />
+                </button>
+              </div>
+            </form>
+            <nav className="flex flex-col gap-1" aria-label="Institution website mobile">
+              {navItems.map((item) =>
+                item.kind === "route" ? (
+                  <NavLink
+                    key={item.id}
+                    to={item.to}
+                    className="rounded-md px-2 py-2.5 font-medium text-slate-700 hover:bg-slate-50 hover:text-[#012F6B]"
                     onClick={() => setMobileOpen(false)}
                   >
                     {item.label}
@@ -375,26 +365,22 @@ const InstitutionPortalShell = ({
                   <button
                     key={item.id}
                     type="button"
-                    className={cn(linkClass(item.id, showBusuuHero), "text-left")}
+                    className="rounded-md px-2 py-2.5 text-left font-medium text-slate-700 hover:bg-slate-50 hover:text-[#012F6B]"
                     onClick={() => goToSection(item.id, item.hash)}
                   >
                     {item.label}
                   </button>
                 ),
               )}
-              <div className="mt-2 flex flex-col gap-2 border-t border-white/20 pt-3 md:hidden">
-                <Button asChild className="w-full rounded-full bg-[#1F2937] font-bold text-white">
+              <div className="mt-2 flex flex-col gap-2 border-t border-slate-100 pt-3 md:hidden">
+                <Button asChild variant="outline" className="w-full rounded-md border-[#012F6B] text-[#012F6B]">
                   <NavLink to={loginUrl} onClick={() => setMobileOpen(false)}>
-                    Sign in
+                    Log In
                   </NavLink>
                 </Button>
-                <Button
-                  asChild
-                  className="w-full rounded-full font-extrabold text-[#1A2E05]"
-                  style={{ background: BUSUU.green }}
-                >
+                <Button asChild className="w-full rounded-md bg-[#012F6B] text-white hover:bg-[#0a3d7a]">
                   <NavLink to={joinUrl} onClick={() => setMobileOpen(false)}>
-                    Learn for free
+                    Get Started
                   </NavLink>
                 </Button>
               </div>
@@ -474,10 +460,6 @@ const InstitutionPortalShell = ({
                 <NavLink to={joinUrl} className="hover:text-white">
                   Get Started
                 </NavLink>
-                <span className="text-white/40">|</span>
-                <NavLink to={teachUrl} className="hover:text-white">
-                  Teach with us
-                </NavLink>
               </div>
             </div>
 
@@ -526,16 +508,11 @@ const InstitutionPortalShell = ({
                 Student enrollment and instructor applications for {institution.name} only.
               </p>
               <div className="mt-5 flex flex-wrap gap-2">
-                <Button
-                  asChild
-                  size="sm"
-                  className="rounded-full font-extrabold text-[#1A2E05]"
-                  style={{ background: BUSUU.green }}
-                >
-                  <NavLink to={joinUrl}>Learn for free</NavLink>
+                <Button asChild size="sm" className="rounded-md bg-[#012F6B] font-semibold text-white hover:bg-[#0a3d7a]">
+                  <NavLink to={joinUrl}>Get Started</NavLink>
                 </Button>
-                <Button asChild size="sm" variant="outline" className="rounded-full font-semibold">
-                  <NavLink to={teachUrl}>Teach with us</NavLink>
+                <Button asChild size="sm" variant="outline" className="rounded-md border-[#012F6B] font-semibold text-[#012F6B]">
+                  <NavLink to={teachUrl}>Apply as instructor</NavLink>
                 </Button>
               </div>
             </div>
