@@ -197,8 +197,8 @@ const InstitutionPortalShell = ({
 
   const linkClass = (section: PortalNavSection) =>
     cn(
-      "whitespace-nowrap text-sm font-medium transition-colors text-slate-600 hover:text-[#012F6B]",
-      currentSection === section && "text-[#012F6B] font-semibold",
+      "whitespace-nowrap text-sm font-medium transition-colors text-slate-600 hover:text-[var(--institution-primary,#012F6B)]",
+      currentSection === section && "text-[var(--institution-primary,#012F6B)] font-semibold",
     );
 
   const heroTitle = portal?.hero_title?.trim() || `Learn with ${institution.name}`;
@@ -234,7 +234,7 @@ const InstitutionPortalShell = ({
           <div className="relative flex h-16 items-center justify-between gap-3 md:h-[72px]">
             <button
               type="button"
-              className="flex min-w-0 shrink-0 items-center gap-2.5 text-left text-[#012F6B] hover:opacity-90"
+              className="flex min-w-0 shrink-0 items-center gap-2.5 text-left text-[var(--institution-primary,#012F6B)] hover:opacity-90"
               onClick={() => goToSection("home", "")}
             >
               {logo ? (
@@ -244,12 +244,12 @@ const InstitutionPortalShell = ({
                   className="h-10 w-10 shrink-0 rounded-full border border-slate-200 object-cover shadow-sm md:h-11 md:w-11"
                 />
               ) : (
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-[#012F6B] text-sm font-bold text-white shadow-sm md:h-11 md:w-11">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-[var(--institution-button-bg,var(--institution-primary,#012F6B))] text-sm font-bold text-white shadow-sm md:h-11 md:w-11">
                   {institution.name.charAt(0).toUpperCase()}
                 </div>
               )}
               <div className="hidden min-w-0 flex-col items-start leading-tight sm:flex">
-                <span className="truncate text-sm font-bold text-[#012F6B] md:text-base">
+                <span className="truncate text-sm font-bold text-[var(--institution-primary,#012F6B)] md:text-base">
                   {institution.name}
                 </span>
                 <span className="truncate text-[10px] font-medium text-[#F2A65A] md:text-xs max-w-[220px]">
@@ -265,11 +265,11 @@ const InstitutionPortalShell = ({
                   value={headerSearch}
                   onChange={(e) => setHeaderSearch(e.target.value)}
                   placeholder="Search courses, exams, languages…"
-                  className="h-10 rounded-md border-slate-200 bg-white pr-10 focus-visible:border-[#012F6B] focus-visible:ring-[#012F6B]/20"
+                  className="h-10 rounded-md border-slate-200 bg-white pr-10 focus-visible:border-[var(--institution-primary,#012F6B)] focus-visible:ring-[var(--institution-primary,#012F6B)]/20"
                 />
                 <button
                   type="submit"
-                  className="absolute right-2 top-1/2 -translate-y-1/2 text-[#012F6B] hover:text-[#F2A65A]"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-[var(--institution-primary,#012F6B)] hover:text-[#F2A65A]"
                   aria-label="Search"
                 >
                   <Search className="h-4 w-4" />
@@ -284,7 +284,7 @@ const InstitutionPortalShell = ({
                     key={item.id}
                     to={item.to}
                     className={linkClass(item.id)}
-                    activeClassName="text-[#012F6B] font-semibold"
+                    activeClassName="text-[var(--institution-primary,#012F6B)] font-semibold"
                   >
                     {item.label}
                   </NavLink>
@@ -306,14 +306,14 @@ const InstitutionPortalShell = ({
                 asChild
                 size="sm"
                 variant="outline"
-                className="h-10 rounded-md border-[#012F6B] bg-white px-5 font-semibold text-[#012F6B] hover:bg-[#012F6B]/5"
+                className="h-10 rounded-md border-[var(--institution-primary,#012F6B)] bg-white px-5 font-semibold text-[var(--institution-primary,#012F6B)] hover:bg-[var(--institution-primary,#012F6B)]/5"
               >
                 <NavLink to={loginUrl}>Log In</NavLink>
               </Button>
               <Button
                 asChild
                 size="sm"
-                className="h-10 rounded-md bg-[#012F6B] px-5 font-semibold text-white hover:bg-[#0a3d7a]"
+                className="h-10 rounded-md bg-[var(--institution-button-bg,var(--institution-primary,#012F6B))] px-5 font-semibold text-white hover:bg-[var(--institution-primary-dark,#0a3d7a)]"
               >
                 <NavLink to={joinUrl}>Get Started</NavLink>
               </Button>
@@ -321,7 +321,7 @@ const InstitutionPortalShell = ({
 
             <button
               type="button"
-              className="p-1 text-[#012F6B] lg:hidden"
+              className="p-1 text-[var(--institution-primary,#012F6B)] lg:hidden"
               onClick={() => setMobileOpen((v) => !v)}
               aria-label="Toggle menu"
             >
@@ -343,7 +343,7 @@ const InstitutionPortalShell = ({
                 />
                 <button
                   type="submit"
-                  className="absolute right-2 top-1/2 -translate-y-1/2 text-[#012F6B]"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-[var(--institution-primary,#012F6B)]"
                   aria-label="Search"
                 >
                   <Search className="h-4 w-4" />
@@ -356,7 +356,7 @@ const InstitutionPortalShell = ({
                   <NavLink
                     key={item.id}
                     to={item.to}
-                    className="rounded-md px-2 py-2.5 font-medium text-slate-700 hover:bg-slate-50 hover:text-[#012F6B]"
+                    className="rounded-md px-2 py-2.5 font-medium text-slate-700 hover:bg-slate-50 hover:text-[var(--institution-primary,#012F6B)]"
                     onClick={() => setMobileOpen(false)}
                   >
                     {item.label}
@@ -365,7 +365,7 @@ const InstitutionPortalShell = ({
                   <button
                     key={item.id}
                     type="button"
-                    className="rounded-md px-2 py-2.5 text-left font-medium text-slate-700 hover:bg-slate-50 hover:text-[#012F6B]"
+                    className="rounded-md px-2 py-2.5 text-left font-medium text-slate-700 hover:bg-slate-50 hover:text-[var(--institution-primary,#012F6B)]"
                     onClick={() => goToSection(item.id, item.hash)}
                   >
                     {item.label}
@@ -373,12 +373,12 @@ const InstitutionPortalShell = ({
                 ),
               )}
               <div className="mt-2 flex flex-col gap-2 border-t border-slate-100 pt-3 md:hidden">
-                <Button asChild variant="outline" className="w-full rounded-md border-[#012F6B] text-[#012F6B]">
+                <Button asChild variant="outline" className="w-full rounded-md border-[var(--institution-primary,#012F6B)] text-[var(--institution-primary,#012F6B)]">
                   <NavLink to={loginUrl} onClick={() => setMobileOpen(false)}>
                     Log In
                   </NavLink>
                 </Button>
-                <Button asChild className="w-full rounded-md bg-[#012F6B] text-white hover:bg-[#0a3d7a]">
+                <Button asChild className="w-full rounded-md bg-[var(--institution-button-bg,var(--institution-primary,#012F6B))] text-white hover:bg-[var(--institution-primary-dark,#0a3d7a)]">
                   <NavLink to={joinUrl} onClick={() => setMobileOpen(false)}>
                     Get Started
                   </NavLink>
@@ -393,7 +393,9 @@ const InstitutionPortalShell = ({
         <section
           id="home"
           className="relative scroll-mt-24 overflow-hidden text-white"
-          style={{ background: `linear-gradient(160deg, ${BUSUU.blue} 0%, ${BUSUU.blueDeep} 55%, ${BUSUU.blueDark} 100%)` }}
+          style={{
+            background: `linear-gradient(160deg, ${theme.primary} 0%, ${theme.primaryDark} 55%, ${theme.heroBg} 100%)`,
+          }}
         >
           <div
             className="pointer-events-none absolute -bottom-24 -right-16 h-[420px] w-[520px] rounded-[45%] opacity-40"
@@ -406,7 +408,10 @@ const InstitutionPortalShell = ({
               </div>
               <h1 className="max-w-xl text-4xl font-extrabold leading-[1.08] tracking-tight sm:text-5xl md:text-[3.4rem]">
                 {titleParts.before}
-                <span className="mx-1 inline-block rounded-xl bg-[#1E5AD4] px-2.5 py-0.5 align-baseline">
+                <span
+                  className="mx-1 inline-block rounded-xl px-2.5 py-0.5 align-baseline"
+                  style={{ background: theme.primaryDark }}
+                >
                   {titleParts.mid}
                 </span>
                 {titleParts.after}
@@ -419,8 +424,11 @@ const InstitutionPortalShell = ({
                 <Button
                   asChild
                   size="lg"
-                  className="h-12 rounded-full px-8 text-base font-extrabold text-[#1A2E05] shadow-lg hover:opacity-95"
-                  style={{ background: BUSUU.green }}
+                  className="h-12 rounded-full px-8 text-base font-extrabold shadow-lg hover:opacity-95"
+                  style={{
+                    background: theme.buttonBg === theme.primary ? BUSUU.green : theme.buttonBg,
+                    color: theme.buttonBg === theme.primary ? BUSUU.greenText : theme.buttonText,
+                  }}
                 >
                   <NavLink to={joinUrl}>
                     {portal.cta_label || "Learn for free"}
@@ -508,10 +516,10 @@ const InstitutionPortalShell = ({
                 Student enrollment and instructor applications for {institution.name} only.
               </p>
               <div className="mt-5 flex flex-wrap gap-2">
-                <Button asChild size="sm" className="rounded-md bg-[#012F6B] font-semibold text-white hover:bg-[#0a3d7a]">
+                <Button asChild size="sm" className="rounded-md bg-[var(--institution-button-bg,var(--institution-primary,#012F6B))] font-semibold text-white hover:bg-[var(--institution-primary-dark,#0a3d7a)]">
                   <NavLink to={joinUrl}>Get Started</NavLink>
                 </Button>
-                <Button asChild size="sm" variant="outline" className="rounded-md border-[#012F6B] font-semibold text-[#012F6B]">
+                <Button asChild size="sm" variant="outline" className="rounded-md border-[var(--institution-primary,#012F6B)] font-semibold text-[var(--institution-primary,#012F6B)]">
                   <NavLink to={teachUrl}>Apply as instructor</NavLink>
                 </Button>
               </div>

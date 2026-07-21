@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useToast } from "@/components/ui/use-toast";
 import DashboardNavbar from "@/components/DashboardNavbar";
@@ -21,7 +21,8 @@ import {
   clearAdminImpersonation,
   type AdminImpersonationState,
 } from "@/lib/adminImpersonation";
-import { saveInstitutionContext, refreshInstitutionBrandingFromApi, isStoredMainAdmin, isPartnerInstitutionUser, getInstitutionLoginRedirect, isAdminRoleViewAsPreview } from "@/lib/institutionContext";
+import { saveInstitutionContext, refreshInstitutionBrandingFromApi, isStoredMainAdmin, isPartnerInstitutionUser, getInstitutionLoginRedirect, isAdminRoleViewAsPreview, getStoredInstitution, showsPlatformHubBranding } from "@/lib/institutionContext";
+import { portalThemeStyle, resolvePortalTheme } from "@/lib/institutionPortal";
 import { performDashboardLogout } from "@/lib/dashboardLogout";
 import InstructorDashboard from "./dashboard/InstructorDashboard";
 import LearnerDashboard from "./dashboard/LearnerDashboard";
@@ -434,7 +435,14 @@ const Dashboard = ({ initialRole }: DashboardProps) => {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div
+      className="min-h-screen bg-background"
+      style={
+        !showsPlatformHubBranding() && getStoredInstitution()
+          ? portalThemeStyle(resolvePortalTheme(getStoredInstitution()), { overridePrimaryToken: true })
+          : undefined
+      }
+    >
       <AdminDashboardPrefetch role={userRole} />
       <RoleDashboardPrefetch role={userRole} />
       <DashboardNavbar

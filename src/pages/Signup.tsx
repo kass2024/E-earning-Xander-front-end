@@ -591,6 +591,9 @@ const Signup = () => {
 
   const useInstitutionJoinChrome = isInstitutionPortalSignup;
   const showInstitutionJoinShell = useInstitutionJoinChrome && Boolean(lockedInstitution) && !lockedInstitutionError;
+  /** Compact learner join only — instructor apply keeps the hub two-column form with institution branding. */
+  const isInstitutionLearnerJoin = showInstitutionJoinShell && !isInstructorSignup;
+  const institutionLogoUrl = lockedInstitution ? resolveInstitutionLogoUrl(lockedInstitution) : null;
   const portalTheme = resolvePortalTheme(lockedInstitution);
   const brandStyle = {
     "--brand-primary": showInstitutionJoinShell ? portalTheme.primary : brand.primary,
@@ -642,28 +645,36 @@ const Signup = () => {
       )}
 
       <div className={cn("pb-16 px-4", useInstitutionJoinChrome ? "pt-8" : "public-page-offset")}>
-        <div className={cn("container mx-auto", useInstitutionJoinChrome ? "max-w-3xl" : "max-w-6xl")}>
-          {/* Page header */}
-          {!showInstitutionJoinShell && (
+        <div className={cn("container mx-auto", isInstitutionLearnerJoin ? "max-w-3xl" : "max-w-6xl")}>
+          {/* Page header — hub layout for instructors (including institution apply) */}
+          {!isInstitutionLearnerJoin && (
           <motion.div
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             className="text-center mb-10"
           >
             <Badge className="mb-4 bg-[var(--brand-primary)]/8 text-[var(--brand-primary)] border-[var(--brand-primary)]/15 hover:bg-[var(--brand-primary)]/10">
-              <ParrotLogo size="xs" showRing={false} className="mr-1.5 w-5 h-5" />
+              {institutionLogoUrl && isInstructorSignup ? (
+                <img src={institutionLogoUrl} alt="" className="mr-1.5 h-5 w-5 rounded-full object-contain" />
+              ) : (
+                <ParrotLogo size="xs" showRing={false} className="mr-1.5 w-5 h-5" />
+              )}
               {isInstructorSignup ? "Apply as instructor" : "Create your learner account"}
             </Badge>
             <h1 className="text-3xl md:text-4xl font-bold text-[var(--brand-primary)] mb-2">
               {isInstructorSignup
-                ? "Teach on " + HUB.name
+                ? lockedInstitution
+                  ? `Teach on ${lockedInstitution.name}`
+                  : "Teach on " + HUB.name
                 : isInstitutionLocked && lockedInstitution
                   ? `Join ${lockedInstitution.name}`
                   : `Join ${HUB.name}`}
             </h1>
             <p className="text-slate-600 max-w-xl mx-auto">
               {isInstructorSignup
-                ? "Submit your application — an administrator will review and approve your instructor account."
+                ? lockedInstitution
+                  ? `Submit your application — ${lockedInstitution.name} administrators will review and approve your instructor account.`
+                  : "Submit your application — an administrator will review and approve your instructor account."
                 : isInstitutionLocked && lockedInstitution
                   ? "Create your learner account and choose programs offered by your institution."
                   : HUB.slogan}
@@ -692,7 +703,11 @@ const Signup = () => {
                 <button
                   type="button"
                   className="text-[var(--brand-primary)] font-semibold underline-offset-2 hover:underline"
-                  onClick={() => navigate("/signup")}
+                  onClick={() =>
+                    navigate(
+                      institutionSlugParam ? `/join/${institutionSlugParam}` : "/signup"
+                    )
+                  }
                 >
                   Create learner account
                 </button>
@@ -701,7 +716,7 @@ const Signup = () => {
           </motion.div>
           )}
 
-          {showInstitutionJoinShell && lockedInstitution && (
+          {isInstitutionLearnerJoin && lockedInstitution && (
             <motion.div
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
@@ -714,9 +729,9 @@ const Signup = () => {
             </motion.div>
           )}
 
-          <div className={cn(showInstitutionJoinShell ? "" : "grid lg:grid-cols-[1fr_1.35fr] gap-8 lg:gap-10 items-start")}>
-            {/* Left panel — hidden on institution join links */}
-            {!showInstitutionJoinShell && (
+          <div className={cn(isInstitutionLearnerJoin ? "" : "grid lg:grid-cols-[1fr_1.35fr] gap-8 lg:gap-10 items-start")}>
+            {/* Left panel — hub layout for instructors (including institution apply) */}
+            {!isInstitutionLearnerJoin && (
             <motion.aside
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
@@ -740,7 +755,13 @@ const Signup = () => {
 
               <ul className="mt-6 space-y-4">
                 {(isInstructorSignup
-                  ? [
+                  ? lockedInstitution
+                    ? [
+                        `Share your expertise with ${lockedInstitution.name} learners`,
+                        "Host live online classes after approval",
+                        `Get course assignments from the ${lockedInstitution.name} team`,
+                      ]
+                    : [
                       "Share your expertise with learners worldwide",
                       "Host live Zoom classes after approval",
                       "Get course assignments from the admin team",
@@ -812,7 +833,7 @@ const Signup = () => {
               className={cn(
                 "rounded-3xl border bg-white shadow-xl overflow-hidden",
                 showInstitutionJoinShell
-                  ? "border-[#012F6B]/10 shadow-[#012F6B]/10"
+                  ? "border-[var(--institution-primary,#012F6B)]/10 shadow-[var(--institution-primary,#012F6B)]/10"
                   : "border-slate-200/80 shadow-slate-200/50",
               )}
             >
@@ -1500,7 +1521,11 @@ const Signup = () => {
 
   if (showInstitutionJoinShell && lockedInstitution) {
     return (
-      <InstitutionPortalShell institution={lockedInstitution} activeSection="join" compactHero>
+      <InstitutionPortalShell
+        institution={lockedInstitution}
+        activeSection={isInstructorSignup ? "teach" : "join"}
+        compactHero
+      >
         {signupPage}
       </InstitutionPortalShell>
     );

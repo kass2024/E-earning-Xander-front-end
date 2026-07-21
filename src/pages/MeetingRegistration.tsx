@@ -38,8 +38,11 @@ import {
   type MeetingTimeSlot,
 } from "@/lib/meetingScheduleUtils";
 import { motion } from "framer-motion";
-import { Badge } from "@/components/ui/badge";
+import { resolveInstitutionLogoUrl } from "@/lib/institutionContext";
+import { portalThemeStyle, resolvePortalTheme } from "@/lib/institutionPortal";
+import { HUB } from "@/lib/hubConfig";
 import { cn } from "@/lib/utils";
+import { Badge } from "@/components/ui/badge";
 
 type CommonTimezone = {
   code: string;
@@ -247,7 +250,7 @@ const MeetingRegistration = () => {
   const inputClass = (invalid?: boolean) =>
     cn(
       "h-11 rounded-xl border bg-white text-slate-900 placeholder:text-slate-400",
-      "transition-all duration-200 focus-visible:ring-2 focus-visible:ring-[#012F6B]/20 focus-visible:border-[#012F6B]",
+      "transition-all duration-200 focus-visible:ring-2 focus-visible:ring-[var(--institution-primary,#012F6B)]/20 focus-visible:border-[var(--institution-primary,#012F6B)]",
       invalid ? "border-red-300 focus-visible:ring-red-200" : "border-slate-200 hover:border-slate-300"
     );
 
@@ -543,7 +546,7 @@ const MeetingRegistration = () => {
   if (isInstitutionPortal && institutionLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-white">
-        <Loader2 className="h-9 w-9 animate-spin text-[#012F6B]" />
+        <Loader2 className="h-9 w-9 animate-spin text-[var(--institution-primary,#012F6B)]" />
       </div>
     );
   }
@@ -566,9 +569,24 @@ const MeetingRegistration = () => {
   const bookingSubtitle = institution
     ? `Choose a time for a meeting with ${institution.name}. Confirmation and join details will be emailed to you.`
     : "Choose a time, share your details, and we will email you a confirmation with your secure online meeting link.";
+  const meetingBrand = institution
+    ? {
+        name: institution.name,
+        company: institution.name,
+        tagline:
+          institution.portal?.tagline?.trim() ||
+          `Meet with ${institution.name} about programs, classes, and enrollment.`,
+        contactEmail: institution.contact_email || HUB.supportEmail,
+        logoUrl: resolveInstitutionLogoUrl(institution),
+      }
+    : undefined;
+  const meetingThemeStyle = portalThemeStyle(resolvePortalTheme(institution ?? null));
 
   const content = (
-    <div className={cn("min-h-screen", isInstitutionPortal ? "bg-transparent" : "bg-gradient-to-b from-slate-50 via-white to-slate-50")}>
+    <div
+      className={cn("min-h-screen", isInstitutionPortal ? "bg-transparent" : "bg-gradient-to-b from-slate-50 via-white to-slate-50")}
+      style={meetingThemeStyle}
+    >
       <main className={cn(isInstitutionPortal ? "pb-16 px-4 pt-10" : "public-page-offset pb-16 px-4")}>
         <div className="container mx-auto max-w-5xl">
           <motion.div
@@ -576,20 +594,20 @@ const MeetingRegistration = () => {
             animate={{ opacity: 1, y: 0 }}
             className="text-center mb-8"
           >
-            <Badge className="mb-4 bg-[#012F6B]/8 text-[#012F6B] border-[#012F6B]/15 hover:bg-[#012F6B]/10">
+            <Badge className="mb-4 bg-[var(--institution-primary,#012F6B)]/8 text-[var(--institution-primary,#012F6B)] border-[var(--institution-primary,#012F6B)]/15 hover:bg-[var(--institution-primary,#012F6B)]/10">
               <Video className="h-3.5 w-3.5 mr-1.5" />
               Book a session
             </Badge>
-            <h1 className="text-3xl md:text-4xl font-bold text-[#012F6B] mb-2">{bookingTitle}</h1>
+            <h1 className="text-3xl md:text-4xl font-bold text-[var(--institution-primary,#012F6B)] mb-2">{bookingTitle}</h1>
             <p className="text-slate-600 max-w-2xl mx-auto">{bookingSubtitle}</p>
 
             <div className="mt-8 flex items-center justify-center gap-2 sm:gap-4">
-              <div className={cn("flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold uppercase tracking-wider transition-colors", step === 1 ? "bg-[#012F6B] text-white shadow-md shadow-[#012F6B]/20" : "bg-white text-slate-500 border border-slate-200")}>
+              <div className={cn("flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold uppercase tracking-wider transition-colors", step === 1 ? "bg-[var(--institution-primary,#012F6B)] text-white shadow-md shadow-[var(--institution-primary,#012F6B)]/20" : "bg-white text-slate-500 border border-slate-200")}>
                 <span className="flex h-5 w-5 items-center justify-center rounded-full bg-white/20 text-[10px]">1</span>
                 Choose time
               </div>
               <div className="h-px w-8 sm:w-12 bg-slate-200" />
-              <div className={cn("flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold uppercase tracking-wider transition-colors", step === 2 ? "bg-[#012F6B] text-white shadow-md shadow-[#012F6B]/20" : "bg-white text-slate-500 border border-slate-200")}>
+              <div className={cn("flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold uppercase tracking-wider transition-colors", step === 2 ? "bg-[var(--institution-primary,#012F6B)] text-white shadow-md shadow-[var(--institution-primary,#012F6B)]/20" : "bg-white text-slate-500 border border-slate-200")}>
                 <span className="flex h-5 w-5 items-center justify-center rounded-full bg-white/20 text-[10px]">2</span>
                 Your info
               </div>
@@ -615,6 +633,7 @@ const MeetingRegistration = () => {
                   setStep(2);
                   window.scrollTo({ top: 0, behavior: "smooth" });
                 }}
+                brand={meetingBrand}
               />
 
               <ul className="mt-8 grid gap-3 sm:grid-cols-3 max-w-3xl mx-auto">
@@ -633,18 +652,18 @@ const MeetingRegistration = () => {
           ) : (
             <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
               <Card className="rounded-3xl border border-slate-200/80 bg-white shadow-xl shadow-slate-200/50 overflow-hidden">
-                <div className="h-1 bg-gradient-to-r from-[#012F6B] via-[#E01C21] to-[#012F6B]" />
+                <div className="h-1 bg-gradient-to-r from-[var(--institution-primary,#012F6B)] via-[#E01C21] to-[var(--institution-primary,#012F6B)]" />
 
                 <CardHeader className="pb-4 pt-8 px-6 md:px-8">
-                  <CardTitle className="text-xl font-bold text-[#012F6B]">Your information</CardTitle>
+                  <CardTitle className="text-xl font-bold text-[var(--institution-primary,#012F6B)]">Your information</CardTitle>
                   {selectedSlot && learnerTimezone && (
-                    <div className="mt-4 rounded-2xl border border-[#012F6B]/10 bg-gradient-to-br from-[#012F6B]/5 to-white p-4">
+                    <div className="mt-4 rounded-2xl border border-[var(--institution-primary,#012F6B)]/10 bg-gradient-to-br from-[var(--institution-primary,#012F6B)]/5 to-white p-4">
                       <div className="flex gap-3">
-                        <div className="shrink-0 rounded-xl border border-[#012F6B]/15 bg-white px-2.5 py-2 text-center min-w-[52px] shadow-sm">
-                          <CalendarDays className="h-4 w-4 text-[#012F6B] mx-auto" />
+                        <div className="shrink-0 rounded-xl border border-[var(--institution-primary,#012F6B)]/15 bg-white px-2.5 py-2 text-center min-w-[52px] shadow-sm">
+                          <CalendarDays className="h-4 w-4 text-[var(--institution-primary,#012F6B)] mx-auto" />
                         </div>
                         <div className="min-w-0 flex-1">
-                          <p className="text-sm font-semibold text-[#012F6B] leading-snug">
+                          <p className="text-sm font-semibold text-[var(--institution-primary,#012F6B)] leading-snug">
                             {formatSelectedMeeting(selectedSlot.startsAt, learnerTimezone)}
                             <button
                               type="button"
@@ -655,7 +674,7 @@ const MeetingRegistration = () => {
                             </button>
                           </p>
                           <p className="mt-1.5 flex items-center gap-2 text-xs text-slate-600">
-                            <Video className="h-3.5 w-3.5 text-[#012F6B]" />
+                            <Video className="h-3.5 w-3.5 text-[var(--institution-primary,#012F6B)]" />
                             Zoom (online) · {timezoneDisplayLabel(learnerTimezone)}
                           </p>
                         </div>
@@ -671,8 +690,8 @@ const MeetingRegistration = () => {
                   <form className="space-y-8" onSubmit={handleSubmit}>
                     <section className="space-y-4">
                       <div className="flex items-center gap-2 pb-1 border-b border-slate-100">
-                        <User className="h-4 w-4 text-[#012F6B]" />
-                        <h3 className="text-sm font-semibold text-[#012F6B] uppercase tracking-wide">Your details</h3>
+                        <User className="h-4 w-4 text-[var(--institution-primary,#012F6B)]" />
+                        <h3 className="text-sm font-semibold text-[var(--institution-primary,#012F6B)] uppercase tracking-wide">Your details</h3>
                       </div>
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -736,8 +755,8 @@ const MeetingRegistration = () => {
 
                     <section className="space-y-4">
                       <div className="flex items-center gap-2 pb-1 border-b border-slate-100">
-                        <MessageSquare className="h-4 w-4 text-[#012F6B]" />
-                        <h3 className="text-sm font-semibold text-[#012F6B] uppercase tracking-wide">
+                        <MessageSquare className="h-4 w-4 text-[var(--institution-primary,#012F6B)]" />
+                        <h3 className="text-sm font-semibold text-[var(--institution-primary,#012F6B)] uppercase tracking-wide">
                           Reason for booking <span className="text-[#E01C21]">*</span>
                         </h3>
                       </div>
@@ -753,7 +772,7 @@ const MeetingRegistration = () => {
                               className={cn(
                                 "rounded-xl border px-4 py-3 text-sm font-semibold transition-all text-left",
                                 active
-                                  ? "border-[#012F6B] bg-[#012F6B]/5 text-[#012F6B] shadow-sm"
+                                  ? "border-[var(--institution-primary,#012F6B)] bg-[var(--institution-primary,#012F6B)]/5 text-[var(--institution-primary,#012F6B)] shadow-sm"
                                   : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
                               )}
                             >
@@ -761,10 +780,10 @@ const MeetingRegistration = () => {
                                 <span
                                   className={cn(
                                     "flex h-4 w-4 items-center justify-center rounded-full border",
-                                    active ? "border-[#012F6B]" : "border-slate-300"
+                                    active ? "border-[var(--institution-primary,#012F6B)]" : "border-slate-300"
                                   )}
                                 >
-                                  {active && <span className="h-2 w-2 rounded-full bg-[#012F6B]" />}
+                                  {active && <span className="h-2 w-2 rounded-full bg-[var(--institution-primary,#012F6B)]" />}
                                 </span>
                                 {reason.label}
                               </span>
@@ -794,7 +813,7 @@ const MeetingRegistration = () => {
                           id="agree"
                           checked={agree}
                           onCheckedChange={(checked) => setAgree(Boolean(checked))}
-                          className="mt-0.5 data-[state=checked]:bg-[#012F6B] data-[state=checked]:border-[#012F6B]"
+                          className="mt-0.5 data-[state=checked]:bg-[var(--institution-primary,#012F6B)] data-[state=checked]:border-[var(--institution-primary,#012F6B)]"
                         />
                         <div className="space-y-1">
                           <Label htmlFor="agree" className="text-sm text-slate-700 leading-relaxed cursor-pointer">
@@ -812,7 +831,7 @@ const MeetingRegistration = () => {
                         type="button"
                         variant="outline"
                         onClick={() => setStep(1)}
-                        className="rounded-full border-[#012F6B] text-[#012F6B] hover:bg-[#012F6B]/5"
+                        className="rounded-full border-[var(--institution-primary,#012F6B)] text-[var(--institution-primary,#012F6B)] hover:bg-[var(--institution-primary,#012F6B)]/5"
                       >
                         <ChevronLeft className="h-4 w-4 mr-1" />
                         Back
@@ -820,7 +839,7 @@ const MeetingRegistration = () => {
                       <Button
                         type="submit"
                         disabled={submitting}
-                        className="rounded-full bg-[#012F6B] hover:bg-[#0a3d7a] text-white font-semibold px-8 h-12 shadow-lg shadow-[#012F6B]/20"
+                        className="rounded-full bg-[var(--institution-primary,#012F6B)] hover:bg-[var(--institution-primary-dark,#0a3d7a)] text-white font-semibold px-8 h-12 shadow-lg shadow-[var(--institution-primary,#012F6B)]/20"
                       >
                         {submitting ? (
                           <span className="flex items-center justify-center gap-2">

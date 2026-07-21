@@ -87,6 +87,43 @@ export function darkenHex(hex: string, amount = 0.18): string {
   return `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1).toUpperCase()}`;
 }
 
+/** Convert #RRGGBB to shadcn HSL channels: "H S% L%" (no hsl() wrapper). */
+export function hexToHslChannels(hex: string): string | null {
+  const raw = hex.replace("#", "").trim();
+  const full =
+    raw.length === 3
+      ? raw
+          .split("")
+          .map((c) => c + c)
+          .join("")
+      : raw.slice(0, 6);
+  if (!/^[0-9A-Fa-f]{6}$/.test(full)) return null;
+  const r = parseInt(full.slice(0, 2), 16) / 255;
+  const g = parseInt(full.slice(2, 4), 16) / 255;
+  const b = parseInt(full.slice(4, 6), 16) / 255;
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  const l = (max + min) / 2;
+  let h = 0;
+  let s = 0;
+  if (max !== min) {
+    const d = max - min;
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    switch (max) {
+      case r:
+        h = ((g - b) / d + (g < b ? 6 : 0)) / 6;
+        break;
+      case g:
+        h = ((b - r) / d + 2) / 6;
+        break;
+      default:
+        h = ((r - g) / d + 4) / 6;
+        break;
+    }
+  }
+  return `${Math.round(h * 360)} ${Math.round(s * 100)}% ${Math.round(l * 100)}%`;
+}
+
 export function resolvePortalPrimary(institution: PlatformInstitutionInfo | null | undefined): string {
   return normalizePortalHex(institution?.portal?.primary_color, DEFAULT_PORTAL_PRIMARY);
 }
@@ -109,7 +146,11 @@ export function resolvePortalTheme(institution: PlatformInstitutionInfo | null |
   };
 }
 
-export function portalThemeStyle(themeOrPrimary: InstitutionPortalTheme | string): CSSProperties {
+/** Theme style plus optional shadcn --primary override for dashboards. */
+export function portalThemeStyle(
+  themeOrPrimary: InstitutionPortalTheme | string,
+  options?: { overridePrimaryToken?: boolean },
+): CSSProperties {
   const theme =
     typeof themeOrPrimary === "string"
       ? {
@@ -122,7 +163,7 @@ export function portalThemeStyle(themeOrPrimary: InstitutionPortalTheme | string
         }
       : themeOrPrimary;
 
-  return {
+  const style: CSSProperties = {
     ["--institution-primary" as string]: theme.primary,
     ["--institution-primary-dark" as string]: theme.primaryDark,
     ["--institution-accent" as string]: theme.accent,
@@ -130,6 +171,17 @@ export function portalThemeStyle(themeOrPrimary: InstitutionPortalTheme | string
     ["--institution-button-bg" as string]: theme.buttonBg,
     ["--institution-button-text" as string]: theme.buttonText,
   };
+
+  if (options?.overridePrimaryToken) {
+    const channels = hexToHslChannels(theme.primary);
+    if (channels) {
+      style["--primary" as string] = channels;
+      const ring = hexToHslChannels(theme.accent);
+      if (ring) style["--ring" as string] = ring;
+    }
+  }
+
+  return style;
 }
 
 export type PortalColorDraft = {

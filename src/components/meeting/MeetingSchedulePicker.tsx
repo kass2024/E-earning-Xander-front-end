@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { DateTime } from "luxon";
 import {
   ChevronLeft,
@@ -61,6 +61,14 @@ type MeetingSchedulePickerProps = {
   onSelectSlot: (slot: MeetingTimeSlot | null) => void;
   onContinue: () => void;
   preview?: boolean;
+  /** When set, replaces Xander hub branding in the sidebar. */
+  brand?: {
+    name: string;
+    company?: string | null;
+    tagline?: string | null;
+    contactEmail?: string | null;
+    logoUrl?: string | null;
+  };
 };
 
 export function MeetingSchedulePicker({
@@ -74,6 +82,7 @@ export function MeetingSchedulePicker({
   onSelectSlot,
   onContinue,
   preview = false,
+  brand,
 }: MeetingSchedulePickerProps) {
   const zone = resolveLearnerTimezone(learnerTimezone);
   const [month, setMonth] = useState(() => DateTime.now().setZone(zone).toJSDate());
@@ -91,7 +100,11 @@ export function MeetingSchedulePicker({
   );
 
   const hasNoSchedules = activeSchedules.length === 0;
-  const CONTACT_EMAIL = HUB.supportEmail;
+  const CONTACT_EMAIL = (brand?.contactEmail || "").trim() || HUB.supportEmail;
+  const brandCompany = (brand?.company || brand?.name || HUB.company).trim();
+  const brandTagline = (brand?.tagline || "").trim() || HUB.tagline;
+  const brandLogo = (brand?.logoUrl || "").trim();
+  const brandAlt = brand?.name || HUB.name;
 
   const timeSlots = useMemo(() => {
     if (!selectedDate) return [];
@@ -161,23 +174,31 @@ export function MeetingSchedulePicker({
         {/* Left: event details (Calendly-style) */}
         <aside className="border-b border-slate-200 bg-slate-50/50 p-6 lg:border-b-0 lg:border-r">
           <div className="mb-4 flex justify-center lg:justify-start">
-            <ParrotLogo size="sm" alt="Xander Learning Hub" />
+            {brandLogo ? (
+              <img
+                src={brandLogo}
+                alt={brandAlt}
+                className="h-12 w-12 rounded-full border border-slate-200 bg-white object-contain p-1 shadow-sm"
+              />
+            ) : (
+              <ParrotLogo size="sm" alt={brandAlt} />
+            )}
           </div>
           <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
-            {HUB.company}
+            {brandCompany}
           </p>
-          <h2 className="mt-1 text-xl font-bold text-[#012F6B] leading-snug">
+          <h2 className="mt-1 text-xl font-bold text-[var(--institution-primary,#012F6B)] leading-snug">
             Book a meeting
           </h2>
-          <p className="mt-2 text-sm text-slate-600">{HUB.tagline}</p>
+          <p className="mt-2 text-sm text-slate-600">{brandTagline}</p>
 
           <ul className="mt-6 space-y-3 text-sm text-slate-700">
             <li className="flex items-start gap-2.5">
-              <Clock className="mt-0.5 h-4 w-4 shrink-0 text-[#012F6B]" />
+              <Clock className="mt-0.5 h-4 w-4 shrink-0 text-[var(--institution-primary,#012F6B)]" />
               <span>{scheduleDurationLabel(durationSchedule)}</span>
             </li>
             <li className="flex items-start gap-2.5">
-              <Video className="mt-0.5 h-4 w-4 shrink-0 text-[#012F6B]" />
+              <Video className="mt-0.5 h-4 w-4 shrink-0 text-[var(--institution-primary,#012F6B)]" />
               <span>Web conferencing details provided upon confirmation</span>
             </li>
           </ul>
@@ -185,7 +206,7 @@ export function MeetingSchedulePicker({
 
         {/* Right: date & time selection */}
         <div className="flex flex-col p-6 md:p-8">
-          <h3 className="text-lg font-bold text-[#012F6B]">Select a Date &amp; Time</h3>
+          <h3 className="text-lg font-bold text-[var(--institution-primary,#012F6B)]">Select a Date &amp; Time</h3>
 
           {hasNoSchedules ? (
             <div className="mt-8 flex flex-1 flex-col items-center justify-center rounded-xl border border-dashed border-slate-200 p-8 text-center">
@@ -194,7 +215,7 @@ export function MeetingSchedulePicker({
               </p>
               <a
                 href={`mailto:${CONTACT_EMAIL}`}
-                className="mt-1 text-sm font-semibold text-[#012F6B] hover:underline"
+                className="mt-1 text-sm font-semibold text-[var(--institution-primary,#012F6B)] hover:underline"
               >
                 {CONTACT_EMAIL}
               </a>
@@ -205,7 +226,7 @@ export function MeetingSchedulePicker({
               <button
                 type="button"
                 onClick={goNextMonth}
-                className="mt-3 text-sm font-semibold text-[#012F6B] hover:underline"
+                className="mt-3 text-sm font-semibold text-[var(--institution-primary,#012F6B)] hover:underline"
               >
                 View next month
               </button>
@@ -226,16 +247,16 @@ export function MeetingSchedulePicker({
                     className="rounded-full p-2 hover:bg-slate-100"
                     aria-label="Previous month"
                   >
-                    <ChevronLeft className="h-4 w-4 text-[#012F6B]" />
+                    <ChevronLeft className="h-4 w-4 text-[var(--institution-primary,#012F6B)]" />
                   </button>
-                  <span className="text-sm font-semibold text-[#012F6B]">{monthLabel}</span>
+                  <span className="text-sm font-semibold text-[var(--institution-primary,#012F6B)]">{monthLabel}</span>
                   <button
                     type="button"
                     onClick={goNextMonth}
                     className="rounded-full p-2 hover:bg-slate-100"
                     aria-label="Next month"
                   >
-                    <ChevronRight className="h-4 w-4 text-[#012F6B]" />
+                    <ChevronRight className="h-4 w-4 text-[var(--institution-primary,#012F6B)]" />
                   </button>
                 </div>
 
@@ -267,7 +288,7 @@ export function MeetingSchedulePicker({
                   }}
                   modifiersClassNames={{
                     available:
-                      "font-semibold text-[#012F6B] after:absolute after:bottom-0.5 after:left-1/2 after:h-1.5 after:w-1.5 after:-translate-x-1/2 after:rounded-full after:bg-[#0069FF] after:content-['']",
+                      "font-semibold text-[var(--institution-primary,#012F6B)] after:absolute after:bottom-0.5 after:left-1/2 after:h-1.5 after:w-1.5 after:-translate-x-1/2 after:rounded-full after:bg-[var(--institution-primary,#0069FF)] after:content-['']",
                   }}
                   className="p-0"
                   classNames={{
@@ -279,11 +300,11 @@ export function MeetingSchedulePicker({
                     row: "flex w-full mt-1",
                     cell: "relative h-10 w-10 text-center text-sm p-0",
                     day: cn(
-                      "h-10 w-10 p-0 font-medium rounded-full hover:bg-[#0069FF]/10",
-                      "aria-selected:bg-[#0069FF] aria-selected:text-white aria-selected:hover:bg-[#0069FF]"
+                      "h-10 w-10 p-0 font-medium rounded-full hover:bg-[var(--institution-primary,#0069FF)]/10",
+                      "aria-selected:bg-[var(--institution-primary,#0069FF)] aria-selected:text-white aria-selected:hover:bg-[var(--institution-primary,#0069FF)]"
                     ),
                     day_disabled: "text-slate-300 hover:bg-transparent",
-                    day_today: "font-bold text-[#0069FF]",
+                    day_today: "font-bold text-[var(--institution-primary,#0069FF)]",
                   }}
                 />
 
@@ -297,7 +318,7 @@ export function MeetingSchedulePicker({
                   <PopoverTrigger asChild>
                     <button
                       type="button"
-                      className="mt-4 inline-flex items-center gap-2 text-sm text-slate-600 hover:text-[#012F6B]"
+                      className="mt-4 inline-flex items-center gap-2 text-sm text-slate-600 hover:text-[var(--institution-primary,#012F6B)]"
                     >
                       <Globe className="h-4 w-4" />
                       <span className="font-medium">{timezoneDisplayLabel(zone)}</span>
@@ -342,7 +363,7 @@ export function MeetingSchedulePicker({
                     </div>
                   ) : (
                     <>
-                      <p className="mb-3 text-sm font-semibold text-[#012F6B]">
+                      <p className="mb-3 text-sm font-semibold text-[var(--institution-primary,#012F6B)]">
                         {selectedDateLabel}
                       </p>
                       <div className="max-h-[340px] flex-1 space-y-2 overflow-y-auto pr-1">
@@ -358,8 +379,8 @@ export function MeetingSchedulePicker({
                               className={cn(
                                 "w-full rounded-md border px-4 py-3 text-sm font-semibold transition-all",
                                 isSelected
-                                  ? "border-[#0069FF] bg-[#0069FF] text-white shadow-sm"
-                                  : "border-[#0069FF]/40 bg-white text-[#0069FF] hover:border-[#0069FF] hover:bg-[#0069FF]/5"
+                                  ? "border-[var(--institution-primary,#0069FF)] bg-[var(--institution-primary,#0069FF)] text-white shadow-sm"
+                                  : "border-[var(--institution-primary,#0069FF)]/40 bg-white text-[var(--institution-primary,#0069FF)] hover:border-[var(--institution-primary,#0069FF)] hover:bg-[var(--institution-primary,#0069FF)]/5"
                               )}
                             >
                               {slot.label}
@@ -379,7 +400,7 @@ export function MeetingSchedulePicker({
               <Button
                 type="button"
                 onClick={onContinue}
-                className="w-full rounded-md bg-[#0069FF] py-6 text-base font-semibold hover:bg-[#005bcc]"
+                className="w-full rounded-md bg-[var(--institution-primary,#0069FF)] py-6 text-base font-semibold hover:bg-[var(--institution-primary-dark,#005bcc)]"
               >
                 Continue
               </Button>

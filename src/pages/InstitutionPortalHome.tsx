@@ -164,7 +164,7 @@ const InstitutionPortalHome = () => {
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-white">
-        <Loader2 className="h-9 w-9 animate-spin text-[#4B8BF5]" />
+        <Loader2 className="h-9 w-9 animate-spin text-[var(--institution-primary,#4B8BF5)]" />
       </div>
     );
   }
@@ -257,13 +257,13 @@ const InstitutionPortalHome = () => {
                   className={cn(
                     "flex min-w-[140px] items-center gap-3 rounded-full border px-4 py-2.5 text-left transition",
                     active
-                      ? "border-[#4B8BF5] bg-[#4B8BF5]/10 shadow-sm"
+                      ? "border-[var(--institution-primary,#4B8BF5)] bg-[var(--institution-primary,#4B8BF5)]/10 shadow-sm"
                       : "border-slate-200 bg-white hover:border-slate-300",
                   )}
                 >
                   <span
                     className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-extrabold text-white"
-                    style={{ background: BUSUU_BLUE }}
+                    style={{ background: "var(--institution-button-bg, var(--institution-primary, #4B8BF5))" }}
                   >
                     {pill.name.charAt(0).toUpperCase()}
                   </span>
@@ -289,7 +289,7 @@ const InstitutionPortalHome = () => {
             <Button
               type="submit"
               className="h-12 rounded-full px-6 font-extrabold text-white"
-              style={{ background: BUSUU_BLUE }}
+              style={{ background: "var(--institution-button-bg, var(--institution-primary, #4B8BF5))" }}
             >
               Search
             </Button>
@@ -309,7 +309,7 @@ const InstitutionPortalHome = () => {
               key={item.label}
               className="flex items-center justify-center gap-2 rounded-2xl bg-white px-4 py-3 text-sm font-semibold text-slate-700 shadow-sm"
             >
-              <item.icon className="h-4 w-4 text-[#4B8BF5]" />
+              <item.icon className="h-4 w-4 text-[var(--institution-primary,#4B8BF5)]" />
               {item.label}
             </div>
           ))}
@@ -329,7 +329,7 @@ const InstitutionPortalHome = () => {
               {
                 value: `${data.stats.courses_count}+`,
                 label: "courses available for enrollment",
-                icon: <Video className="h-5 w-5 text-[#4B8BF5]" />,
+                icon: <Video className="h-5 w-5 text-[var(--institution-primary,#4B8BF5)]" />,
               },
               {
                 value: "Live",
@@ -409,7 +409,7 @@ const InstitutionPortalHome = () => {
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
                       <div className="absolute bottom-3 left-1/2 flex -translate-x-1/2 items-center gap-2 rounded-full bg-white px-3 py-1.5 shadow-md">
-                        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#4B8BF5] text-[10px] font-bold text-white">
+                        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[var(--institution-primary,#4B8BF5)] text-[10px] font-bold text-white">
                           {item.label.charAt(0)}
                         </span>
                         <span>
@@ -433,7 +433,7 @@ const InstitutionPortalHome = () => {
                 asChild
                 size="lg"
                 className="rounded-full px-10 font-extrabold text-white shadow-lg"
-                style={{ background: BUSUU_BLUE }}
+                style={{ background: "var(--institution-button-bg, var(--institution-primary, #4B8BF5))" }}
               >
                 <NavLink to={joinUrl}>Learn for free</NavLink>
               </Button>
@@ -455,7 +455,7 @@ const InstitutionPortalHome = () => {
               />
             </div>
             <div>
-              <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#4B8BF5]">Our mission</p>
+              <p className="text-xs font-bold uppercase tracking-[0.2em] text-[var(--institution-primary,#4B8BF5)]">Our mission</p>
               <h2 className="mt-2 text-3xl font-extrabold tracking-tight text-slate-900">
                 Learn anytime, anywhere with {institution.name}
               </h2>
@@ -468,7 +468,7 @@ const InstitutionPortalHome = () => {
                   "Secure enrollment and Stripe payments",
                 ].map((item) => (
                   <li key={item} className="flex items-start gap-3 text-slate-600">
-                    <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-[#4B8BF5]" />
+                    <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-[var(--institution-primary,#4B8BF5)]" />
                     <span>{item}</span>
                   </li>
                 ))}
@@ -476,7 +476,7 @@ const InstitutionPortalHome = () => {
               <Button
                 type="button"
                 className="mt-8 rounded-full px-8 font-bold text-white"
-                style={{ background: BUSUU_BLUE }}
+                style={{ background: "var(--institution-button-bg, var(--institution-primary, #4B8BF5))" }}
                 onClick={() =>
                   document.getElementById("about")?.scrollIntoView({ behavior: "smooth", block: "start" })
                 }
@@ -492,7 +492,7 @@ const InstitutionPortalHome = () => {
       <section id="programs" className="scroll-mt-24 bg-[#F7F8FA] py-14 sm:py-16">
         <div className="container mx-auto max-w-6xl px-4">
           <div className="mb-10 text-center">
-            <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#4B8BF5]">Our courses</p>
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-[var(--institution-primary,#4B8BF5)]">Our courses</p>
             <h2 className="mt-2 text-3xl font-extrabold tracking-tight text-slate-900 sm:text-4xl">
               Find the best programs for you
             </h2>
@@ -521,7 +521,7 @@ const InstitutionPortalHome = () => {
                 >
                   <div className="flex items-start justify-between gap-3">
                     <h3 className="text-lg font-extrabold text-slate-900">{program.name}</h3>
-                    <span className="rounded-full bg-[#4B8BF5]/10 px-2.5 py-1 text-[11px] font-bold text-[#2F6FE0]">
+                    <span className="rounded-full bg-[var(--institution-primary,#4B8BF5)]/10 px-2.5 py-1 text-[11px] font-bold text-[#2F6FE0]">
                       {program.courses?.length ?? 0} courses
                     </span>
                   </div>
@@ -551,7 +551,7 @@ const InstitutionPortalHome = () => {
         <section className="bg-white py-14 sm:py-16">
           <div className="container mx-auto max-w-6xl px-4">
             <div className="mb-10 text-center">
-              <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#4B8BF5]">Featured</p>
+              <p className="text-xs font-bold uppercase tracking-[0.2em] text-[var(--institution-primary,#4B8BF5)]">Featured</p>
               <h2 className="mt-2 text-3xl font-extrabold text-slate-900">Popular courses at {institution.name}</h2>
             </div>
             <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
@@ -599,7 +599,7 @@ const InstitutionPortalHome = () => {
       <section className="bg-[#F7F8FA] py-14 sm:py-16">
         <div className="container mx-auto max-w-6xl px-4">
           <div className="mb-10 text-center">
-            <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#4B8BF5]">International exams</p>
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-[var(--institution-primary,#4B8BF5)]">International exams</p>
             <h2 className="mt-2 text-3xl font-extrabold text-slate-900">Prepare for global admissions</h2>
           </div>
           <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
@@ -632,7 +632,7 @@ const InstitutionPortalHome = () => {
       <section className="bg-white py-14 sm:py-16">
         <div className="container mx-auto max-w-6xl px-4">
           <div className="mb-10 text-center">
-            <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#4B8BF5]">Language courses</p>
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-[var(--institution-primary,#4B8BF5)]">Language courses</p>
             <h2 className="mt-2 text-3xl font-extrabold text-slate-900">Master a new language</h2>
           </div>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -675,7 +675,7 @@ const InstitutionPortalHome = () => {
                 <div key={`${feature.title}-${index}`} className="rounded-[1.75rem] bg-white p-6 shadow-sm">
                   <div
                     className="mb-4 flex h-11 w-11 items-center justify-center rounded-2xl text-white"
-                    style={{ background: BUSUU_BLUE }}
+                    style={{ background: "var(--institution-button-bg, var(--institution-primary, #4B8BF5))" }}
                   >
                     <Icon className="h-5 w-5" />
                   </div>
@@ -692,7 +692,7 @@ const InstitutionPortalHome = () => {
       <section className="bg-white py-14 sm:py-16">
         <div className="container mx-auto max-w-6xl px-4">
           <div className="mb-10 text-center">
-            <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#4B8BF5]">Student portal</p>
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-[var(--institution-primary,#4B8BF5)]">Student portal</p>
             <h2 className="mt-2 text-3xl font-extrabold text-slate-900">Everything you need to succeed</h2>
           </div>
           <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
@@ -777,7 +777,7 @@ const InstitutionPortalHome = () => {
           <div className="grid gap-5 md:grid-cols-3">
             {TESTIMONIALS.map((t) => (
               <blockquote key={t.name} className="rounded-[1.75rem] bg-white p-6 shadow-sm">
-                <Quote className="mb-3 h-5 w-5 text-[#4B8BF5]" />
+                <Quote className="mb-3 h-5 w-5 text-[var(--institution-primary,#4B8BF5)]" />
                 <p className="text-sm leading-relaxed text-slate-700">“{t.text}”</p>
                 <footer className="mt-4 flex items-center gap-3">
                   <SafeImage
@@ -845,7 +845,7 @@ const InstitutionPortalHome = () => {
         <div className="container mx-auto max-w-6xl px-4">
           <div className="grid gap-10 lg:grid-cols-[1.2fr_0.8fr]">
             <div>
-              <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#4B8BF5]">About us</p>
+              <p className="text-xs font-bold uppercase tracking-[0.2em] text-[var(--institution-primary,#4B8BF5)]">About us</p>
               <h2 className="mt-2 text-3xl font-extrabold text-slate-900">{institution.name}</h2>
               <p className="mt-5 whitespace-pre-line text-base leading-relaxed text-slate-600">
                 {portal?.about}
@@ -862,7 +862,7 @@ const InstitutionPortalHome = () => {
                 </li>
                 {institution.address && (
                   <li className="flex items-start gap-2">
-                    <MapPin className="mt-0.5 h-4 w-4 text-[#4B8BF5]" />
+                    <MapPin className="mt-0.5 h-4 w-4 text-[var(--institution-primary,#4B8BF5)]" />
                     {institution.address}
                   </li>
                 )}
