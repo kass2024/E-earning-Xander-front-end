@@ -259,8 +259,12 @@ const MeetingRegistration = () => {
 
   const loadSchedules = async (platformInstitutionId?: number | null) => {
     try {
+      const tenantId =
+        platformInstitutionId != null && Number(platformInstitutionId) > 0
+          ? Number(platformInstitutionId)
+          : null;
       const data = await getAvailableSchedules({
-        platformInstitutionId: platformInstitutionId ?? null,
+        platformInstitutionId: tenantId,
       });
       const parsed = parseAvailableSchedulesResponse(data);
       setAvailableSchedules(parsed.schedules);

@@ -39,6 +39,7 @@ import {
   resolveDurationSchedule,
   scheduleDurationLabel,
   timezoneDisplayLabel,
+  dateKey,
   type MeetingCalendarConfig,
   type MeetingTimeSlot,
   type BookedMeetingSlot,
@@ -129,11 +130,12 @@ export function MeetingSchedulePicker({
   useEffect(() => {
     if (selectedDate) return;
     const today = DateTime.now().setZone(zone).startOf("day");
-    for (let i = 0; i < 90; i++) {
-      const candidate = today.plus({ days: i }).toJSDate();
+    for (let i = 0; i < 120; i++) {
+      const candidateDt = today.plus({ days: i });
+      const candidate = new Date(candidateDt.year, candidateDt.month - 1, candidateDt.day);
       if (dateHasAvailability(activeSchedules, candidate, zone, calendar, bookedSlots)) {
         setSelectedDate(candidate);
-        setMonth(candidate);
+        setMonth(new Date(candidateDt.year, candidateDt.month - 1, 1));
         break;
       }
     }
@@ -163,10 +165,13 @@ export function MeetingSchedulePicker({
   };
 
   const selectedDateLabel = selectedDate
-    ? DateTime.fromJSDate(selectedDate, { zone }).toFormat("cccc, LLLL d")
+    ? DateTime.fromISO(dateKey(selectedDate, zone), { zone }).toFormat("cccc, LLLL d")
     : null;
 
-  const monthLabel = DateTime.fromJSDate(month, { zone }).toFormat("LLLL yyyy");
+  const monthLabel = (() => {
+    const key = dateKey(month, zone).slice(0, 7);
+    return DateTime.fromISO(`${key}-01`, { zone }).toFormat("LLLL yyyy");
+  })();
 
   return (
     <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl shadow-slate-200/40">
@@ -231,6 +236,20 @@ export function MeetingSchedulePicker({
                 View next month
               </button>
             </div>
+          ) : !monthBookable ? (
+            <div className="mt-8 flex flex-1 flex-col items-center justify-center rounded-xl border border-dashed border-[var(--institution-primary,#012F6B)]/25 bg-[var(--institution-primary,#012F6B)]/5 p-8 text-center">
+              <p className="text-slate-800 font-semibold">No open dates in {monthLabel}</p>
+              <p className="mt-2 text-sm text-slate-600">
+                Availability was set for other days — try the next month, or ask the admin to add more slots.
+              </p>
+              <button
+                type="button"
+                onClick={goNextMonth}
+                className="mt-4 rounded-full bg-[var(--institution-primary,#012F6B)] px-4 py-2 text-sm font-semibold text-white hover:opacity-90"
+              >
+                View next month
+              </button>
+            </div>
           ) : (
             <div
               className={cn(
@@ -270,15 +289,9 @@ export function MeetingSchedulePicker({
                     onSelectSlot(null);
                   }}
                   disabled={(date) => {
-                    const dt = DateTime.fromObject(
-                      {
-                        year: date.getFullYear(),
-                        month: date.getMonth() + 1,
-                        day: date.getDate(),
-                      },
-                      { zone }
-                    ).startOf("day");
-                    if (dt < DateTime.now().setZone(zone).startOf("day")) return true;
+                    const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+                    const dt = DateTime.fromISO(key, { zone }).startOf("day");
+                    if (!dt.isValid || dt < DateTime.now().setZone(zone).startOf("day")) return true;
                     if (isDateBlocked(date, calendar, zone)) return true;
                     return !dateHasAvailability(activeSchedules, date, zone, calendar, bookedSlots);
                   }}
@@ -288,7 +301,7 @@ export function MeetingSchedulePicker({
                   }}
                   modifiersClassNames={{
                     available:
-                      "font-semibold text-[var(--institution-primary,#012F6B)] after:absolute after:bottom-0.5 after:left-1/2 after:h-1.5 after:w-1.5 after:-translate-x-1/2 after:rounded-full after:bg-[var(--institution-primary,#0069FF)] after:content-['']",
+                      "!relative !font-bold !text-[var(--institution-primary,#012F6B)] !bg-[var(--institution-primary,#012F6B)]/15 ring-2 ring-inset ring-[var(--institution-primary,#012F6B)]/40 hover:!bg-[var(--institution-primary,#012F6B)]/25 after:absolute after:bottom-1 after:left-1/2 after:h-1.5 after:w-1.5 after:-translate-x-1/2 after:rounded-full after:bg-[var(--institution-accent,#E01C21)] after:content-['']",
                   }}
                   className="p-0"
                   classNames={{
@@ -303,16 +316,17 @@ export function MeetingSchedulePicker({
                       "h-10 w-10 p-0 font-medium rounded-full hover:bg-[var(--institution-primary,#0069FF)]/10",
                       "aria-selected:bg-[var(--institution-primary,#0069FF)] aria-selected:text-white aria-selected:hover:bg-[var(--institution-primary,#0069FF)]"
                     ),
-                    day_disabled: "text-slate-300 hover:bg-transparent",
+                    day_disabled: "text-slate-300 opacity-55 hover:bg-transparent",
                     day_today: "font-bold text-[var(--institution-primary,#0069FF)]",
                   }}
                 />
 
-                {!monthBlocked && monthBookable && (
-                  <p className="mt-2 text-xs text-slate-500">
-                    Blue dots mark days with open slots.
-                  </p>
-                )}
+                <p className="mt-3 flex items-center gap-2 text-xs text-slate-600">
+                  <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-[var(--institution-primary,#012F6B)]/15 ring-2 ring-inset ring-[var(--institution-primary,#012F6B)]/40 text-[10px] font-bold text-[var(--institution-primary,#012F6B)]">
+                    12
+                  </span>
+                  Highlighted dates have open meeting slots — click one to choose a time.
+                </p>
 
                 <Popover open={timezoneOpen} onOpenChange={setTimezoneOpen}>
                   <PopoverTrigger asChild>

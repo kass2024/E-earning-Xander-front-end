@@ -38,9 +38,36 @@ export function normalizeScheduleDate(raw: string | null | undefined): string | 
   return /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : null;
 }
 
+/**
+ * DayPicker gives calendar dates via local Y/M/D. Match those to `available_on_date`
+ * (also a calendar date) — do not convert the Instant through a timezone (that shifts the day).
+ */
+export function calendarDateKey(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
+export function dateKey(date: Date, _zone?: string): string {
+  return calendarDateKey(date);
+}
+
+function monthKey(date: Date, _zone?: string): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  return `${y}-${m}`;
+}
+
+function isScheduleActive(schedule: AvailableScheduleRow): boolean {
+  const value = schedule.is_active as unknown;
+  if (value === false || value === 0 || value === "0") return false;
+  return true;
+}
+
 export function scheduleDateKey(
   schedule: AvailableScheduleRow,
-  fallbackZone = "Africa/Nairobi"
+  _fallbackZone = "Africa/Nairobi"
 ): string | null {
   return normalizeScheduleDate(schedule.available_on_date ?? undefined);
 }
@@ -78,14 +105,6 @@ function parseTimeParts(time: string | null | undefined): { hour: number; minute
   const raw = String(time ?? "").slice(0, 5);
   const [h, m] = raw.split(":").map((v) => Number(v) || 0);
   return { hour: h, minute: m };
-}
-
-export function dateKey(date: Date, zone: string): string {
-  return DateTime.fromJSDate(date, { zone }).toFormat("yyyy-MM-dd");
-}
-
-function monthKey(date: Date, zone: string): string {
-  return DateTime.fromJSDate(date, { zone }).startOf("month").toFormat("yyyy-MM");
 }
 
 const WINDOWS_TZ_TO_IANA: Record<string, string> = {
@@ -214,7 +233,7 @@ export function resolveMeetingSchedules(
   schedules: AvailableScheduleRow[],
   options?: { useFallback?: boolean }
 ): AvailableScheduleRow[] {
-  const active = schedules.filter((s) => s.is_active !== false);
+  const active = schedules.filter((s) => isScheduleActive(s));
   if (active.length > 0) return active;
   return options?.useFallback ? DEFAULT_MEETING_SCHEDULES : [];
 }
@@ -245,7 +264,7 @@ export function schedulesForDate(
 ): AvailableScheduleRow[] {
   const key = dateKey(date, zone);
   return schedules.filter((s) => {
-    if (s.is_active === false) return false;
+    if (!isScheduleActive(s)) return false;
     return normalizeScheduleDate(s.available_on_date ?? undefined) === key;
   });
 }
@@ -274,8 +293,10 @@ export function dateHasAvailability(
   bookedSlots: BookedMeetingSlot[] = []
 ): boolean {
   const zone = resolveLearnerTimezone(learnerTimezone);
-  const startOfDay = DateTime.fromJSDate(date, { zone }).startOf("day");
+  const key = dateKey(date, zone);
+  const startOfDay = DateTime.fromISO(key, { zone }).startOf("day");
 
+  if (!startOfDay.isValid) return false;
   if (startOfDay < DateTime.now().setZone(zone).startOf("day")) {
     return false;
   }
@@ -300,11 +321,11 @@ export function monthHasBookableDates(
     return false;
   }
 
-  const dt = DateTime.fromJSDate(month, { zone }).startOf("month");
+  const dt = DateTime.fromISO(`${dateKey(month, zone).slice(0, 7)}-01`, { zone }).startOf("month");
   const daysInMonth = dt.daysInMonth ?? 30;
 
   for (let d = 1; d <= daysInMonth; d++) {
-    const date = dt.set({ day: d }).toJSDate();
+    const date = new Date(dt.year, dt.month - 1, d);
     if (dateHasAvailability(schedules, date, zone, calendar, bookedSlots)) {
       return true;
     }
@@ -321,7 +342,9 @@ export function getTimeSlotsForDate(
 ): MeetingTimeSlot[] {
   const zone = resolveLearnerTimezone(learnerTimezone);
   const now = DateTime.now().setZone(zone);
-  const selectedDay = DateTime.fromJSDate(date, { zone }).startOf("day");
+  const dayKeyStr = dateKey(date, zone);
+  const selectedDay = DateTime.fromISO(dayKeyStr, { zone }).startOf("day");
+  if (!selectedDay.isValid) return [];
   const isFutureDay = selectedDay > now.startOf("day");
   const matching = schedulesForDate(schedules, date, zone);
   const slots: MeetingTimeSlot[] = [];
@@ -340,12 +363,12 @@ export function getTimeSlotsForDate(
 
   for (const schedule of matching) {
     const sourceZone = resolveScheduleTimezone(schedule.timezone, zone);
-    const dayKeyStr =
-      normalizeScheduleDate(schedule.available_on_date ?? undefined) ?? dateKey(date, zone);
+    const scheduleDayKey =
+      normalizeScheduleDate(schedule.available_on_date ?? undefined) ?? dayKeyStr;
     const startParts = parseTimeParts(schedule.start_time);
     const endParts = parseTimeParts(schedule.end_time);
 
-    const dayBase = DateTime.fromISO(dayKeyStr, { zone: sourceZone }).startOf("day");
+    const dayBase = DateTime.fromISO(scheduleDayKey, { zone: sourceZone }).startOf("day");
     let cursor = dayBase.set({ hour: startParts.hour, minute: startParts.minute });
     const endAt = dayBase.set({ hour: endParts.hour, minute: endParts.minute });
 
