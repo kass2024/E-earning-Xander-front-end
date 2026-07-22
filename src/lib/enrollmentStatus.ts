@@ -3,6 +3,7 @@
 export type EnrollmentStatus =
   | "enrolled"
   | "approved"
+  | "partial_paid"
   | "paid"
   | "completed"
   | "rejected"
@@ -20,18 +21,29 @@ export function isPendingEnrollmentApproval(status?: string | null): boolean {
 }
 
 export function canPayForEnrollment(status?: string | null): boolean {
-  return normalizeEnrollmentStatus(status) === "approved";
+  const s = normalizeEnrollmentStatus(status);
+  return (
+    s === "enrolled" ||
+    s === "applied" ||
+    s === "waiting approval" ||
+    s === "approved" ||
+    s === "partial_paid"
+  );
 }
 
 /** Full course resource access (materials, live classes, quizzes). */
 export function hasCourseAccess(status?: string | null): boolean {
   const s = normalizeEnrollmentStatus(status);
-  return s === "approved" || s === "paid" || s === "completed";
+  return s === "approved" || s === "partial_paid" || s === "paid" || s === "completed";
 }
 
 export function isEnrollmentPaid(status?: string | null): boolean {
   const s = normalizeEnrollmentStatus(status);
   return s === "paid" || s === "completed";
+}
+
+export function isEnrollmentPartialPaid(status?: string | null): boolean {
+  return normalizeEnrollmentStatus(status) === "partial_paid";
 }
 
 export function isEnrollmentRejected(status?: string | null): boolean {
@@ -47,28 +59,44 @@ export function canViewCourseGuide(status?: string | null): boolean {
     isPendingEnrollmentApproval(s) ||
     hasCourseAccess(s) ||
     s === "approved" ||
+    s === "partial_paid" ||
     s === "paid" ||
     s === "completed"
   );
 }
 
-export function enrollmentBadgeLabel(status?: string | null): string {
+export function enrollmentBadgeLabel(status?: string | null, remaining?: number | null): string {
   const s = normalizeEnrollmentStatus(status);
   if (s === "paid") return "Paid";
+  if (s === "partial_paid") {
+    if (remaining != null && remaining > 0) {
+      return `Partial · ${Number(remaining).toLocaleString()} due`;
+    }
+    return "Partial paid";
+  }
   if (s === "completed") return "Completed";
   if (s === "approved") return "Active — payment due";
   if (s === "rejected") return "Rejected";
-  if (isPendingEnrollmentApproval(s)) return "Waiting approval";
+  if (isPendingEnrollmentApproval(s)) return "Pay to activate";
   return "Not applied";
 }
 
-export function enrollmentPaymentStatusText(status?: string | null): string {
+export function enrollmentPaymentStatusText(
+  status?: string | null,
+  remaining?: number | null
+): string {
   const s = normalizeEnrollmentStatus(status);
   if (isEnrollmentPaid(s)) return "Paid";
+  if (isEnrollmentPartialPaid(s)) {
+    if (remaining != null && remaining > 0) {
+      return `Partial paid — ${Number(remaining).toLocaleString()} RWF remaining`;
+    }
+    return "Partial paid — remaining balance due";
+  }
   if (s === "approved") return "Unpaid — access granted";
   if (s === "rejected") return "Not applicable (application rejected)";
   if (isPendingEnrollmentApproval(s)) {
-    return "Not paid — awaiting approval";
+    return "Not paid — learner can pay now";
   }
   return "Not paid";
 }
@@ -84,6 +112,39 @@ export function buildEnrollmentStatusMap(
     statuses[id] = normalizeEnrollmentStatus(row?.status) || "enrolled";
   }
   return statuses;
+}
+
+/** Build course_id → amount_remaining map from enrollment API rows. */
+export function buildEnrollmentRemainingMap(
+  enrollments:
+    | Array<{ course_id?: number | string | null; amount_remaining?: number | string | null }>
+    | null
+    | undefined
+): Record<number, number> {
+  const remaining: Record<number, number> = {};
+  for (const row of enrollments ?? []) {
+    const id = Number(row?.course_id);
+    if (!id || Number.isNaN(id)) continue;
+    const value = Number(row?.amount_remaining ?? 0);
+    if (Number.isFinite(value) && value >= 0) {
+      remaining[id] = value;
+    }
+  }
+  return remaining;
+}
+
+export function getEnrollmentRemainingForCourse(
+  remaining: Record<number | string, number | undefined>,
+  courseId: number | string | null | undefined
+): number | undefined {
+  if (courseId == null || courseId === "") return undefined;
+  const id = Number(courseId);
+  if (!Number.isNaN(id)) {
+    const value = remaining[id] ?? remaining[String(id)];
+    return value == null ? undefined : Number(value);
+  }
+  const value = remaining[courseId];
+  return value == null ? undefined : Number(value);
 }
 
 export function getEnrollmentStatusForCourse(

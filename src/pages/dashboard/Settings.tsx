@@ -3,9 +3,10 @@ import UserProfile from "./UserProfile";
 import PasswordChange from "./PasswordChange";
 import InstitutionBrandingSettings from "@/components/dashboard/InstitutionBrandingSettings";
 import MainPlatformMeetingSettings from "@/components/dashboard/MainPlatformMeetingSettings";
+import PaymentReceiverSettings from "@/components/dashboard/PaymentReceiverSettings";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { LockKeyhole, Settings as SettingsIcon, UserRound, Video } from "lucide-react";
+import { CreditCard, LockKeyhole, Settings as SettingsIcon, UserRound, Video } from "lucide-react";
 import { isStoredMainAdmin } from "@/lib/institutionContext";
 
 const Settings = () => {
@@ -13,8 +14,9 @@ const Settings = () => {
   const showInstitution = role === "partner_company";
   const showLiveMeetings =
     isStoredMainAdmin() || role === "admin" || role === "staff" || role === "instructor";
+  const showPayments = isStoredMainAdmin() || role === "admin" || role === "staff";
 
-  const tabCount = 2 + (showInstitution ? 1 : 0) + (showLiveMeetings ? 1 : 0);
+  const tabCount = 2 + (showInstitution ? 1 : 0) + (showLiveMeetings ? 1 : 0) + (showPayments ? 1 : 0);
 
   return (
     <div className="container mx-auto py-8 px-4">
@@ -35,6 +37,7 @@ const Settings = () => {
           <Badge variant="secondary">Profile</Badge>
           <Badge variant="secondary">Security</Badge>
           {showLiveMeetings && <Badge variant="secondary">Live meetings</Badge>}
+          {showPayments && <Badge variant="secondary">Payments</Badge>}
           {showInstitution && <Badge variant="secondary">Institution</Badge>}
         </div>
       </div>
@@ -43,7 +46,7 @@ const Settings = () => {
         <CardHeader className="border-b bg-gradient-to-r from-slate-50 to-white">
           <CardTitle className="text-xl">Settings</CardTitle>
           <CardDescription>
-            Use the tabs below to update your information and platform defaults.
+            Use the tabs below to update your information, MoMo receiver, and platform defaults.
           </CardDescription>
         </CardHeader>
 
@@ -67,6 +70,12 @@ const Settings = () => {
                   Live meetings
                 </TabsTrigger>
               )}
+              {showPayments && (
+                <TabsTrigger value="payments" className="gap-2">
+                  <CreditCard className="h-4 w-4" />
+                  Payments
+                </TabsTrigger>
+              )}
               {showInstitution && (
                 <TabsTrigger value="institution" className="gap-2">
                   <SettingsIcon className="h-4 w-4" />
@@ -86,6 +95,12 @@ const Settings = () => {
             {showLiveMeetings && (
               <TabsContent value="live-meetings" className="mt-0">
                 <MainPlatformMeetingSettings />
+              </TabsContent>
+            )}
+
+            {showPayments && (
+              <TabsContent value="payments" className="mt-0">
+                <PaymentReceiverSettings />
               </TabsContent>
             )}
 

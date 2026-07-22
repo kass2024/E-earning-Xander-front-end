@@ -27,6 +27,7 @@ import DailyReturn from "./pages/DailyReturn";
 
 const PaymentSuccess = lazyWithRetry(() => import("./pages/PaymentSuccess"));
 const PaymentCancel = lazyWithRetry(() => import("./pages/PaymentCancel"));
+const PayNow = lazyWithRetry(() => import("./pages/PayNow"));
 const CertificateVerify = lazyWithRetry(() => import("./pages/CertificateVerify"));
 const Dashboard = lazyWithRetry(() => import("./pages/Dashboard"));
 const PublicCohortJoin = lazyWithRetry(() => import("./pages/PublicCohortJoin"));
@@ -79,6 +80,7 @@ const App = () => (
               <Route path="/dashboard/*" element={<Dashboard />} />
               <Route path="/payment/success" element={<PaymentSuccess />} />
               <Route path="/payment/cancel" element={<PaymentCancel />} />
+              <Route path="/pay-now" element={<PayNow />} />
               <Route path="/verify/certificate/:courseId/:studentId" element={<CertificateVerify />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
