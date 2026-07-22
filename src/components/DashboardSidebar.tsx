@@ -31,6 +31,7 @@ import {
   Clock,
   Building2,
   FolderOpen,
+  Radio,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -63,6 +64,12 @@ const ZOOM_MEETING_LINKS: NavLinkItem[] = [
   { to: "/dashboard/zoom-recordings", label: "Recordings", icon: Video },
   { to: "/dashboard/appointments", label: "Appointments", icon: CalendarClock },
   { to: "/dashboard/live-zoom-cohort", label: "Live Cohorts", icon: CalendarClock },
+];
+
+/** Instructor Zoom menu: Meetings + Webinar only (invite learners / extra emails). */
+const INSTRUCTOR_ZOOM_LINKS: NavLinkItem[] = [
+  { to: "/dashboard/zoom-meetings", label: "Meetings", icon: Video },
+  { to: "/dashboard/zoom-webinars", label: "Webinar", icon: Radio },
 ];
 
 const ADMIN_SECTIONS: Array<{ title: string; links: NavItem[] }> = [
@@ -110,7 +117,7 @@ const ADMIN_SECTIONS: Array<{ title: string; links: NavItem[] }> = [
   },
 ];
 
-const INSTRUCTOR_SECTIONS: Array<{ title: string; links: NavLinkItem[] }> = [
+const INSTRUCTOR_SECTIONS: Array<{ title: string; links: NavItem[] }> = [
   {
     title: "Overview",
     links: [{ to: "/dashboard/instructor", label: "Dashboard", icon: LayoutDashboard }],
@@ -124,6 +131,11 @@ const INSTRUCTOR_SECTIONS: Array<{ title: string; links: NavLinkItem[] }> = [
       { to: "/dashboard/materials", label: "Materials", icon: FileText },
       { to: "/dashboard/instructor/quizzes", label: "Assessment", icon: ClipboardList },
       { to: "/dashboard/classes", label: "Live Classes", icon: Calendar },
+      {
+        label: "Zoom meetings",
+        icon: Video,
+        children: INSTRUCTOR_ZOOM_LINKS,
+      },
       { to: "/dashboard/study-shifts", label: "Study Shifts", icon: CalendarClock },
     ],
   },
@@ -169,7 +181,7 @@ const DashboardSidebar = ({ userRole, isOpen, onClose }: DashboardSidebarProps) 
   useInstitutionBrandingRevision();
   const [collapsed, setCollapsed] = useState(false);
   const location = useLocation();
-  const zoomChildActive = ZOOM_MEETING_LINKS.some(
+  const zoomChildActive = [...ZOOM_MEETING_LINKS, ...INSTRUCTOR_ZOOM_LINKS].some(
     (link) =>
       location.pathname === link.to ||
       (link.to === "/dashboard/appointments" &&
@@ -379,21 +391,7 @@ const DashboardSidebar = ({ userRole, isOpen, onClose }: DashboardSidebarProps) 
                     {section.title}
                   </p>
                 )}
-                {section.links.map((link) => (
-                  <NavLink
-                    key={link.to}
-                    to={link.to}
-                    end={link.to === "/dashboard/instructor"}
-                    onClick={() => {
-                      if (window.innerWidth < 1024) onClose?.();
-                    }}
-                    {...linkPrefetchProps(link.to)}
-                    className={sidebarLinkClass(link.to)}
-                  >
-                    <link.icon className="shrink-0 w-5 h-5" />
-                    {!collapsed && <span className="text-sm">{link.label}</span>}
-                  </NavLink>
-                ))}
+                {section.links.map((link) => renderNavItem(link, "/dashboard/instructor"))}
               </div>
             ))
           ) : menuRole === "meeting_user" ? (

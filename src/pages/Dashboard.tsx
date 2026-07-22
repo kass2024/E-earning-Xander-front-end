@@ -84,9 +84,6 @@ const ADMIN_ONLY_PATHS = [
   "/dashboard/course-approval",
   "/dashboard/courses",
   "/dashboard/instructors",
-  "/dashboard/zoom",
-  "/dashboard/zoom-meetings",
-  "/dashboard/zoom-webinars",
   "/dashboard/zoom-recordings",
   "/dashboard/live-zoom-cohort",
 ];
@@ -423,6 +420,12 @@ const Dashboard = ({ initialRole }: DashboardProps) => {
         }
         if (location.pathname === "/dashboard/study-shifts") {
           return <StudyShiftsManagement />;
+        }
+        if (location.pathname === "/dashboard/zoom" || location.pathname === "/dashboard/zoom-meetings") {
+          return <ZoomManagement initialMeetingType="meeting" />;
+        }
+        if (location.pathname === "/dashboard/zoom-webinars") {
+          return <ZoomManagement initialMeetingType="webinar" />;
         }
         return <InstructorDashboard />;
       case "admin":

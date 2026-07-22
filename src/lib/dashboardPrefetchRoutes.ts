@@ -108,6 +108,8 @@ export function prefetchInstructorRoutes(): void {
     "/dashboard/instructor/earnings",
     "/dashboard/programs",
     "/dashboard/study-shifts",
+    "/dashboard/zoom-meetings",
+    "/dashboard/zoom-webinars",
     "/dashboard/settings",
   ].forEach(prefetchDashboardRoute);
 

@@ -48,6 +48,8 @@ import {
   ZoomMeetingPayload,
   getUsers,
   getPlatformMeetingSettings,
+  getInstructorStudents,
+  type InstructorStudentRow,
 } from "@/api/axios";
 import { fetchDashboardCached, readDashboardCache } from "@/lib/dashboardCache";
 import { openZoomMeetingInNewTab, zoomMeetingEmbedRoom } from "@/lib/zoomEmbedRoutes";
@@ -56,6 +58,8 @@ import type { ZoomRecordingFile } from "@/api/axios";
 import { resolveDefaultTimezone } from "@/lib/commonTimezones";
 import { localDatetimeToZoomStart } from "@/lib/scheduledDateTime";
 import { cn } from "@/lib/utils";
+import { resolveInstructorEmail } from "@/lib/dashboardUser";
+import { getAdminImpersonation } from "@/lib/adminImpersonation";
 
 type ZoomItem = {
   id?: string | number;
@@ -155,15 +159,22 @@ const ZoomManagement = ({ initialMeetingType = "meeting" }: ZoomManagementProps)
   const [itemsLoading, setItemsLoading] = useState(false);
   const [recordingsLoading, setRecordingsLoading] = useState(false);
   const [meetings, setMeetings] = useState<ZoomItem[]>([]);
-  const [staffUsers, setStaffUsers] = useState<StaffUser[]>([]);
-  const [selectedStaffEmails, setSelectedStaffEmails] = useState<string[]>([]);
-  const [staffSearch, setStaffSearch] = useState("");
+  const [invitees, setInvitees] = useState<StaffUser[]>([]);
+  const [selectedInviteEmails, setSelectedInviteEmails] = useState<string[]>([]);
+  const [inviteeSearch, setInviteeSearch] = useState("");
   const [settingsOpen, setSettingsOpen] = useState(false);
 
   const [hostDisplayName, setHostDisplayName] = useState<string | null>(null);
   const [hostDisplayEmail, setHostDisplayEmail] = useState<string | null>(null);
 
   const [platformProvider, setPlatformProvider] = useState<"zoom" | "daily">("daily");
+
+  const isInstructorHost = useMemo(() => {
+    const role = (localStorage.getItem("parrot_user_role") || "").toLowerCase();
+    const impersonation = getAdminImpersonation();
+    if (impersonation?.viewAsRole === "instructor") return true;
+    return role === "instructor";
+  }, []);
 
   const mergeMeetingRecordings = (current: ZoomItem[], withRecordings: ZoomItem[]) => {
     const byId = new Map(
@@ -178,16 +189,41 @@ const ZoomManagement = ({ initialMeetingType = "meeting" }: ZoomManagementProps)
     });
   };
 
-  const loadStaff = async () => {
+  const loadInvitees = async () => {
     try {
+      if (isInstructorHost) {
+        const email = resolveInstructorEmail();
+        if (!email) {
+          setInvitees([]);
+          return;
+        }
+        const res = await getInstructorStudents(email).catch(() => null);
+        const students: InstructorStudentRow[] = Array.isArray(res?.students) ? res.students : [];
+        const byEmail = new Map<string, StaffUser>();
+        for (const row of students) {
+          const learnerEmail = (row.email || "").trim();
+          if (!learnerEmail) continue;
+          const key = learnerEmail.toLowerCase();
+          if (byEmail.has(key)) continue;
+          byEmail.set(key, {
+            id: row.student_id,
+            name: row.name || learnerEmail,
+            email: learnerEmail,
+            role: "learner",
+          });
+        }
+        setInvitees(Array.from(byEmail.values()));
+        return;
+      }
+
       const usersData = await getUsers().catch(() => []);
       const rawUsers = Array.isArray(usersData) ? usersData : [];
       const staffOnly = rawUsers
         .filter((u: StaffUser) => (u.role ?? "").toLowerCase() === "staff")
         .filter((u: StaffUser) => Boolean(u.email?.trim()));
-      setStaffUsers(staffOnly);
+      setInvitees(staffOnly);
     } catch {
-      // Staff list is optional for the schedule form.
+      // Invitee list is optional for the schedule form.
     }
   };
 
@@ -247,13 +283,13 @@ const ZoomManagement = ({ initialMeetingType = "meeting" }: ZoomManagementProps)
 
   useEffect(() => {
     void loadData();
-    void loadStaff();
+    void loadInvitees();
     void loadPlatformMeetingSettings();
     const storedName = localStorage.getItem("parrot_user_name");
     const storedEmail = localStorage.getItem("parrot_user_email");
     if (storedName) setHostDisplayName(storedName);
     if (storedEmail) setHostDisplayEmail(storedEmail);
-  }, []);
+  }, [isInstructorHost]);
 
   useEffect(() => {
     if (!isWebinar) return;
@@ -263,19 +299,19 @@ const ZoomManagement = ({ initialMeetingType = "meeting" }: ZoomManagementProps)
     setMeetingDuration((prev) => (prev === "30" ? "60" : prev));
   }, [isWebinar]);
 
-  const filteredStaff = useMemo(() => {
-    const q = staffSearch.trim().toLowerCase();
-    if (!q) return staffUsers;
-    return staffUsers.filter(
+  const filteredInvitees = useMemo(() => {
+    const q = inviteeSearch.trim().toLowerCase();
+    if (!q) return invitees;
+    return invitees.filter(
       (u) =>
         u.name?.toLowerCase().includes(q) ||
         u.email.toLowerCase().includes(q),
     );
-  }, [staffSearch, staffUsers]);
+  }, [inviteeSearch, invitees]);
 
   const invitePreview = useMemo(
-    () => Array.from(new Set([...selectedStaffEmails, ...additionalEmails])),
-    [selectedStaffEmails, additionalEmails],
+    () => Array.from(new Set([...selectedInviteEmails, ...additionalEmails])),
+    [selectedInviteEmails, additionalEmails],
   );
 
   const scopedMeetings = useMemo(
@@ -347,7 +383,7 @@ const ZoomManagement = ({ initialMeetingType = "meeting" }: ZoomManagementProps)
       setMeetingAgenda("");
       setMeetingStartTime("");
       setAdditionalEmails([]);
-      setSelectedStaffEmails([]);
+      setSelectedInviteEmails([]);
 
       await loadData(true);
     } catch (err: unknown) {
@@ -406,8 +442,8 @@ const ZoomManagement = ({ initialMeetingType = "meeting" }: ZoomManagementProps)
     toast({ title: "Copied", description: "Join link copied to clipboard." });
   };
 
-  const toggleStaffEmail = (email: string) => {
-    setSelectedStaffEmails((prev) =>
+  const toggleInviteEmail = (email: string) => {
+    setSelectedInviteEmails((prev) =>
       prev.includes(email) ? prev.filter((x) => x !== email) : [...prev, email],
     );
   };
@@ -451,34 +487,43 @@ const ZoomManagement = ({ initialMeetingType = "meeting" }: ZoomManagementProps)
       </div>
       {isWebinar && (
         <p className="text-xs text-teal-900/70">
-          Invite staff or guest emails who should appear on stage. Audience registration is controlled separately below.
+          {isInstructorHost
+            ? "Invite your learners or add guest emails who should join the webinar."
+            : "Invite staff or guest emails who should appear on stage. Audience registration is controlled separately below."}
+        </p>
+      )}
+      {!isWebinar && isInstructorHost && (
+        <p className="text-xs text-muted-foreground">
+          Select learners from your courses, or add extra emails to invite.
         </p>
       )}
 
       <div className="space-y-2">
-        <Label>{isWebinar ? "Staff speakers" : "Staff members"}</Label>
+        <Label>{isInstructorHost ? "Your learners" : isWebinar ? "Staff speakers" : "Staff members"}</Label>
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             className="pl-9 h-9"
-            placeholder="Search staff by name or email…"
-            value={staffSearch}
-            onChange={(e) => setStaffSearch(e.target.value)}
+            placeholder={isInstructorHost ? "Search learners by name or email…" : "Search staff by name or email…"}
+            value={inviteeSearch}
+            onChange={(e) => setInviteeSearch(e.target.value)}
           />
         </div>
         <div className="max-h-36 overflow-y-auto rounded-lg border bg-white p-2 space-y-1">
-          {staffUsers.length === 0 ? (
-            <p className="text-xs text-muted-foreground px-2 py-3 text-center">No staff users found.</p>
-          ) : filteredStaff.length === 0 ? (
+          {invitees.length === 0 ? (
+            <p className="text-xs text-muted-foreground px-2 py-3 text-center">
+              {isInstructorHost ? "No learners found for your courses." : "No staff users found."}
+            </p>
+          ) : filteredInvitees.length === 0 ? (
             <p className="text-xs text-muted-foreground px-2 py-3 text-center">No matches for your search.</p>
           ) : (
-            filteredStaff.map((u) => {
-              const selected = selectedStaffEmails.includes(u.email);
+            filteredInvitees.map((u) => {
+              const selected = selectedInviteEmails.includes(u.email);
               return (
                 <button
                   key={u.email}
                   type="button"
-                  onClick={() => toggleStaffEmail(u.email)}
+                  onClick={() => toggleInviteEmail(u.email)}
                   className={cn(
                     "w-full flex items-center gap-3 rounded-md px-2 py-2 text-left text-sm transition-colors",
                     selected
@@ -515,8 +560,14 @@ const ZoomManagement = ({ initialMeetingType = "meeting" }: ZoomManagementProps)
         value={additionalEmails}
         onChange={setAdditionalEmails}
         placeholder="name@example.com"
-        label={isWebinar ? "Guest panelist emails" : "Additional emails"}
-        description={isWebinar ? "External speakers who are not in the staff list." : "Invite guests who are not in the staff list."}
+        label={isInstructorHost ? "Additional emails" : isWebinar ? "Guest panelist emails" : "Additional emails"}
+        description={
+          isInstructorHost
+            ? "Invite people who are not in your learner list."
+            : isWebinar
+              ? "External speakers who are not in the staff list."
+              : "Invite guests who are not in the staff list."
+        }
       />
     </div>
   );
