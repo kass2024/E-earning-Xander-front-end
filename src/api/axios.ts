@@ -1998,9 +1998,16 @@ function normalizeCourseList(payload: unknown): CoursePayload[] {
 }
 
 export const getCourses = async (programId?: number) => {
+  const studentId =
+    typeof window !== "undefined"
+      ? Number(window.localStorage.getItem("parrot_student_id") || "") || undefined
+      : undefined;
   const response = await api.get(`/courses`, {
     timeout: 8000,
-    params: programId ? { program_id: programId } : undefined,
+    params: {
+      ...(programId ? { program_id: programId } : {}),
+      ...(studentId ? { student_id: studentId } : {}),
+    },
   });
   return normalizeCourseList(response.data);
 };

@@ -26,6 +26,8 @@ import {
 
 import { openCourseMaterials } from "@/lib/learnerNavigation";
 
+import { showsPlatformHubBranding } from "@/lib/institutionContext";
+
 import { LearnerMyCoursesSplitLayout } from "@/components/courses/LearnerMyCoursesSplitLayout";
 
 import { ChevronRight, Loader2 } from "lucide-react";
@@ -62,7 +64,13 @@ const LearnerMyCourses = () => {
 
       const list = Array.isArray(data) ? data : [];
 
-      setCourses(list);
+      // Defense in depth: hub learners never keep partner-institution courses in the catalog UI.
+      const hubOnly = showsPlatformHubBranding();
+      setCourses(
+        hubOnly
+          ? list.filter((c) => c?.platform_institution_id == null || c?.platform_institution_id === "")
+          : list
+      );
 
 
 
