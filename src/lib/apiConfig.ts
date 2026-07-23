@@ -1,12 +1,15 @@
 import { DEFAULT_IMAGES, resolveImage } from "./defaultImages";
 
 const LOCAL_API = "http://localhost:8000/api/admin";
-const XANDER_PRODUCTION_API = "https://api.xanderglobalscholars.com/api/admin";
+const XANDER_SAME_ORIGIN_API = "/api/admin";
+const XANDER_PRODUCTION_API = "https://api.e-learning.school/api/admin";
 
 /** Frontend host → API base (when VITE_API_URL is not set in the build). */
 const FRONTEND_API_MAP: Record<string, string> = {
-  "xanderglobalacademy.com": XANDER_PRODUCTION_API,
-  "www.xanderglobalacademy.com": XANDER_PRODUCTION_API,
+  "e-learning.school": XANDER_SAME_ORIGIN_API,
+  "www.e-learning.school": XANDER_SAME_ORIGIN_API,
+  "xanderglobalacademy.com": XANDER_SAME_ORIGIN_API,
+  "www.xanderglobalacademy.com": XANDER_SAME_ORIGIN_API,
   "xanderglobalscholars.com": XANDER_PRODUCTION_API,
   "www.xanderglobalscholars.com": XANDER_PRODUCTION_API,
 };
