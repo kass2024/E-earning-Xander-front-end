@@ -50,8 +50,23 @@ const Pricing = () => {
 
   const institutionId = localStorage.getItem("parrot_institution_id");
   const userId = localStorage.getItem("parrot_user_id");
+  const isLoggedIn = Boolean(localStorage.getItem("parrot_login_success") && (userId || localStorage.getItem("parrot_student_id")));
+  const [payments, setPayments] = useState<{ stripe?: { enabled: boolean }; mopay?: { enabled: boolean } } | null>(null);
+
+  useEffect(() => {
+    api.get("/meet/payments/config").then((res) => setPayments(res.data)).catch(() => setPayments(null));
+  }, []);
+
+  const requireLogin = () => {
+    toast({ title: "Sign in required", description: "Log in to subscribe and link billing to your account.", variant: "destructive" });
+    navigate("/login?redirect=/pricing");
+  };
 
   const subscribeStripe = async (plan: Plan) => {
+    if (!isLoggedIn) {
+      requireLogin();
+      return;
+    }
     setSubscribing(plan.id);
     try {
       const res = await api.post("/meet/subscribe", {
@@ -73,6 +88,10 @@ const Pricing = () => {
   };
 
   const subscribeMomo = async (plan: Plan) => {
+    if (!isLoggedIn) {
+      requireLogin();
+      return;
+    }
     if (!phone.trim()) {
       toast({ title: "Phone required", description: "Enter your MTN/Airtel number.", variant: "destructive" });
       return;
@@ -175,13 +194,21 @@ const Pricing = () => {
               <CardTitle>Subscribe to {selectedPlan.name}</CardTitle>
             </CardHeader>
             <CardContent>
-              <Tabs defaultValue="stripe">
+              <Tabs defaultValue={payments?.stripe?.enabled ? "stripe" : "momo"}>
                 <TabsList className="grid w-full grid-cols-2 bg-white/5">
-                  <TabsTrigger value="stripe"><CreditCard className="h-4 w-4 mr-2" />Card (USD)</TabsTrigger>
-                  <TabsTrigger value="momo"><Smartphone className="h-4 w-4 mr-2" />Mobile Money</TabsTrigger>
+                  <TabsTrigger value="stripe" disabled={!payments?.stripe?.enabled}>
+                    <CreditCard className="h-4 w-4 mr-2" />Card (USD)
+                  </TabsTrigger>
+                  <TabsTrigger value="momo" disabled={!payments?.mopay?.enabled}>
+                    <Smartphone className="h-4 w-4 mr-2" />Mobile Money
+                  </TabsTrigger>
                 </TabsList>
                 <TabsContent value="stripe" className="mt-4">
-                  <p className="text-sm text-slate-400 mb-4">${selectedPlan.price_usd}/month via Stripe</p>
+                  {!payments?.stripe?.enabled ? (
+                    <p className="text-sm text-slate-400 mb-4">Card payments are not configured yet.</p>
+                  ) : (
+                    <>
+                  <p className="text-sm text-slate-400 mb-4">${selectedPlan.price_usd}/month via Stripe — real recurring billing</p>
                   <Button
                     className="w-full bg-[#D4AF37] text-black hover:bg-[#c9a030]"
                     disabled={subscribing === selectedPlan.id}
@@ -189,8 +216,14 @@ const Pricing = () => {
                   >
                     {subscribing === selectedPlan.id ? <Loader2 className="h-4 w-4 animate-spin" /> : "Pay with Card"}
                   </Button>
+                    </>
+                  )}
                 </TabsContent>
                 <TabsContent value="momo" className="mt-4 space-y-4">
+                  {!payments?.mopay?.enabled ? (
+                    <p className="text-sm text-slate-400">Mobile Money is not configured yet.</p>
+                  ) : (
+                    <>
                   <div>
                     <Label htmlFor="phone">MTN / Airtel number</Label>
                     <Input
@@ -209,6 +242,8 @@ const Pricing = () => {
                   >
                     {momoRef ? "Waiting for approval…" : "Pay with Mobile Money"}
                   </Button>
+                    </>
+                  )}
                 </TabsContent>
               </Tabs>
             </CardContent>
