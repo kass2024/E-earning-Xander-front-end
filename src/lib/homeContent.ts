@@ -1,6 +1,22 @@
 ﻿import { HUB, MEET_FEATURES } from "./hubConfig";
+import { HOME_UNIQUE_IMAGES } from "./homeImages";
 
 export { HUB, MEET_FEATURES };
+
+export const HOME_IMAGES = {
+  heroMain: HOME_UNIQUE_IMAGES.heroMain,
+  heroSecondary: HOME_UNIQUE_IMAGES.heroSecondary,
+  marketplace: HOME_UNIQUE_IMAGES.mission,
+  liveClass: HOME_UNIQUE_IMAGES.liveClass,
+  certificate: HOME_UNIQUE_IMAGES.instructor,
+  ctaBg: HOME_UNIQUE_IMAGES.ctaBg,
+} as const;
+
+export const EXAM_PROGRAMS = [] as const;
+export const LANGUAGE_PROGRAMS = [] as const;
+export const LANGUAGE_SPEAKING_CLIPS = [] as const;
+export const LEARN_PILL_FALLBACK = "Meetings & Webinars";
+export const FEATURED_PROGRAM_FALLBACK = { title: "Xander Meet", desc: HUB.tagline, image: HOME_IMAGES.heroMain };
 
 export const HOME_MISSION = {
   vision:
@@ -41,6 +57,8 @@ export const LIVE_FEATURES = [
     icon: "building",
   },
 ] as const;
+
+export const STUDENT_FEATURES = LIVE_FEATURES;
 
 export const STATS = [
   { value: "99.9%", label: "Uptime SLA" },

@@ -27,7 +27,9 @@ export type HubRole =
   | "staff"
   | "meeting_user"
   | "partner_company"
-  | "host";
+  | "host"
+  | "learner"
+  | "instructor";
 
 export function dashboardPathForRole(role: string): string {
   switch (role) {
