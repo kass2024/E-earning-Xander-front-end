@@ -1,5 +1,12 @@
 import { useEffect, useMemo, useRef, useState, type MutableRefObject, type ReactNode } from "react";
 import DailyIframe, { type DailyCall, type DailyParticipant } from "@daily-co/daily-js";
+import {
+  acquireNativeDisplayStream,
+  bindDisplayStreamEnd,
+  startDailyNativeScreenShare,
+  stopDailyNativeScreenShare,
+  stopDisplayStream,
+} from "@/lib/dailyScreenShare";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -401,6 +408,8 @@ export function DailyMeetingRoom({
 }: Props) {
   const { toast } = useToast();
   const callRef = useRef<DailyCall | null>(null);
+  const screenShareStreamRef = useRef<MediaStream | null>(null);
+  const unbindScreenEndRef = useRef<(() => void) | null>(null);
   const localVideoRef = useRef<HTMLVideoElement | null>(null);
   const screenVideoRef = useRef<HTMLVideoElement | null>(null);
   const remoteVideoRefs = useRef<Record<string, HTMLVideoElement | null>>({});
@@ -732,6 +741,10 @@ export function DailyMeetingRoom({
     setPanel("none");
     setSharing(false);
     setRemoteScreen(null);
+    unbindScreenEndRef.current?.();
+    unbindScreenEndRef.current = null;
+    stopDisplayStream(screenShareStreamRef.current);
+    screenShareStreamRef.current = null;
     setLocalAudioLevel(0);
     Object.values(remoteAudioEls.current).forEach((el) => {
       try {
@@ -952,6 +965,28 @@ export function DailyMeetingRoom({
             // Ignore teardown from React Strict Mode / rejoin / intentional leave.
             if (cancelled || intentionalLeaveRef.current) return;
             goToLeftScreen();
+          });
+
+          call.on("local-screen-share-started", () => {
+            setSharing(true);
+            setRemoteScreen(null);
+          });
+
+          call.on("local-screen-share-stopped", () => {
+            setSharing(false);
+            unbindScreenEndRef.current?.();
+            unbindScreenEndRef.current = null;
+            stopDisplayStream(screenShareStreamRef.current);
+            screenShareStreamRef.current = null;
+            if (screenVideoRef.current) screenVideoRef.current.srcObject = null;
+          });
+
+          call.on("local-screen-share-canceled", () => {
+            setSharing(false);
+            unbindScreenEndRef.current?.();
+            unbindScreenEndRef.current = null;
+            stopDisplayStream(screenShareStreamRef.current);
+            screenShareStreamRef.current = null;
           });
 
           call.on("error", (ev) => {
@@ -1912,15 +1947,31 @@ export function DailyMeetingRoom({
     }
     try {
       if (sharing) {
-        await call.stopScreenShare();
+        await stopDailyNativeScreenShare(call, screenShareStreamRef.current);
+        unbindScreenEndRef.current?.();
+        unbindScreenEndRef.current = null;
+        screenShareStreamRef.current = null;
         setSharing(false);
         if (screenVideoRef.current) screenVideoRef.current.srcObject = null;
-      } else {
-        await call.startScreenShare();
-        setSharing(true);
-        setRemoteScreen(null);
+        return;
       }
+
+      const stream = await acquireNativeDisplayStream();
+      screenShareStreamRef.current = stream;
+      unbindScreenEndRef.current = bindDisplayStreamEnd(stream, () => {
+        void stopDailyNativeScreenShare(call, screenShareStreamRef.current).finally(() => {
+          screenShareStreamRef.current = null;
+          unbindScreenEndRef.current = null;
+          setSharing(false);
+          if (screenVideoRef.current) screenVideoRef.current.srcObject = null;
+        });
+      });
+      await startDailyNativeScreenShare(call, stream);
     } catch (err) {
+      unbindScreenEndRef.current?.();
+      unbindScreenEndRef.current = null;
+      stopDisplayStream(screenShareStreamRef.current);
+      screenShareStreamRef.current = null;
       setSharing(false);
       const message = err instanceof Error ? err.message : "Could not share screen.";
       if (/Permission|NotAllowed|AbortError|cancel/i.test(message)) {
