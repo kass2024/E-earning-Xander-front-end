@@ -27,9 +27,9 @@ import { clearAdminImpersonation } from "@/lib/adminImpersonation";
 import { cn } from "@/lib/utils";
 
 const PERKS = [
-  "Access courses, live classes, and materials",
-  "Track progress from your personal dashboard",
-  "Secure sign-in for learners, instructors, and staff",
+  "Host HD meetings, webinars, and live cohorts",
+  "Manage registrations, schedules, and recordings",
+  "Secure sign-in for admins, coordinators, and tenants",
 ];
 
 const Login = () => {
