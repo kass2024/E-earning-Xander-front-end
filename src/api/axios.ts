@@ -4036,6 +4036,60 @@ export const deleteZoomMeeting = async (meetingId: string | number) => {
   return response.data as { message: string };
 };
 
+export type MeetAdminPlan = {
+  id: number;
+  slug: string;
+  name: string;
+  description?: string | null;
+  max_participants: number;
+  storage_mb: number;
+  storage_gb?: number;
+  monthly_credits: number;
+  estimated_meeting_hours?: number;
+  price_usd_cents?: number;
+  price_usd: number;
+  price_rwf: number;
+  is_active: boolean;
+  sort_order: number;
+  features: string[];
+  subscription_count?: number;
+};
+
+export type MeetAdminPlanInput = {
+  slug: string;
+  name: string;
+  description?: string;
+  max_participants: number;
+  storage_mb: number;
+  monthly_credits: number;
+  price_usd?: number;
+  price_usd_cents?: number;
+  price_rwf: number;
+  is_active?: boolean;
+  sort_order?: number;
+  features?: string[];
+};
+
+export const getMeetAdminPlans = async () => {
+  const response = await api.get(`/meet/admin/plans`);
+  return (response.data?.plans ?? []) as MeetAdminPlan[];
+};
+
+export const createMeetAdminPlan = async (payload: MeetAdminPlanInput) => {
+  const response = await api.post(`/meet/admin/plans`, payload);
+  return response.data.plan as MeetAdminPlan;
+};
+
+export const updateMeetAdminPlan = async (planId: number, payload: MeetAdminPlanInput) => {
+  const response = await api.put(`/meet/admin/plans/${planId}`, payload);
+  return response.data.plan as MeetAdminPlan;
+};
+
+export const deleteMeetAdminPlan = async (planId: number) => {
+  const response = await api.delete(`/meet/admin/plans/${planId}`);
+  return response.data as { message: string; soft_deleted?: boolean; plan?: MeetAdminPlan };
+};
+
 export const getZoomWebinars = async () => {
   const response = await api.get(`/zoom/webinars`);
   return response.data;

@@ -4,9 +4,10 @@ import PasswordChange from "./PasswordChange";
 import InstitutionBrandingSettings from "@/components/dashboard/InstitutionBrandingSettings";
 import MainPlatformMeetingSettings from "@/components/dashboard/MainPlatformMeetingSettings";
 import PaymentReceiverSettings from "@/components/dashboard/PaymentReceiverSettings";
+import MeetSubscriptionPlanSettings from "@/components/admin/MeetSubscriptionPlanSettings";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { CreditCard, LockKeyhole, Settings as SettingsIcon, UserRound, Video } from "lucide-react";
+import { CreditCard, Layers, LockKeyhole, Settings as SettingsIcon, UserRound, Video } from "lucide-react";
 import { isStoredMainAdmin } from "@/lib/institutionContext";
 
 const Settings = () => {
@@ -15,8 +16,14 @@ const Settings = () => {
   const showLiveMeetings =
     isStoredMainAdmin() || role === "admin" || role === "staff" || role === "instructor";
   const showPayments = isStoredMainAdmin() || role === "admin" || role === "staff";
+  const showSubscriptionPlans = showPayments;
 
-  const tabCount = 2 + (showInstitution ? 1 : 0) + (showLiveMeetings ? 1 : 0) + (showPayments ? 1 : 0);
+  const tabCount =
+    2 +
+    (showInstitution ? 1 : 0) +
+    (showLiveMeetings ? 1 : 0) +
+    (showPayments ? 1 : 0) +
+    (showSubscriptionPlans ? 1 : 0);
 
   return (
     <div className="container mx-auto py-8 px-4">
@@ -38,6 +45,7 @@ const Settings = () => {
           <Badge variant="secondary">Security</Badge>
           {showLiveMeetings && <Badge variant="secondary">Live meetings</Badge>}
           {showPayments && <Badge variant="secondary">Payments</Badge>}
+          {showSubscriptionPlans && <Badge variant="secondary">Subscription plans</Badge>}
           {showInstitution && <Badge variant="secondary">Institution</Badge>}
         </div>
       </div>
@@ -76,6 +84,12 @@ const Settings = () => {
                   Payments
                 </TabsTrigger>
               )}
+              {showSubscriptionPlans && (
+                <TabsTrigger value="subscription-plans" className="gap-2">
+                  <Layers className="h-4 w-4" />
+                  Subscription plans
+                </TabsTrigger>
+              )}
               {showInstitution && (
                 <TabsTrigger value="institution" className="gap-2">
                   <SettingsIcon className="h-4 w-4" />
@@ -101,6 +115,12 @@ const Settings = () => {
             {showPayments && (
               <TabsContent value="payments" className="mt-0">
                 <PaymentReceiverSettings />
+              </TabsContent>
+            )}
+
+            {showSubscriptionPlans && (
+              <TabsContent value="subscription-plans" className="mt-0">
+                <MeetSubscriptionPlanSettings />
               </TabsContent>
             )}
 
