@@ -1,243 +1,88 @@
-import { useEffect, useRef, useState, FormEvent } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { NavLink } from "@/components/NavLink";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Menu, X, Search } from "lucide-react";
-import PromoBanner from "@/components/PromoBanner";
+import { Menu, X } from "lucide-react";
 import { HUB } from "@/lib/hubConfig";
 
 const Navbar = () => {
   const navigate = useNavigate();
   const headerRef = useRef<HTMLElement>(null);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [scrollProgress, setScrollProgress] = useState(0);
-  const [searchQuery, setSearchQuery] = useState("");
 
   const navLinks = [
-    { to: "/", labelEn: "Home", labelFr: "Accueil" },
-    { to: "/courses", labelEn: "Programs", labelFr: "Programmes" },
-    { to: "/about", labelEn: "About", labelFr: "À propos" },
+    { to: "/", label: "Home" },
+    { to: "/pricing", label: "Pricing" },
+    { to: "/meeting-registration", label: "Book Demo" },
   ];
-  const meetingRegistrationLabel = "Book meeting with us";
-
-  useEffect(() => {
-    const handleScroll = () => {
-      const scrollTop = window.scrollY || document.documentElement.scrollTop;
-      const docHeight =
-        document.documentElement.scrollHeight -
-        document.documentElement.clientHeight;
-      const progress = docHeight > 0 ? (scrollTop / docHeight) * 100 : 0;
-      setScrollProgress(progress);
-    };
-
-    handleScroll();
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
 
   useEffect(() => {
     const header = headerRef.current;
     if (!header) return;
-
-    const syncHeaderHeight = () => {
-      document.documentElement.style.setProperty(
-        "--public-header-height",
-        `${header.offsetHeight}px`,
-      );
+    const sync = () => {
+      document.documentElement.style.setProperty("--public-header-height", `${header.offsetHeight}px`);
     };
-
-    syncHeaderHeight();
-    const observer = new ResizeObserver(syncHeaderHeight);
+    sync();
+    const observer = new ResizeObserver(sync);
     observer.observe(header);
-    window.addEventListener("resize", syncHeaderHeight);
-
-    return () => {
-      observer.disconnect();
-      window.removeEventListener("resize", syncHeaderHeight);
-    };
+    return () => observer.disconnect();
   }, [isMenuOpen]);
-
-  const handleSearch = (e: FormEvent) => {
-    e.preventDefault();
-    const q = searchQuery.trim();
-    navigate(q ? `/courses?search=${encodeURIComponent(q)}` : "/courses");
-    setIsMenuOpen(false);
-  };
 
   return (
     <header
       ref={headerRef}
       id="public-site-header"
-      className="fixed top-0 left-0 right-0 z-[100] bg-white shadow-md"
+      className="fixed top-0 left-0 right-0 z-[100] bg-[#0a0a0f]/95 backdrop-blur border-b border-white/5"
     >
-      <PromoBanner />
+      <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
+        <NavLink to="/" className="flex items-center gap-2 no-underline">
+          <img src={HUB.logoIcon} alt="" className="h-8 w-8" />
+          <span className="font-bold text-white hidden sm:inline">{HUB.name}</span>
+        </NavLink>
 
-      <nav className="border-b border-slate-200 bg-white">
-        <div
-          className="absolute top-0 left-0 h-0.5 bg-[#F2A65A] transition-[width] duration-150 z-10"
-          style={{ width: `${scrollProgress}%` }}
-        />
-
-        <div className="container mx-auto px-4 relative bg-white">
-          <div className="flex items-center justify-between gap-3 h-16 md:h-[72px]">
+        <nav className="hidden md:flex items-center gap-6">
+          {navLinks.map((link) => (
             <NavLink
-              to="/"
-              className="flex items-center gap-2.5 shrink-0 text-[#012F6B] hover:opacity-90 transition-opacity"
+              key={link.to}
+              to={link.to}
+              className="text-sm text-slate-400 hover:text-[#D4AF37] transition-colors no-underline"
             >
-              <img
-                src="/logo.png"
-                alt="Xander Learning Hub logo"
-                className="w-10 h-10 md:w-11 md:h-11 object-contain rounded-full border border-slate-200 shadow-sm"
-              />
-              <div className="hidden sm:flex flex-col items-start leading-tight">
-                <span className="text-sm md:text-base font-bold text-[#012F6B]">
-                  {HUB.name}
-                </span>
-                <span className="text-[10px] md:text-xs text-[#F2A65A] font-medium">
-                  {HUB.company}
-                </span>
-              </div>
+              {link.label}
             </NavLink>
+          ))}
+        </nav>
 
-            <form onSubmit={handleSearch} className="hidden lg:flex flex-1 max-w-md mx-4">
-              <div className="relative flex-1">
-                <Input
-                  type="search"
-                  placeholder="Search courses, exams, languages…"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="h-10 rounded-md border-slate-200 pr-10 focus-visible:ring-[#012F6B]/20 focus-visible:border-[#012F6B] bg-white"
-                />
-                <button
-                  type="submit"
-                  className="absolute right-2 top-1/2 -translate-y-1/2 text-[#012F6B] hover:text-[#F2A65A] transition-colors"
-                  aria-label="Search"
-                >
-                  <Search className="h-4 w-4" />
-                </button>
-              </div>
-            </form>
-
-            <div className="hidden lg:flex items-center gap-6">
-              {navLinks.map((link) => (
-                <NavLink
-                  key={link.to}
-                  to={link.to}
-                  end={link.to === "/"}
-                  className="text-sm font-medium transition-colors text-slate-600 hover:text-[#012F6B]"
-                  activeClassName="text-[#012F6B] font-semibold"
-                >
-                  {link.labelEn}
-                </NavLink>
-              ))}
-
-              <NavLink
-                to="/meeting-registration"
-                className="text-sm font-medium transition-colors text-slate-600 hover:text-[#012F6B]"
-                activeClassName="text-[#012F6B] font-semibold"
-              >
-                {meetingRegistrationLabel}
-              </NavLink>
-            </div>
-
-            <div className="hidden md:flex items-center gap-2 shrink-0">
-              <NavLink to="/login">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="rounded-md border-[#012F6B] text-[#012F6B] hover:bg-[#012F6B]/5 px-5 font-semibold h-10 bg-white"
-                >
-                  Log In
-                </Button>
-              </NavLink>
-              <NavLink to="/signup">
-                <Button
-                  size="sm"
-                  className="rounded-md bg-[#012F6B] hover:bg-[#0a3d7a] text-white px-5 font-semibold h-10"
-                >
-                  Get Started
-                </Button>
-              </NavLink>
-            </div>
-
-            <button
-              className="lg:hidden text-[#012F6B] p-1"
-              onClick={() => setIsMenuOpen((prev) => !prev)}
-              aria-label="Toggle menu"
-            >
-              {isMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-            </button>
-          </div>
-
-          {isMenuOpen && (
-            <div className="lg:hidden py-4 border-t border-slate-100 bg-white">
-              <form onSubmit={handleSearch} className="mb-4 px-1">
-                <div className="relative">
-                  <Input
-                    type="search"
-                    placeholder="Search courses…"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="h-11 pr-10 border-slate-200 bg-white"
-                  />
-                  <button
-                    type="submit"
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[#012F6B]"
-                    aria-label="Search"
-                  >
-                    <Search className="h-4 w-4" />
-                  </button>
-                </div>
-              </form>
-
-              <div className="flex flex-col gap-1">
-                {navLinks.map((link) => (
-                  <NavLink
-                    key={link.to}
-                    to={link.to}
-                    end={link.to === "/"}
-                    className="text-slate-700 hover:text-[#012F6B] hover:bg-slate-50 transition-colors font-medium py-2.5 px-2 rounded-md"
-                    activeClassName="text-[#012F6B] bg-[#012F6B]/5"
-                    onClick={() => setIsMenuOpen(false)}
-                  >
-                    {link.labelEn}
-                  </NavLink>
-                ))}
-
-                <NavLink
-                  to="/meeting-registration"
-                  className="text-slate-700 hover:text-[#012F6B] hover:bg-slate-50 transition-colors font-medium py-2.5 px-2 rounded-md"
-                  activeClassName="text-[#012F6B] bg-[#012F6B]/5"
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  {meetingRegistrationLabel}
-                </NavLink>
-
-                <div className="flex flex-col gap-2 pt-4 mt-2 border-t border-slate-100">
-                  <NavLink to="/login" onClick={() => setIsMenuOpen(false)}>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="w-full rounded-md border-[#012F6B] text-[#012F6B] font-semibold h-11 bg-white"
-                    >
-                      Log In
-                    </Button>
-                  </NavLink>
-                  <NavLink to="/signup" onClick={() => setIsMenuOpen(false)}>
-                    <Button
-                      size="sm"
-                      className="w-full rounded-md bg-[#012F6B] hover:bg-[#0a3d7a] text-white font-semibold h-11"
-                    >
-                      Get Started
-                    </Button>
-                  </NavLink>
-                </div>
-              </div>
-            </div>
-          )}
+        <div className="hidden md:flex items-center gap-3">
+          <Button variant="ghost" className="text-slate-400 hover:text-white" onClick={() => navigate("/login")}>
+            Sign In
+          </Button>
+          <Button className="bg-[#D4AF37] text-black hover:bg-[#c9a030]" onClick={() => navigate("/pricing")}>
+            Get Started
+          </Button>
         </div>
-      </nav>
+
+        <Button variant="ghost" size="icon" className="md:hidden text-white" onClick={() => setIsMenuOpen(!isMenuOpen)}>
+          {isMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+        </Button>
+      </div>
+
+      {isMenuOpen && (
+        <div className="md:hidden border-t border-white/5 bg-[#0a0a0f] px-4 py-4 space-y-2">
+          {navLinks.map((link) => (
+            <NavLink
+              key={link.to}
+              to={link.to}
+              className="block py-2 text-slate-300 hover:text-[#D4AF37] no-underline"
+              onClick={() => setIsMenuOpen(false)}
+            >
+              {link.label}
+            </NavLink>
+          ))}
+          <Button className="w-full bg-[#D4AF37] text-black mt-2" onClick={() => { navigate("/pricing"); setIsMenuOpen(false); }}>
+            Get Started
+          </Button>
+        </div>
+      )}
     </header>
   );
 };

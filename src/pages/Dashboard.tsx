@@ -63,6 +63,8 @@ const LearnerRecordings = lazy(() => import("./dashboard/LearnerRecordings"));
 const LearnerQuizTake = lazy(() => import("./dashboard/LearnerQuizTake"));
 const Settings = lazy(() => import("./dashboard/Settings"));
 const AdminAnalyticsPage = lazy(() => import("./dashboard/AdminAnalytics"));
+const MeetSubscriptionPage = lazy(() => import("./dashboard/MeetSubscriptionPage"));
+const MeetAdminConsumption = lazy(() => import("./dashboard/MeetAdminConsumption"));
 
 interface DashboardProps {
   initialRole?: HubRole;
@@ -342,6 +344,12 @@ const Dashboard = ({ initialRole }: DashboardProps) => {
       }
       if (location.pathname === "/dashboard/zoom-recordings") {
         return <RecordedMeetings />;
+      }
+      if (location.pathname === "/dashboard/subscription" || location.pathname === "/dashboard/usage") {
+        return <MeetSubscriptionPage />;
+      }
+      if (location.pathname === "/dashboard/consumption") {
+        return <MeetAdminConsumption />;
       }
       if (location.pathname === "/dashboard/analytics") {
         return <AdminAnalyticsPage />;
