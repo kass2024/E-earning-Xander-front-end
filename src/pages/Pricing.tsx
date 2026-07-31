@@ -31,11 +31,18 @@ const Pricing = () => {
   const [loading, setLoading] = useState(true);
   const [subscribing, setSubscribing] = useState<number | null>(null);
   const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
+  const [name, setName] = useState("");
   const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null);
   const [momoRef, setMomoRef] = useState<string | null>(null);
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  const institutionId = localStorage.getItem("parrot_institution_id");
+  const userId = localStorage.getItem("parrot_user_id");
+  const isLoggedIn = Boolean(localStorage.getItem("parrot_login_success") && userId);
+  const [payments, setPayments] = useState<{ stripe?: { enabled: boolean }; mopay?: { enabled: boolean } } | null>(null);
 
   useEffect(() => {
     api.get("/meet/plans").then((res) => {
@@ -48,33 +55,52 @@ const Pricing = () => {
     }).finally(() => setLoading(false));
   }, [searchParams]);
 
-  const institutionId = localStorage.getItem("parrot_institution_id");
-  const userId = localStorage.getItem("parrot_user_id");
-  const isLoggedIn = Boolean(localStorage.getItem("parrot_login_success") && (userId || localStorage.getItem("parrot_student_id")));
-  const [payments, setPayments] = useState<{ stripe?: { enabled: boolean }; mopay?: { enabled: boolean } } | null>(null);
-
   useEffect(() => {
     api.get("/meet/payments/config").then((res) => setPayments(res.data)).catch(() => setPayments(null));
   }, []);
 
-  const requireLogin = () => {
-    toast({ title: "Sign in required", description: "Log in to subscribe and link billing to your account.", variant: "destructive" });
-    navigate("/login?redirect=/pricing");
+  useEffect(() => {
+    if (isLoggedIn) {
+      const savedEmail = localStorage.getItem("parrot_user_email");
+      const savedName = localStorage.getItem("parrot_user_name");
+      if (savedEmail) setEmail(savedEmail);
+      if (savedName) setName(savedName);
+    }
+  }, [isLoggedIn]);
+
+  const checkoutEmail = () => {
+    const value = email.trim();
+    if (!value || !value.includes("@")) {
+      toast({ title: "Email required", description: "Enter your email — we'll create your account after payment.", variant: "destructive" });
+      return null;
+    }
+    return value.toLowerCase();
+  };
+
+  const subscribePayload = (plan: Plan, provider: "stripe" | "mopay") => {
+    const payload: Record<string, unknown> = {
+      plan_id: plan.id,
+      institution_id: institutionId ? parseInt(institutionId) : null,
+      provider,
+    };
+    if (userId) {
+      payload.user_id = parseInt(userId);
+    } else {
+      const checkout = checkoutEmail();
+      if (!checkout) return null;
+      payload.email = checkout;
+      if (name.trim()) payload.name = name.trim();
+    }
+    return payload;
   };
 
   const subscribeStripe = async (plan: Plan) => {
-    if (!isLoggedIn) {
-      requireLogin();
-      return;
-    }
+    const payload = subscribePayload(plan, "stripe");
+    if (!payload) return;
+
     setSubscribing(plan.id);
     try {
-      const res = await api.post("/meet/subscribe", {
-        plan_id: plan.id,
-        institution_id: institutionId ? parseInt(institutionId) : null,
-        user_id: userId ? parseInt(userId) : null,
-        provider: "stripe",
-      });
+      const res = await api.post("/meet/subscribe", payload);
       if (res.data.checkout_url) {
         window.location.href = res.data.checkout_url;
       } else {
@@ -88,26 +114,23 @@ const Pricing = () => {
   };
 
   const subscribeMomo = async (plan: Plan) => {
-    if (!isLoggedIn) {
-      requireLogin();
-      return;
-    }
     if (!phone.trim()) {
       toast({ title: "Phone required", description: "Enter your MTN/Airtel number.", variant: "destructive" });
       return;
     }
+
+    const payload = subscribePayload(plan, "mopay");
+    if (!payload) return;
+
     setSubscribing(plan.id);
     try {
-      const subRes = await api.post("/meet/subscribe", {
-        plan_id: plan.id,
-        institution_id: institutionId ? parseInt(institutionId) : null,
-        user_id: userId ? parseInt(userId) : null,
-        provider: "mopay",
-      });
+      const subRes = await api.post("/meet/subscribe", payload);
       const subId = subRes.data.subscription_id;
       const payRes = await api.post("/meet/subscription/momo/request", {
         subscription_id: subId,
         phone: phone.trim(),
+        email: payload.email,
+        name: payload.name,
         mno: "mtn",
       });
       if (payRes.data.ok) {
@@ -133,7 +156,11 @@ const Pricing = () => {
         const res = await api.get(`/meet/subscription/momo/status/${ref}`);
         if (res.data.status === "paid") {
           clearInterval(interval);
-          navigate("/subscription/success");
+          const account = res.data.account;
+          if (account?.password) {
+            sessionStorage.setItem("meet_new_account", JSON.stringify(account));
+          }
+          navigate(`/subscription/success?ref=${encodeURIComponent(ref)}`);
         } else if (res.data.status === "failed" || attempts >= 12) {
           clearInterval(interval);
           toast({ title: "Payment not confirmed", description: "Try again or contact support.", variant: "destructive" });
@@ -158,7 +185,7 @@ const Pricing = () => {
         <div className="text-center mb-12">
           <img src={HUB.logoIcon} alt="" className="h-10 mx-auto mb-4" />
           <h1 className="text-3xl md:text-4xl font-bold mb-2">Choose your plan</h1>
-          <p className="text-slate-400">Monthly billing. Credits track your meeting usage.</p>
+          <p className="text-slate-400">Pay first — your account is created automatically after checkout.</p>
         </div>
 
         <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
@@ -192,8 +219,37 @@ const Pricing = () => {
           <Card className="max-w-lg mx-auto bg-white/5 border-[#D4AF37]/30">
             <CardHeader>
               <CardTitle>Subscribe to {selectedPlan.name}</CardTitle>
+              {!isLoggedIn && (
+                <p className="text-sm text-slate-400">No login needed — enter your details below.</p>
+              )}
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-4">
+              {!isLoggedIn && (
+                <div className="space-y-3">
+                  <div>
+                    <Label htmlFor="checkout-email">Email</Label>
+                    <Input
+                      id="checkout-email"
+                      type="email"
+                      placeholder="you@company.com"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="bg-white/5 border-white/10 mt-1"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="checkout-name">Full name (optional)</Label>
+                    <Input
+                      id="checkout-name"
+                      placeholder="Your name"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      className="bg-white/5 border-white/10 mt-1"
+                    />
+                  </div>
+                </div>
+              )}
+
               <Tabs defaultValue={payments?.stripe?.enabled ? "stripe" : "momo"}>
                 <TabsList className="grid w-full grid-cols-2 bg-white/5">
                   <TabsTrigger value="stripe" disabled={!payments?.stripe?.enabled}>
@@ -208,14 +264,14 @@ const Pricing = () => {
                     <p className="text-sm text-slate-400 mb-4">Card payments are not configured yet.</p>
                   ) : (
                     <>
-                  <p className="text-sm text-slate-400 mb-4">${selectedPlan.price_usd}/month via Stripe — real recurring billing</p>
-                  <Button
-                    className="w-full bg-[#D4AF37] text-black hover:bg-[#c9a030]"
-                    disabled={subscribing === selectedPlan.id}
-                    onClick={() => subscribeStripe(selectedPlan)}
-                  >
-                    {subscribing === selectedPlan.id ? <Loader2 className="h-4 w-4 animate-spin" /> : "Pay with Card"}
-                  </Button>
+                      <p className="text-sm text-slate-400 mb-4">${selectedPlan.price_usd}/month via Stripe</p>
+                      <Button
+                        className="w-full bg-[#D4AF37] text-black hover:bg-[#c9a030]"
+                        disabled={subscribing === selectedPlan.id}
+                        onClick={() => subscribeStripe(selectedPlan)}
+                      >
+                        {subscribing === selectedPlan.id ? <Loader2 className="h-4 w-4 animate-spin" /> : "Pay with Card"}
+                      </Button>
                     </>
                   )}
                 </TabsContent>
@@ -224,24 +280,24 @@ const Pricing = () => {
                     <p className="text-sm text-slate-400">Mobile Money is not configured yet.</p>
                   ) : (
                     <>
-                  <div>
-                    <Label htmlFor="phone">MTN / Airtel number</Label>
-                    <Input
-                      id="phone"
-                      placeholder="078xxxxxxx"
-                      value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
-                      className="bg-white/5 border-white/10 mt-1"
-                    />
-                  </div>
-                  <p className="text-sm text-slate-400">{selectedPlan.price_rwf.toLocaleString()} RWF/month</p>
-                  <Button
-                    className="w-full bg-[#D4AF37] text-black hover:bg-[#c9a030]"
-                    disabled={subscribing === selectedPlan.id || !!momoRef}
-                    onClick={() => subscribeMomo(selectedPlan)}
-                  >
-                    {momoRef ? "Waiting for approval…" : "Pay with Mobile Money"}
-                  </Button>
+                      <div>
+                        <Label htmlFor="phone">MTN / Airtel number</Label>
+                        <Input
+                          id="phone"
+                          placeholder="078xxxxxxx"
+                          value={phone}
+                          onChange={(e) => setPhone(e.target.value)}
+                          className="bg-white/5 border-white/10 mt-1"
+                        />
+                      </div>
+                      <p className="text-sm text-slate-400">{selectedPlan.price_rwf.toLocaleString()} RWF/month</p>
+                      <Button
+                        className="w-full bg-[#D4AF37] text-black hover:bg-[#c9a030]"
+                        disabled={subscribing === selectedPlan.id || !!momoRef}
+                        onClick={() => subscribeMomo(selectedPlan)}
+                      >
+                        {momoRef ? "Waiting for approval…" : "Pay with Mobile Money"}
+                      </Button>
                     </>
                   )}
                 </TabsContent>
