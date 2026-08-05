@@ -4,7 +4,7 @@ export function openCourseMaterials(
   tab?: "overview" | "videos" | "files" | "recordings"
 ) {
   if (typeof window !== "undefined") {
-    localStorage.setItem("parrot_selected_course_id", String(courseId));
+    localStorage.setItem("xander_selected_course_id", String(courseId));
   }
   const tabQuery = tab ? `&tab=${tab}` : "";
   navigate(`/dashboard/learner/materials?courseId=${courseId}${tabQuery}`);

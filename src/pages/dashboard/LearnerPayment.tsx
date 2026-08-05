@@ -77,8 +77,8 @@ const LearnerPayment = () => {
   useEffect(() => {
     if (typeof window === "undefined") return;
 
-    const storedCourseId = localStorage.getItem("parrot_selected_course_id");
-    const storedStudentId = localStorage.getItem("parrot_student_id");
+    const storedCourseId = localStorage.getItem("xander_selected_course_id");
+    const storedStudentId = localStorage.getItem("xander_student_id");
 
     if (!storedCourseId || !storedStudentId) {
       setHasCourseContext(false);
@@ -151,8 +151,8 @@ const LearnerPayment = () => {
     Promise.all([loadCourse, loadEnrollment, loadConfig]).finally(() => setIsLoading(false));
   }, [toast]);
 
-  const courseId = Number(localStorage.getItem("parrot_selected_course_id") || 0);
-  const studentId = Number(localStorage.getItem("parrot_student_id") || 0);
+  const courseId = Number(localStorage.getItem("xander_selected_course_id") || 0);
+  const studentId = Number(localStorage.getItem("xander_student_id") || 0);
 
   const handleStripe = async () => {
     if (!courseId || !studentId) return;

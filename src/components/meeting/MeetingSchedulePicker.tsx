@@ -25,7 +25,7 @@ import {
   CommandList,
 } from "@/components/ui/command";
 import { HUB } from "@/lib/hubConfig";
-import ParrotLogo from "@/components/ParrotLogo";
+import XanderLogo from "@/components/XanderLogo";
 import {
   buildTimezoneOptions,
   dateHasAvailability,
@@ -192,7 +192,7 @@ export function MeetingSchedulePicker({
                 className="h-12 w-12 rounded-full border border-slate-200 bg-white object-contain p-1 shadow-sm"
               />
             ) : (
-              <ParrotLogo size="sm" alt={brandAlt} />
+              <XanderLogo size="sm" alt={brandAlt} />
             )}
           </div>
           <p className="text-xs font-medium uppercase tracking-wide text-slate-500">

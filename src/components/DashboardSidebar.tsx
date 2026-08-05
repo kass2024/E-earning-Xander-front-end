@@ -226,11 +226,20 @@ const DashboardSidebar = ({ userRole, isOpen, onClose }: DashboardSidebarProps) 
             <User className="h-5 w-5 text-[#D4AF37]" />
           </div>
           {!collapsed && (
-            <div className="min-w-0">
+            <div className="flex-1 min-w-0">
               <p className="text-sm font-medium truncate">
-                {formatUserDisplayName(localStorage.getItem("parrot_user_name"), localStorage.getItem("parrot_user_email"))}
+                {formatUserDisplayName(
+                  localStorage.getItem("xander_user_name"),
+                  localStorage.getItem("xander_user_email")
+                )}
               </p>
-              <p className="text-xs text-muted-foreground capitalize">{userRole.replace("_", " ")}</p>
+              <p className="text-xs text-muted-foreground capitalize truncate">
+                {menuRole === "partner_company" || partnerView
+                  ? "Institution Admin"
+                  : menuRole === "meeting_user"
+                    ? "Meeting Coordinator"
+                    : userRole.replace("_", " ")}
+              </p>
             </div>
           )}
         </div>

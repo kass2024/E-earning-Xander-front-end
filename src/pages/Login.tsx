@@ -50,7 +50,7 @@ const Login = () => {
   const { toast } = useToast();
 
   useEffect(() => {
-    const saved = localStorage.getItem("parrot_remember_email");
+    const saved = localStorage.getItem("xander_remember_email");
     if (saved) {
       setEmail(saved);
       setRemember(true);
@@ -115,8 +115,8 @@ const Login = () => {
     );
 
     if (role) {
-      localStorage.setItem("parrot_user_role", String(role).toLowerCase().trim());
-      localStorage.setItem("parrot_login_success", "1");
+      localStorage.setItem("xander_user_role", String(role).toLowerCase().trim());
+      localStorage.setItem("xander_login_success", "1");
     }
 
     if (user) {
@@ -126,7 +126,7 @@ const Login = () => {
         const last = (user.last_name as string) ?? "";
         displayName = `${first} ${last}`.trim();
         if (user.id) {
-          localStorage.setItem("parrot_student_id", String(user.id));
+          localStorage.setItem("xander_student_id", String(user.id));
         }
       } else {
         displayName = (user.name as string) ?? "";
@@ -136,23 +136,23 @@ const Login = () => {
       }
 
       if (displayName) {
-        localStorage.setItem("parrot_user_name", displayName);
+        localStorage.setItem("xander_user_name", displayName);
       }
       if (user.email) {
-        localStorage.setItem("parrot_user_email", String(user.email));
+        localStorage.setItem("xander_user_email", String(user.email));
       }
       const avatar = (user.avatar as string | undefined)?.trim();
       if (avatar) {
-        localStorage.setItem("parrot_user_avatar", avatar);
+        localStorage.setItem("xander_user_avatar", avatar);
       } else {
-        localStorage.removeItem("parrot_user_avatar");
+        localStorage.removeItem("xander_user_avatar");
       }
     }
 
     if (remember) {
-      localStorage.setItem("parrot_remember_email", email);
+      localStorage.setItem("xander_remember_email", email);
     } else {
-      localStorage.removeItem("parrot_remember_email");
+      localStorage.removeItem("xander_remember_email");
     }
 
     if (roleLower === "partner_company") {
@@ -200,7 +200,7 @@ const Login = () => {
 
       if (!message && isNetworkError) {
         message = import.meta.env.DEV
-          ? "Cannot reach the API server. Start the backend with: npm run dev:api (or npm run dev:full from parrot-frontend)."
+          ? "Cannot reach the API server. Start the backend with: npm run dev:api (or npm run dev:full from xander-frontend)."
           : "Cannot reach the login server. The API may be misconfigured on hosting — contact support.";
       } else if (!message && !axiosErr.response) {
         message = "Cannot reach the login server. The API may be misconfigured on hosting — contact support.";

@@ -23,11 +23,11 @@ const useDirectPCloud = (courseId?: number): UseDirectPCloudReturn => {
   // Map course ID to folder path
   const getCoursePath = (id?: number): string => {
     const coursePaths: Record<number, string> = {
-      1: '/parrotacademy/english',
-      2: '/parrotacademy/mathematics', 
-      3: '/parrotacademy/science'
+      1: '/xanderacademy/english',
+      2: '/xanderacademy/mathematics', 
+      3: '/xanderacademy/science'
     };
-    return coursePaths[id || 1] || '/parrotacademy';
+    return coursePaths[id || 1] || '/xanderacademy';
   };
 
   const loadFiles = async () => {
@@ -36,7 +36,7 @@ const useDirectPCloud = (courseId?: number): UseDirectPCloudReturn => {
     
     try {
       // Use the exact API URL you provided
-      const apiUrl = "https://api.pcloud.com/listfolder?path=/parrotacademy&access_token=kqNT7Z8BpwhA0d4MFZVgju0kZbR12PpsX93VWhpTOL5i4jVefcDdX";
+      const apiUrl = "https://api.pcloud.com/listfolder?path=/xanderacademy&access_token=kqNT7Z8BpwhA0d4MFZVgju0kZbR12PpsX93VWhpTOL5i4jVefcDdX";
       
       const response = await fetch(apiUrl);
       const data = await response.json();
@@ -71,8 +71,8 @@ const useDirectPCloud = (courseId?: number): UseDirectPCloudReturn => {
         if (data.result === 2005) {
           console.log('Folder does not exist, creating it...');
           try {
-            // Create the parrotacademy folder
-            const createUrl = "https://api.pcloud.com/createfolder?path=/parrotacademy&access_token=kqNT7Z8BpwhA0d4MFZVgju0kZbR12PpsX93VWhpTOL5i4jVefcDdX";
+            // Create the xanderacademy folder
+            const createUrl = "https://api.pcloud.com/createfolder?path=/xanderacademy&access_token=kqNT7Z8BpwhA0d4MFZVgju0kZbR12PpsX93VWhpTOL5i4jVefcDdX";
             const createResponse = await fetch(createUrl);
             const createData = await createResponse.json();
             
@@ -135,17 +135,17 @@ const useDirectPCloud = (courseId?: number): UseDirectPCloudReturn => {
     try {
       console.log('Starting upload for file:', file.name);
       
-      // First ensure the parrotacademy folder exists and get its ID
+      // First ensure the xanderacademy folder exists and get its ID
       let targetFolderId = 0;
       
       try {
-        const listUrl = "https://api.pcloud.com/listfolder?path=/parrotacademy&access_token=kqNT7Z8BpwhA0d4MFZVgju0kZbR12PpsX93VWhpTOL5i4jVefcDdX";
+        const listUrl = "https://api.pcloud.com/listfolder?path=/xanderacademy&access_token=kqNT7Z8BpwhA0d4MFZVgju0kZbR12PpsX93VWhpTOL5i4jVefcDdX";
         const listResponse = await fetch(listUrl);
         const listData = await listResponse.json();
         
         if (listData.result === 0) {
           targetFolderId = listData.metadata.folderid;
-          console.log('Found parrotacademy folder with ID:', targetFolderId);
+          console.log('Found xanderacademy folder with ID:', targetFolderId);
         }
       } catch (listError) {
         console.log('Folder list failed, trying to create folder');
@@ -154,23 +154,23 @@ const useDirectPCloud = (courseId?: number): UseDirectPCloudReturn => {
       // If folder doesn't exist, create it
       if (targetFolderId === 0) {
         try {
-          const createUrl = "https://api.pcloud.com/createfolder?path=/parrotacademy&access_token=kqNT7Z8BpwhA0d4MFZVgju0kZbR12PpsX93VWhpTOL5i4jVefcDdX";
+          const createUrl = "https://api.pcloud.com/createfolder?path=/xanderacademy&access_token=kqNT7Z8BpwhA0d4MFZVgju0kZbR12PpsX93VWhpTOL5i4jVefcDdX";
           const createResponse = await fetch(createUrl);
           const createData = await createResponse.json();
           
           if (createData.result === 0) {
             targetFolderId = createData.metadata.folderid;
-            console.log('Created parrotacademy folder with ID:', targetFolderId);
+            console.log('Created xanderacademy folder with ID:', targetFolderId);
           } else {
             throw new Error(`Failed to create folder: ${createData.error || 'Unknown error'}`);
           }
         } catch (createError) {
           console.error('Create folder error:', createError);
-          throw new Error(`Failed to create parrotacademy folder: ${createError.message}`);
+          throw new Error(`Failed to create xanderacademy folder: ${createError.message}`);
         }
       }
       
-      // Upload file to the parrotacademy folder using correct pCloud API format
+      // Upload file to the xanderacademy folder using correct pCloud API format
       const formData = new FormData();
       
       // Add parameters first (as per documentation: parameters must come before files)

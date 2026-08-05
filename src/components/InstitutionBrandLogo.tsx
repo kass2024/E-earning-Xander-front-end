@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { institutionLogoUrl, institutionBrandingName, showsPlatformHubBranding, useInstitutionBrandingRevision, getStoredInstitution } from "@/lib/institutionContext";
-import ParrotLogo from "@/components/ParrotLogo";
+import XanderLogo from "@/components/XanderLogo";
 import { HUB } from "@/lib/hubConfig";
 
 type Props = {
@@ -49,7 +49,7 @@ export function InstitutionBrandLogo({ size = "sm", className, showRing = true }
   }, [revision, logo]);
 
   if (showsPlatformHubBranding()) {
-    return <ParrotLogo size={size} showRing={showRing} className={className} />;
+    return <XanderLogo size={size} showRing={showRing} className={className} />;
   }
 
   const name = institutionBrandingName() || "Institution";

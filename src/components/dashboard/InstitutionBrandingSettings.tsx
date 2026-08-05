@@ -13,7 +13,7 @@ import InstitutionPortalContentSettings from "@/components/dashboard/Institution
 
 const InstitutionBrandingSettings = () => {
   const { toast } = useToast();
-  const email = localStorage.getItem("parrot_user_email") ?? "";
+  const email = localStorage.getItem("xander_user_email") ?? "";
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [name, setName] = useState("");

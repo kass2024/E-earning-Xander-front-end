@@ -11,7 +11,7 @@ import { CreditCard, Layers, LockKeyhole, Settings as SettingsIcon, UserRound, V
 import { isStoredMainAdmin } from "@/lib/institutionContext";
 
 const Settings = () => {
-  const role = (localStorage.getItem("parrot_user_role") ?? "").toLowerCase();
+  const role = (localStorage.getItem("xander_user_role") ?? "").toLowerCase();
   const showInstitution = role === "partner_company";
   const showLiveMeetings =
     isStoredMainAdmin() || role === "admin" || role === "staff" || role === "instructor";

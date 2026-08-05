@@ -66,9 +66,9 @@ const CourseMaterialsSimple = () => {
     setLoadingFiles(true);
     
     try {
-      const coursePath = selectedCourseId === 1 ? '/parrotacademy' : 
-                        selectedCourseId === 2 ? '/parrotacademy' : 
-                        '/parrotacademy';
+      const coursePath = selectedCourseId === 1 ? '/xanderacademy' : 
+                        selectedCourseId === 2 ? '/xanderacademy' : 
+                        '/xanderacademy';
       
       // First try to create the folder if it doesn't exist
       try {
@@ -137,7 +137,7 @@ const CourseMaterialsSimple = () => {
 
     try {
       // First ensure the folder exists
-      const folderPath = '/parrotacademy';
+      const folderPath = '/xanderacademy';
       try {
         await fetch(`${API_BASE_URL}/createfolder?path=${folderPath}&access_token=${ACCESS_TOKEN}`);
       } catch (e) {
@@ -147,7 +147,7 @@ const CourseMaterialsSimple = () => {
       const formData = new FormData();
       formData.append("file", uploadFile);
       
-      // Get the folder ID for parrotacademy
+      // Get the folder ID for xanderacademy
       const folderResponse = await fetch(`${API_BASE_URL}/listfolder?path=${folderPath}&access_token=${ACCESS_TOKEN}`);
       const folderData = await folderResponse.json();
       
@@ -225,7 +225,7 @@ const CourseMaterialsSimple = () => {
         <div>
           <h1 className="text-2xl font-bold text-foreground mb-1">Course Materials</h1>
           <p className="text-sm text-muted-foreground">
-            Each course is stored in its own folder in pCloud under <code>/parrotacademy</code>.
+            Each course is stored in its own folder in pCloud under <code>/xanderacademy</code>.
           </p>
         </div>
       </div>
@@ -279,7 +279,7 @@ const CourseMaterialsSimple = () => {
               <ul className="text-gray-800 space-y-1">
                 <li>• API URL: {API_BASE_URL}</li>
                 <li>• Access Token: {ACCESS_TOKEN.substring(0, 20)}...</li>
-                <li>• Course Path: /parrotacademy</li>
+                <li>• Course Path: /xanderacademy</li>
                 <li>• Selected Course: {selectedCourseId}</li>
                 <li>• Loading: {loadingFiles ? 'Yes' : 'No'}</li>
                 <li>• Total Files: {files.images.length + files.videos.length + files.others.length}</li>
@@ -324,7 +324,7 @@ const CourseMaterialsSimple = () => {
                   <DialogHeader>
                     <DialogTitle>Upload Course Material</DialogTitle>
                     <DialogDescription>
-                      Files will be stored in <code>/parrotacademy/course_{selectedCourseId}</code>.
+                      Files will be stored in <code>/xanderacademy/course_{selectedCourseId}</code>.
                     </DialogDescription>
                   </DialogHeader>
                   <form className="space-y-4" onSubmit={handleUpload}>
@@ -384,7 +384,7 @@ const CourseMaterialsSimple = () => {
                 </CardTitle>
                 <CardDescription>
                   Files for this course in pCloud{" "}
-                  <code>/parrotacademy</code>.
+                  <code>/xanderacademy</code>.
                 </CardDescription>
               </div>
               <Button variant="outline" size="sm" onClick={fetchFiles}>

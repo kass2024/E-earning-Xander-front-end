@@ -155,7 +155,7 @@ const LiveCohortHostStudio = () => {
 
         // Keep a soft warning only when the API clearly identifies a different product stack.
         const backendApp = String(auth.backend_app ?? "").trim();
-        if (backendApp && /parrot-learning|legacy-api/i.test(backendApp)) {
+        if (backendApp && /xander-learning|legacy-api/i.test(backendApp)) {
           setWarning(
             `Connected to unexpected API (${backendApp}). Confirm Vite proxies to E-learning-parrot-backend on :8000.`,
           );

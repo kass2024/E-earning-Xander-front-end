@@ -37,18 +37,18 @@ function directTextContent(el: HTMLElement): string {
 }
 
 function hideBrandElement(el: HTMLElement): void {
-  if (el.closest(".parrot-zoom-brand-header")) return;
+  if (el.closest(".xander-zoom-brand-header")) return;
   el.style.setProperty("display", "none", "important");
   el.style.setProperty("visibility", "hidden", "important");
   el.style.setProperty("opacity", "0", "important");
   el.style.setProperty("pointer-events", "none", "important");
   el.setAttribute("aria-hidden", "true");
-  el.setAttribute("data-parrot-zoom-brand-hidden", "1");
+  el.setAttribute("data-xander-zoom-brand-hidden", "1");
 }
 
 function shouldHideBrandElement(el: HTMLElement): boolean {
   if (!isInZoomHeaderArea(el)) return false;
-  if (el.closest(".parrot-zoom-brand-header")) return false;
+  if (el.closest(".xander-zoom-brand-header")) return false;
 
   const direct = directTextContent(el);
   const full = (el.textContent ?? "").trim();
@@ -63,7 +63,7 @@ function shouldHideBrandElement(el: HTMLElement): boolean {
 }
 
 function patchZoomBrandText(root: ParentNode): void {
-  const candidates = root.querySelectorAll<HTMLElement>("*:not([data-parrot-zoom-brand-hidden='1'])");
+  const candidates = root.querySelectorAll<HTMLElement>("*:not([data-xander-zoom-brand-hidden='1'])");
   for (const el of candidates) {
     if (shouldHideBrandElement(el)) {
       hideBrandElement(el);
@@ -95,15 +95,15 @@ function patchHostAvatars(root: ParentNode, logoUrl: string | null): void {
     'img[src*="zoom.us"], img[src*="zoomcdn"], [class*="avatar"] img, [class*="Avatar"] img, [class*="preview"] img, [class*="Preview"] img',
   );
   for (const img of images) {
-    if (img.dataset.parrotHostAvatarPatched === "1") continue;
-    if (img.closest(".parrot-zoom-brand-header")) continue;
-    if (img.closest(".parrot-zoom-native-prejoin-brand")) continue;
+    if (img.dataset.xanderHostAvatarPatched === "1") continue;
+    if (img.closest(".xander-zoom-brand-header")) continue;
+    if (img.closest(".xander-zoom-native-prejoin-brand")) continue;
     img.referrerPolicy = "no-referrer";
     if (isHttpAvatarUrl(resolved) && new URL(resolved).origin === window.location.origin) {
       img.removeAttribute("crossorigin");
     }
     img.src = resolved;
-    img.dataset.parrotHostAvatarPatched = "1";
+    img.dataset.xanderHostAvatarPatched = "1";
   }
 }
 
@@ -120,7 +120,7 @@ export function isZoomNativePrejoinVisible(): boolean {
 }
 
 function isPrejoinNameElement(el: HTMLElement, companyName: string, institutionMode: boolean): boolean {
-  if (el.closest(".parrot-zoom-brand-header, .parrot-zoom-native-prejoin-brand")) return false;
+  if (el.closest(".xander-zoom-brand-header, .xander-zoom-native-prejoin-brand")) return false;
   if (el.closest("button, a, input, select, textarea, label")) return false;
   if (el.querySelector("button, input, select, textarea")) return false;
 
@@ -165,9 +165,9 @@ export function startZoomClientBranding(branding: ZoomClientBranding): () => voi
   stopActiveBranding();
 
   const root = document.getElementById("zmmtg-root");
-  document.documentElement.classList.add("parrot-zoom-branded");
+  document.documentElement.classList.add("xander-zoom-branded");
   if (branding.institutionMode) {
-    document.documentElement.classList.add("parrot-zoom-institution");
+    document.documentElement.classList.add("xander-zoom-institution");
   }
 
   const run = () => applyBrandingPatch(document.getElementById("zmmtg-root"), branding);
@@ -183,7 +183,7 @@ export function startZoomClientBranding(branding: ZoomClientBranding): () => voi
   const cleanup = () => {
     observer.disconnect();
     window.clearInterval(interval);
-    document.documentElement.classList.remove("parrot-zoom-branded", "parrot-zoom-institution");
+    document.documentElement.classList.remove("xander-zoom-branded", "xander-zoom-institution");
     if (activeBrandingCleanup === cleanup) {
       activeBrandingCleanup = null;
     }

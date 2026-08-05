@@ -115,10 +115,10 @@ const LearnerDashboard = () => {
   };
 
   const userName =
-    (typeof window !== "undefined" && localStorage.getItem("parrot_user_name")) || data?.student?.name || "Learner";
+    (typeof window !== "undefined" && localStorage.getItem("xander_user_name")) || data?.student?.name || "Learner";
 
   const handleCourseAction = async (courseId: number, courseTitle?: string) => {
-    const studentId = Number(localStorage.getItem("parrot_student_id"));
+    const studentId = Number(localStorage.getItem("xander_student_id"));
     if (!studentId || Number.isNaN(studentId)) {
       toast({ variant: "destructive", title: "Not logged in", description: "Please log in as a learner." });
       return;
@@ -145,7 +145,7 @@ const LearnerDashboard = () => {
         });
         return;
       }
-      localStorage.setItem("parrot_selected_course_id", String(courseId));
+      localStorage.setItem("xander_selected_course_id", String(courseId));
       navigate("/dashboard/learner/payment");
       return;
     }

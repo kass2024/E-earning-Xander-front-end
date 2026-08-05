@@ -6,7 +6,7 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
 echo "=========================================="
-echo " Parrot Academy Frontend — production build"
+echo " Xander Academy Frontend — production build"
 echo "=========================================="
 
 if [ ! -f package.json ]; then

@@ -1,6 +1,6 @@
 import { lazy, type ComponentType, type LazyExoticComponent } from "react";
 
-const CHUNK_RELOAD_KEY = "parrot_chunk_reload_once";
+const CHUNK_RELOAD_KEY = "xander_chunk_reload_once";
 
 function isChunkLoadError(error: unknown): boolean {
   const message = error instanceof Error ? error.message : String(error ?? "");

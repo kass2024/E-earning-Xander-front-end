@@ -176,7 +176,7 @@ export function zoomMeetingEmbedRoom(
   if (attendee?.userEmail) {
     params.set("user_email", attendee.userEmail);
   } else if (role === 1 && typeof window !== "undefined") {
-    const hostEmail = localStorage.getItem("parrot_user_email")?.trim();
+    const hostEmail = localStorage.getItem("xander_user_email")?.trim();
     if (hostEmail) {
       params.set("user_email", hostEmail);
     }

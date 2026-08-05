@@ -18,8 +18,8 @@ api.interceptors.request.use((config) => {
   const url = String(config.url ?? "");
   const isAuthRequest = /\/auth\/(login|register-student|register-instructor)(?:\?|$)/.test(url);
 
-  const email = localStorage.getItem("parrot_user_email")?.trim();
-  const role = (localStorage.getItem("parrot_user_role") ?? "").toLowerCase();
+  const email = localStorage.getItem("xander_user_email")?.trim();
+  const role = (localStorage.getItem("xander_user_role") ?? "").toLowerCase();
   const institution = getStoredInstitution();
 
   if (email && !isAuthRequest) {
@@ -2000,7 +2000,7 @@ function normalizeCourseList(payload: unknown): CoursePayload[] {
 export const getCourses = async (programId?: number) => {
   const studentId =
     typeof window !== "undefined"
-      ? Number(window.localStorage.getItem("parrot_student_id") || "") || undefined
+      ? Number(window.localStorage.getItem("xander_student_id") || "") || undefined
       : undefined;
   const response = await api.get(`/courses`, {
     timeout: 8000,

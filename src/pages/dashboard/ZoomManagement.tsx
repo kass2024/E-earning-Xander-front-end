@@ -170,7 +170,7 @@ const ZoomManagement = ({ initialMeetingType = "meeting" }: ZoomManagementProps)
   const [platformProvider, setPlatformProvider] = useState<"zoom" | "daily">("daily");
 
   const isInstructorHost = useMemo(() => {
-    const role = (localStorage.getItem("parrot_user_role") || "").toLowerCase();
+    const role = (localStorage.getItem("xander_user_role") || "").toLowerCase();
     const impersonation = getAdminImpersonation();
     if (impersonation?.viewAsRole === "instructor") return true;
     return role === "instructor";
@@ -285,8 +285,8 @@ const ZoomManagement = ({ initialMeetingType = "meeting" }: ZoomManagementProps)
     void loadData();
     void loadInvitees();
     void loadPlatformMeetingSettings();
-    const storedName = localStorage.getItem("parrot_user_name");
-    const storedEmail = localStorage.getItem("parrot_user_email");
+    const storedName = localStorage.getItem("xander_user_name");
+    const storedEmail = localStorage.getItem("xander_user_email");
     if (storedName) setHostDisplayName(storedName);
     if (storedEmail) setHostDisplayEmail(storedEmail);
   }, [isInstructorHost]);

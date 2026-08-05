@@ -391,7 +391,7 @@ const CourseMaterials = () => {
                 <p className="font-medium text-blue-900 mb-1">Current Settings:</p>
                 <ul className="text-blue-800 space-y-1">
                   <li>• API Token: kqNT7Z8BpwhA0d4MFZVgju0kZbR12PpsX93VWhpTOL5i4jVefcDdX</li>
-                  <li>• Course Path: {selectedCourseId ? `/parrotacademy/${courses.find(c => c.id === selectedCourseId)?.title?.toLowerCase()}` : '/parrotacademy'}</li>
+                  <li>• Course Path: {selectedCourseId ? `/xanderacademy/${courses.find(c => c.id === selectedCourseId)?.title?.toLowerCase()}` : '/xanderacademy'}</li>
                   <li>• Fetching: Path-based folder access</li>
                   <li>• Storage: Direct pCloud cloud storage</li>
                 </ul>

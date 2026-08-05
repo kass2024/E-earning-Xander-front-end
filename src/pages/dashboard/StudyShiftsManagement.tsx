@@ -85,7 +85,7 @@ const StudyShiftsManagement = () => {
   const userEmail = resolveInstructorEmail() || null;
   const userRole =
     typeof window !== "undefined"
-      ? (localStorage.getItem("parrot_user_role") || "").toLowerCase()
+      ? (localStorage.getItem("xander_user_role") || "").toLowerCase()
       : "";
   const isAdmin =
     userRole === "admin" || userRole === "staff" || userRole === "superadmin" || userRole === "partner_company";

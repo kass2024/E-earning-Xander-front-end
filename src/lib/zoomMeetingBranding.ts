@@ -56,7 +56,7 @@ function enrichAuth(auth: ZoomMeetingBranding | null | undefined): ZoomMeetingBr
   let next = auth;
 
   // Never hydrate partner branding from localStorage for hub sessions or main operators.
-  // Guests joining hub webinars often still have a leftover parrot_institution (e.g. Prime Gateway).
+  // Guests joining hub webinars often still have a leftover xander_institution (e.g. Prime Gateway).
   if (
     auth.use_institution_logo &&
     !auth.institution &&
@@ -87,7 +87,7 @@ function usesInstitutionBranding(auth: ZoomMeetingBranding | null | undefined): 
   if (isMainPlatformZoomHost(auth)) return false;
   if (auth?.use_institution_logo === true) return true;
   if (auth?.institution?.id && auth.use_institution_logo !== false) {
-    const role = (typeof window !== "undefined" ? localStorage.getItem("parrot_user_role") : "") ?? "";
+    const role = (typeof window !== "undefined" ? localStorage.getItem("xander_user_role") : "") ?? "";
     const roleLower = role.toLowerCase();
     if (roleLower === "instructor" || roleLower === "partner_company" || roleLower === "learner") {
       return true;

@@ -22,16 +22,16 @@ export function performDashboardLogout(
   clearInstitutionContext();
 
   localStorage.removeItem("token");
-  localStorage.removeItem("parrot_user_role");
-  localStorage.removeItem("parrot_user_name");
-  localStorage.removeItem("parrot_user_email");
-  localStorage.removeItem("parrot_student_id");
-  localStorage.removeItem("parrot_login_success");
-  localStorage.removeItem("parrot_user_avatar");
+  localStorage.removeItem("xander_user_role");
+  localStorage.removeItem("xander_user_name");
+  localStorage.removeItem("xander_user_email");
+  localStorage.removeItem("xander_student_id");
+  localStorage.removeItem("xander_login_success");
+  localStorage.removeItem("xander_user_avatar");
 
   try {
     Object.keys(sessionStorage).forEach((key) => {
-      if (key.startsWith("parrot_branding_refreshed:") || key.startsWith("xander_dash_")) {
+      if (key.startsWith("xander_branding_refreshed:") || key.startsWith("xander_dash_")) {
         sessionStorage.removeItem(key);
       }
     });

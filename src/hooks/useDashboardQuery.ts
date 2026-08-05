@@ -19,11 +19,11 @@ function useCacheScopeRevision(): number {
   useEffect(() => {
     const bump = () => setRevision((value) => value + 1);
     window.addEventListener(INSTITUTION_CONTEXT_EVENT, bump);
-    window.addEventListener("parrot-session-refresh", bump);
+    window.addEventListener("xander-session-refresh", bump);
     window.addEventListener(DASHBOARD_CACHE_REFRESH_EVENT, bump);
     return () => {
       window.removeEventListener(INSTITUTION_CONTEXT_EVENT, bump);
-      window.removeEventListener("parrot-session-refresh", bump);
+      window.removeEventListener("xander-session-refresh", bump);
       window.removeEventListener(DASHBOARD_CACHE_REFRESH_EVENT, bump);
     };
   }, []);

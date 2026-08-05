@@ -3,7 +3,7 @@ import { getInstructorEmail, getStudentId } from "@/lib/dashboardUser";
 
 function dashboardRole(): string | null {
   if (typeof window === "undefined") return null;
-  return window.localStorage.getItem("parrot_user_role")?.toLowerCase() ?? null;
+  return window.localStorage.getItem("xander_user_role")?.toLowerCase() ?? null;
 }
 
 /** Resolve quiz/oral audio refs (pcloud:ID, audio:pcloud:ID, legacy uploads/ paths). */

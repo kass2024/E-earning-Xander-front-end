@@ -21,7 +21,7 @@ import { hubBrand } from "@/lib/hubBrand";
 import { resolveInstitutionLogoUrl } from "@/lib/institutionContext";
 import { HOME_UNIQUE_IMAGES } from "@/lib/homeImages";
 import { cn } from "@/lib/utils";
-import ParrotLogo from "@/components/ParrotLogo";
+import XanderLogo from "@/components/XanderLogo";
 import {
   Eye,
   EyeOff,
@@ -95,7 +95,7 @@ const evaluatePasswordStrength = (value: string): "empty" | "weak" | "medium" | 
 
 const isAIMasteryCourse = (title?: string) => {
   const t = (title || "").toLowerCase();
-  return t.includes("ai mastery") || t.includes("parrot ai mastery");
+  return t.includes("ai mastery") || t.includes("xander ai mastery");
 };
 
 const Signup = () => {
@@ -184,7 +184,7 @@ const Signup = () => {
     try {
       const multi =
         localStorage.getItem("xander_selected_courses") ||
-        localStorage.getItem("parrot_selected_courses");
+        localStorage.getItem("xander_selected_courses");
       if (multi) {
         const parsed = JSON.parse(multi);
         if (Array.isArray(parsed)) {
@@ -194,7 +194,7 @@ const Signup = () => {
       }
       const single =
         localStorage.getItem("xander_selected_course") ||
-        localStorage.getItem("parrot_selected_course");
+        localStorage.getItem("xander_selected_course");
       if (single) {
         const one = JSON.parse(single);
         if (one && typeof one === "object") setSelectedCourses([one]);
@@ -280,10 +280,10 @@ const Signup = () => {
   const updateStoredCourses = (courses: SelectedCourse[]) => {
     try {
       localStorage.setItem("xander_selected_courses", JSON.stringify(courses));
-      localStorage.setItem("parrot_selected_courses", JSON.stringify(courses));
+      localStorage.setItem("xander_selected_courses", JSON.stringify(courses));
       if (courses.length > 0) {
         localStorage.setItem("xander_selected_course", JSON.stringify(courses[0]));
-        localStorage.setItem("parrot_selected_course", JSON.stringify(courses[0]));
+        localStorage.setItem("xander_selected_course", JSON.stringify(courses[0]));
       }
     } catch {
       /* ignore */
@@ -537,9 +537,9 @@ const Signup = () => {
 
       const studentId = Number(data.user.id);
       if (!isNaN(studentId)) {
-        localStorage.setItem("parrot_student_id", String(studentId));
+        localStorage.setItem("xander_student_id", String(studentId));
         selectedCourses.filter((c) => c.id).forEach((c) => {
-          localStorage.setItem(`parrot_course_status_${c.id}`, "waiting approval");
+          localStorage.setItem(`xander_course_status_${c.id}`, "waiting approval");
         });
       }
 
@@ -554,8 +554,8 @@ const Signup = () => {
 
       localStorage.removeItem("xander_selected_courses");
       localStorage.removeItem("xander_selected_course");
-      localStorage.removeItem("parrot_selected_courses");
-      localStorage.removeItem("parrot_selected_course");
+      localStorage.removeItem("xander_selected_courses");
+      localStorage.removeItem("xander_selected_course");
 
       showFormMessage({
         type: "success",
@@ -657,7 +657,7 @@ const Signup = () => {
               {institutionLogoUrl && isInstructorSignup ? (
                 <img src={institutionLogoUrl} alt="" className="mr-1.5 h-5 w-5 rounded-full object-contain" />
               ) : (
-                <ParrotLogo size="xs" showRing={false} className="mr-1.5 w-5 h-5" />
+                <XanderLogo size="xs" showRing={false} className="mr-1.5 w-5 h-5" />
               )}
               {isInstructorSignup ? "Apply as instructor" : "Create your learner account"}
             </Badge>

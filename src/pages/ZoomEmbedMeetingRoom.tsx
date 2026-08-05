@@ -117,7 +117,7 @@ const ZoomEmbedMeetingRoom = () => {
 
   const instructorEmail = useMemo(
 
-    () => (typeof window !== "undefined" ? localStorage.getItem("parrot_user_email") ?? "" : ""),
+    () => (typeof window !== "undefined" ? localStorage.getItem("xander_user_email") ?? "" : ""),
 
     [],
 
@@ -129,7 +129,7 @@ const ZoomEmbedMeetingRoom = () => {
 
   const storedUserName = useMemo(
 
-    () => localStorage.getItem("parrot_user_name")?.trim() || undefined,
+    () => localStorage.getItem("xander_user_name")?.trim() || undefined,
 
     [],
 

@@ -53,7 +53,7 @@ const InstructorMyCourses = () => {
   const navigate = useNavigate();
   const email = resolveInstructorEmail();
   const isPortalAdmin = ["admin", "staff", "partner_company"].includes(
-    (localStorage.getItem("parrot_user_role") || "").toLowerCase(),
+    (localStorage.getItem("xander_user_role") || "").toLowerCase(),
   );
   const createCoursePath = isPortalAdmin ? "/dashboard/courses" : "/dashboard/instructor/create-course";
   const {

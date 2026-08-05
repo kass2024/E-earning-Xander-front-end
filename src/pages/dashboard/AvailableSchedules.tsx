@@ -370,7 +370,7 @@ const AvailableSchedules = ({ mode = "available", embedded = false }: AvailableS
 
   useEffect(() => {
     if (!isLive) return;
-    const email = localStorage.getItem("parrot_user_email") ?? "";
+    const email = localStorage.getItem("xander_user_email") ?? "";
     const apply = (provider?: string | null) => {
       if (provider === "zoom" || provider === "daily") {
         setMeetingProvider(provider);

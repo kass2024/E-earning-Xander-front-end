@@ -1,5 +1,5 @@
 ﻿import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import ParrotLogo from "@/components/ParrotLogo";
+import XanderLogo from "@/components/XanderLogo";
 import { InstitutionBrandLogo, dashboardBrandTitle } from "@/components/InstitutionBrandLogo";
 import { HUB } from "@/lib/hubConfig";
 import { showsPlatformHubBranding } from "@/lib/institutionContext";
@@ -20,7 +20,7 @@ export function AdminPageHeader({ eyebrow = "Administration", title, description
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="flex items-start gap-4 min-w-0">
           {useHub ? (
-            <ParrotLogo size="md" showRing={false} className="ring-2 ring-white/25 hidden sm:flex shrink-0" />
+            <XanderLogo size="md" showRing={false} className="ring-2 ring-white/25 hidden sm:flex shrink-0" />
           ) : (
             <InstitutionBrandLogo size="md" showRing={false} className="ring-2 ring-white/25 hidden sm:flex shrink-0" />
           )}

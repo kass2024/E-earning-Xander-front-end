@@ -5,12 +5,12 @@ import { invalidateDashboardCache, notifyDashboardCacheRefresh } from "./dashboa
 
 export type { PlatformInstitutionInfo };
 
-const INSTITUTION_KEY = "parrot_institution";
-const IS_MAIN_ADMIN_KEY = "parrot_is_main_admin";
-const IMPERSONATION_KEY = "parrot_admin_impersonation";
-const INSTITUTION_LOGIN_PATH_KEY = "parrot_institution_login_path";
+const INSTITUTION_KEY = "xander_institution";
+const IS_MAIN_ADMIN_KEY = "xander_is_main_admin";
+const IMPERSONATION_KEY = "xander_admin_impersonation";
+const INSTITUTION_LOGIN_PATH_KEY = "xander_institution_login_path";
 
-export const INSTITUTION_CONTEXT_EVENT = "parrot-institution-context-updated";
+export const INSTITUTION_CONTEXT_EVENT = "xander-institution-context-updated";
 
 function notifyInstitutionContextUpdated() {
   if (typeof window !== "undefined") {
@@ -46,7 +46,7 @@ export function saveInstitutionContext(
   institution: PlatformInstitutionInfo | null | undefined,
   isMainAdmin = false,
 ) {
-  const role = (localStorage.getItem("parrot_user_role") ?? "").toLowerCase();
+  const role = (localStorage.getItem("xander_user_role") ?? "").toLowerCase();
   const mainAdmin =
     role === "partner_company" ? false : isMainAdmin;
 
@@ -136,13 +136,13 @@ export function isStoredMainAdmin(): boolean {
     return false;
   }
 
-  const role = (localStorage.getItem("parrot_user_role") ?? "").toLowerCase();
+  const role = (localStorage.getItem("xander_user_role") ?? "").toLowerCase();
   if (role === "partner_company") {
     return false;
   }
 
   // Platform operators keep hub branding even if a partner row is still cached
-  // from institution management UI (stale parrot_institution).
+  // from institution management UI (stale xander_institution).
   if (localStorage.getItem(IS_MAIN_ADMIN_KEY) === "1") return true;
   if (role === "admin" || role === "staff") return true;
 
@@ -155,7 +155,7 @@ export function isStoredMainAdmin(): boolean {
 }
 
 export function isPartnerInstitutionUser(): boolean {
-  const role = (localStorage.getItem("parrot_user_role") ?? "").toLowerCase();
+  const role = (localStorage.getItem("xander_user_role") ?? "").toLowerCase();
   if (role === "partner_company") return true;
   return isViewingAsPartnerInstitution();
 }
@@ -179,7 +179,7 @@ export function showsPlatformHubBranding(): boolean {
     return false;
   }
 
-  const role = (localStorage.getItem("parrot_user_role") ?? "").toLowerCase();
+  const role = (localStorage.getItem("xander_user_role") ?? "").toLowerCase();
   if (role === "learner" || role === "instructor" || role === "meeting_user") {
     return true;
   }
@@ -208,7 +208,7 @@ export function getInstitutionLoginRedirect(): string {
     return remembered;
   }
 
-  const role = (localStorage.getItem("parrot_user_role") ?? "").toLowerCase();
+  const role = (localStorage.getItem("xander_user_role") ?? "").toLowerCase();
   if (role === "partner_company" || isViewingAsPartnerInstitution()) {
     const slug = getStoredInstitution()?.slug?.trim().toLowerCase();
     if (slug) {
@@ -240,10 +240,10 @@ export async function refreshInstitutionBrandingFromApi(email?: string | null): 
     return;
   }
 
-  const resolvedEmail = email?.trim() || localStorage.getItem("parrot_user_email")?.trim();
+  const resolvedEmail = email?.trim() || localStorage.getItem("xander_user_email")?.trim();
   if (!resolvedEmail) return;
 
-  const role = (localStorage.getItem("parrot_user_role") ?? "").toLowerCase();
+  const role = (localStorage.getItem("xander_user_role") ?? "").toLowerCase();
   const shouldRefresh =
     role === "partner_company" ||
     role === "learner" ||
@@ -255,7 +255,7 @@ export async function refreshInstitutionBrandingFromApi(email?: string | null): 
   if (!shouldRefresh) return;
 
   // Once per browser tab session — avoids re-hitting context API on every sidebar click.
-  const sessionKey = `parrot_branding_refreshed:${resolvedEmail}:${role}`;
+  const sessionKey = `xander_branding_refreshed:${resolvedEmail}:${role}`;
   if (sessionStorage.getItem(sessionKey) === "1") {
     return;
   }
@@ -282,7 +282,7 @@ export function zoomAuthInstitutionParams(actorEmail?: string): {
   user_email?: string;
   platform_institution_id?: number;
 } {
-  const email = actorEmail?.trim() || localStorage.getItem("parrot_user_email")?.trim();
+  const email = actorEmail?.trim() || localStorage.getItem("xander_user_email")?.trim();
   if (isStoredMainAdmin()) {
     return email ? { user_email: email } : {};
   }
@@ -296,9 +296,9 @@ export function zoomAuthInstitutionParams(actorEmail?: string): {
 
 /** Drop stale partner branding before opening Zoom when the session is main-platform admin. */
 export function prepareMainAdminZoomSession(): void {
-  // Resolve with role/flag first so a leftover parrot_institution cannot block cleanup.
+  // Resolve with role/flag first so a leftover xander_institution cannot block cleanup.
   if (isViewingAsPartnerInstitution()) return;
-  const role = (localStorage.getItem("parrot_user_role") ?? "").toLowerCase();
+  const role = (localStorage.getItem("xander_user_role") ?? "").toLowerCase();
   if (role === "partner_company") return;
 
   const flaggedMain = localStorage.getItem(IS_MAIN_ADMIN_KEY) === "1";

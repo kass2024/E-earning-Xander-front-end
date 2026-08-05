@@ -13,7 +13,7 @@ const PaymentSuccess = () => {
   const [confirmed, setConfirmed] = useState(false);
 
   useEffect(() => {
-    localStorage.removeItem("parrot_selected_course_id");
+    localStorage.removeItem("xander_selected_course_id");
 
     if (sessionId) {
       setConfirming(true);

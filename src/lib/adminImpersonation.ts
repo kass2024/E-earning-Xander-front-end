@@ -3,7 +3,7 @@ import { getStoredInstitution, saveInstitutionContext } from "./institutionConte
 import { invalidateDashboardCache, notifyDashboardCacheRefresh } from "./dashboardCache";
 import { warmupSidebarNavigation } from "./dashboardPrefetchData";
 
-const IMPERSONATION_KEY = "parrot_admin_impersonation";
+const IMPERSONATION_KEY = "xander_admin_impersonation";
 
 export type ViewAsRole = "instructor" | "learner" | "partner_company";
 
@@ -76,7 +76,7 @@ function readAdminActorCredentials(): Pick<
     };
   }
 
-  const currentRole = readStored("parrot_user_role");
+  const currentRole = readStored("xander_user_role");
   if (!currentRole) return null;
 
   const role = currentRole.toLowerCase();
@@ -84,9 +84,9 @@ function readAdminActorCredentials(): Pick<
 
   return {
     adminRole: currentRole,
-    adminName: readStored("parrot_user_name"),
-    adminEmail: readStored("parrot_user_email"),
-    adminStudentId: readStored("parrot_student_id"),
+    adminName: readStored("xander_user_name"),
+    adminEmail: readStored("xander_user_email"),
+    adminStudentId: readStored("xander_student_id"),
   };
 }
 
@@ -108,19 +108,19 @@ export function startAdminInstitutionViewAs(options: {
     viewAsEmail: options.ownerEmail,
     viewAsStudentId: null,
     viewAsInstitution: options.institution,
-    savedIsMainAdmin: readStored("parrot_is_main_admin") === "1",
+    savedIsMainAdmin: readStored("xander_is_main_admin") === "1",
     returnPath: options.returnPath ?? "/dashboard/institutions",
   };
 
   window.localStorage.setItem(IMPERSONATION_KEY, JSON.stringify(state));
-  window.localStorage.setItem("parrot_user_role", "partner_company");
-  window.localStorage.setItem("parrot_user_name", options.ownerName);
-  window.localStorage.setItem("parrot_user_email", options.ownerEmail);
-  window.localStorage.removeItem("parrot_student_id");
+  window.localStorage.setItem("xander_user_role", "partner_company");
+  window.localStorage.setItem("xander_user_name", options.ownerName);
+  window.localStorage.setItem("xander_user_email", options.ownerEmail);
+  window.localStorage.removeItem("xander_student_id");
   saveInstitutionContext(options.institution, false);
   invalidateDashboardCache();
   notifyDashboardCacheRefresh();
-  window.dispatchEvent(new CustomEvent("parrot-session-refresh"));
+  window.dispatchEvent(new CustomEvent("xander-session-refresh"));
 }
 
 export function startAdminViewAs(options: {
@@ -150,30 +150,30 @@ export function startAdminViewAs(options: {
         : null,
     returnPath: options.returnPath ?? defaultReturnPath,
     savedInstitution: getStoredInstitution(),
-    savedIsMainAdmin: isMainAdmin || readStored("parrot_is_main_admin") === "1",
+    savedIsMainAdmin: isMainAdmin || readStored("xander_is_main_admin") === "1",
   };
 
   window.localStorage.setItem(IMPERSONATION_KEY, JSON.stringify(state));
-  window.localStorage.setItem("parrot_user_role", options.viewAsRole);
+  window.localStorage.setItem("xander_user_role", options.viewAsRole);
 
   if (options.viewAsName) {
-    window.localStorage.setItem("parrot_user_name", options.viewAsName);
+    window.localStorage.setItem("xander_user_name", options.viewAsName);
   }
   if (options.viewAsEmail) {
-    window.localStorage.setItem("parrot_user_email", options.viewAsEmail);
+    window.localStorage.setItem("xander_user_email", options.viewAsEmail);
   } else {
-    window.localStorage.removeItem("parrot_user_email");
+    window.localStorage.removeItem("xander_user_email");
   }
 
   if (options.viewAsRole === "learner" && options.viewAsStudentId) {
-    window.localStorage.setItem("parrot_student_id", String(options.viewAsStudentId));
+    window.localStorage.setItem("xander_student_id", String(options.viewAsStudentId));
   } else {
-    window.localStorage.removeItem("parrot_student_id");
+    window.localStorage.removeItem("xander_student_id");
   }
 
   invalidateDashboardCache();
   notifyDashboardCacheRefresh();
-  window.dispatchEvent(new CustomEvent("parrot-session-refresh"));
+  window.dispatchEvent(new CustomEvent("xander-session-refresh"));
 
   if (options.viewAsRole === "instructor") {
     warmupSidebarNavigation("instructor");
@@ -190,21 +190,21 @@ export function exitAdminViewAs(): AdminImpersonationState | null {
   const state = getAdminImpersonation();
   if (!state) return null;
 
-  window.localStorage.setItem("parrot_user_role", state.adminRole);
+  window.localStorage.setItem("xander_user_role", state.adminRole);
   if (state.adminName) {
-    window.localStorage.setItem("parrot_user_name", state.adminName);
+    window.localStorage.setItem("xander_user_name", state.adminName);
   } else {
-    window.localStorage.removeItem("parrot_user_name");
+    window.localStorage.removeItem("xander_user_name");
   }
   if (state.adminEmail) {
-    window.localStorage.setItem("parrot_user_email", state.adminEmail);
+    window.localStorage.setItem("xander_user_email", state.adminEmail);
   } else {
-    window.localStorage.removeItem("parrot_user_email");
+    window.localStorage.removeItem("xander_user_email");
   }
   if (state.adminStudentId) {
-    window.localStorage.setItem("parrot_student_id", state.adminStudentId);
+    window.localStorage.setItem("xander_student_id", state.adminStudentId);
   } else {
-    window.localStorage.removeItem("parrot_student_id");
+    window.localStorage.removeItem("xander_student_id");
   }
 
   if (state.viewAsRole === "partner_company") {
@@ -218,7 +218,7 @@ export function exitAdminViewAs(): AdminImpersonationState | null {
   window.localStorage.removeItem(IMPERSONATION_KEY);
   invalidateDashboardCache();
   notifyDashboardCacheRefresh();
-  window.dispatchEvent(new CustomEvent("parrot-session-refresh"));
+  window.dispatchEvent(new CustomEvent("xander-session-refresh"));
   return state;
 }
 
