@@ -12,11 +12,24 @@ export async function acquireNativeDisplayStream(): Promise<MediaStream> {
     throw new Error("Screen sharing requires HTTPS.");
   }
 
-  // Minimal constraints → standard Chrome/Edge picker with thumbnails.
-  return navigator.mediaDevices.getDisplayMedia({
-    video: true,
-    audio: true,
-  });
+  // Prefer the full Chrome/Edge tab+window picker (same UX hosts get).
+  const options: DisplayMediaStreamOptions = {
+    video: {
+      width: { ideal: 1920, max: 3840 },
+      height: { ideal: 1080, max: 2160 },
+      frameRate: { ideal: 30, max: 60 },
+    },
+    audio: {
+      echoCancellation: true,
+      noiseSuppression: true,
+    },
+    preferCurrentTab: false,
+    selfBrowserSurface: "exclude",
+    surfaceSwitching: "include",
+    systemAudio: "include",
+  };
+
+  return navigator.mediaDevices.getDisplayMedia(options);
 }
 
 export function bindDisplayStreamEnd(
@@ -47,7 +60,7 @@ export async function startDailyNativeScreenShare(
   call: DailyCall,
   stream: MediaStream,
 ): Promise<void> {
-  call.startScreenShare({ mediaStream: stream });
+  await call.startScreenShare({ mediaStream: stream });
 }
 
 export async function stopDailyNativeScreenShare(

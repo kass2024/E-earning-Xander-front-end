@@ -47,6 +47,43 @@ export function canSendMedia(
   return permissionAllows(permissions.canSend as Parameters<typeof permissionAllows>[0], kind);
 }
 
+const SCREEN_SEND: DailySendPermission[] = ["screenVideo", "screenAudio"];
+
+/** Merge screen-share rights back into Daily canSend (speaking revoke must not block screen). */
+export function withScreenShareCanSend(
+  canSend: DailySdkPermissions["canSend"] | undefined,
+  includeScreen = true,
+): DailySdkPermissions["canSend"] {
+  if (!includeScreen) return canSend ?? false;
+  if (canSend === true) return true;
+  if (canSend === false || canSend == null) return [...SCREEN_SEND];
+  const merged = new Set<string>();
+  if (canSend instanceof Set) {
+    canSend.forEach((v) => merged.add(v));
+  } else if (Array.isArray(canSend)) {
+    canSend.forEach((v) => merged.add(v));
+  } else if (typeof canSend === "object" && typeof (canSend as Iterable<string>)[Symbol.iterator] === "function") {
+    for (const v of canSend as Iterable<string>) merged.add(v);
+  }
+  SCREEN_SEND.forEach((s) => merged.add(s));
+  return Array.from(merged) as DailySendPermission[];
+}
+
+/** Meetings: any joiner may share screen without host approval (webinars keep token rules). */
+export function canShareScreenInMeeting(
+  meetingMode: MeetingMode,
+  trustedHost: boolean,
+  permissions: DailySdkPermissions | null | undefined,
+  tokenPermissions?: DailySdkPermissions | null,
+): boolean {
+  if (trustedHost) return true;
+  if (meetingMode === "meeting") return true;
+  return (
+    canSendMedia(permissions, "screenVideo") ||
+    canSendMedia(tokenPermissions, "screenVideo")
+  );
+}
+
 export function canAdminParticipants(permissions: DailySdkPermissions | null | undefined): boolean {
   if (!permissions) return false;
   return permissionAllows(permissions.canAdmin as Parameters<typeof permissionAllows>[0], "participants");
