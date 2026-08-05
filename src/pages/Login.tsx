@@ -27,9 +27,9 @@ import { clearAdminImpersonation } from "@/lib/adminImpersonation";
 import { cn } from "@/lib/utils";
 
 const PERKS = [
-  "Host HD meetings, webinars, and live cohorts",
-  "Manage registrations, schedules, and recordings",
-  "Secure sign-in for admins, coordinators, and tenants",
+  "Access courses, live classes, and materials",
+  "Track progress from your personal dashboard",
+  "Secure sign-in for learners, instructors, and staff",
 ];
 
 const Login = () => {
@@ -130,9 +130,6 @@ const Login = () => {
         }
       } else {
         displayName = (user.name as string) ?? "";
-        if (user.id) {
-          localStorage.setItem("parrot_user_id", String(user.id));
-        }
       }
 
       if (displayName) {
@@ -200,7 +197,7 @@ const Login = () => {
 
       if (!message && isNetworkError) {
         message = import.meta.env.DEV
-          ? "Cannot reach the API server. Start the backend with: npm run dev:api (or npm run dev:full from xander-frontend)."
+          ? "Cannot reach the API server. Start the backend with: npm run dev:api (or npm run dev:full from parrot-frontend)."
           : "Cannot reach the login server. The API may be misconfigured on hosting — contact support.";
       } else if (!message && !axiosErr.response) {
         message = "Cannot reach the login server. The API may be misconfigured on hosting — contact support.";
@@ -392,7 +389,7 @@ const Login = () => {
               <div className="bg-gradient-to-br from-[#012F6B] to-[#0a3d7a] p-8 md:p-10 text-white flex flex-col justify-center">
                 <h1 className="text-2xl md:text-3xl font-bold mb-3">Welcome Back!</h1>
                 <p className="text-white/85 leading-relaxed mb-8">
-                  It&apos;s great to see you again! Sign in to host meetings, manage webinars, and pick up right where
+                  It&apos;s great to see you again! Log in to continue your learning journey and pick up right where
                   you left off.
                 </p>
                 <ul className="space-y-3">

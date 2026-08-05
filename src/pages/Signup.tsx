@@ -95,7 +95,7 @@ const evaluatePasswordStrength = (value: string): "empty" | "weak" | "medium" | 
 
 const isAIMasteryCourse = (title?: string) => {
   const t = (title || "").toLowerCase();
-  return t.includes("ai mastery") || t.includes("xander ai mastery");
+  return t.includes("ai mastery") || t.includes("parrot ai mastery");
 };
 
 const Signup = () => {
