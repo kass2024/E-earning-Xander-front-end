@@ -56,7 +56,12 @@ import { openZoomMeetingInNewTab, zoomMeetingEmbedRoom } from "@/lib/zoomEmbedRo
 import { ZoomRecordingPlayerDialog } from "@/components/materials/ZoomRecordingPlayerDialog";
 import type { ZoomRecordingFile } from "@/api/axios";
 import { resolveDefaultTimezone } from "@/lib/commonTimezones";
-import { localDatetimeToZoomStart } from "@/lib/scheduledDateTime";
+import {
+  defaultFutureDatetimeLocal,
+  localDatetimeToZoomStart,
+  scheduleValidationMessage,
+} from "@/lib/scheduledDateTime";
+import { extractApiErrorMessage } from "@/lib/apiError";
 import { cn } from "@/lib/utils";
 import { resolveInstructorEmail } from "@/lib/dashboardUser";
 import { getAdminImpersonation } from "@/lib/adminImpersonation";
@@ -140,7 +145,9 @@ const ZoomManagement = ({ initialMeetingType = "meeting" }: ZoomManagementProps)
 
   const [meetingTitle, setMeetingTitle] = useState("");
   const [meetingDuration, setMeetingDuration] = useState(isWebinar ? "60" : "30");
-  const [meetingStartTime, setMeetingStartTime] = useState("");
+  const [meetingStartTime, setMeetingStartTime] = useState(() =>
+    defaultFutureDatetimeLocal(resolveDefaultTimezone(), 30),
+  );
   const [meetingAgenda, setMeetingAgenda] = useState("");
   const [additionalEmails, setAdditionalEmails] = useState<string[]>([]);
 
@@ -343,6 +350,18 @@ const ZoomManagement = ({ initialMeetingType = "meeting" }: ZoomManagementProps)
         ? localDatetimeToZoomStart(meetingStartTime, meetingTimezone)
         : undefined;
 
+    if (meetingStartTime?.includes("T")) {
+      const scheduleError = scheduleValidationMessage(meetingStartTime, meetingTimezone);
+      if (scheduleError) {
+        toast({
+          variant: "destructive",
+          title: "Invalid schedule",
+          description: scheduleError,
+        });
+        return;
+      }
+    }
+
     const payload: ZoomMeetingPayload = {
       topic: meetingTitle.trim(),
       duration: Number(meetingDuration) || undefined,
@@ -381,19 +400,19 @@ const ZoomManagement = ({ initialMeetingType = "meeting" }: ZoomManagementProps)
       setMeetingTitle("");
       setMeetingDuration(isWebinar ? "60" : "30");
       setMeetingAgenda("");
-      setMeetingStartTime("");
+      setMeetingStartTime(defaultFutureDatetimeLocal(meetingTimezone, 30));
       setAdditionalEmails([]);
       setSelectedInviteEmails([]);
 
       await loadData(true);
     } catch (err: unknown) {
-      const apiMessage = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
       toast({
         variant: "destructive",
         title: "Error",
-        description:
-          apiMessage ||
-          (isWebinar ? "Failed to create webinar" : "Failed to create meeting"),
+        description: extractApiErrorMessage(
+          err,
+          isWebinar ? "Failed to create webinar" : "Failed to create meeting",
+        ),
       });
     } finally {
       setCreating(false);
