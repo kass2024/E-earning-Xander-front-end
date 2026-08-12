@@ -434,7 +434,15 @@ export function DailyMeetingRoom({
     String(userNameProp || sdk.user_name || "").trim() ||
     (isHost ? String(institutionName || HUB.name).trim() || "Host" : "Participant");
   // Host chrome/branding logo — never apply this to a guest's own tile (that swaps profiles).
-  const institutionLogo = resolveZoomBrandingLogoUrl(logoUrlProp) || logoUrl(LOGO.src);
+  // Never fall back to the hub mark when this room is branded as an institution.
+  const resolvedPropLogo = resolveZoomBrandingLogoUrl(logoUrlProp);
+  const isInstitutionRoom = Boolean(
+    institutionName?.trim() &&
+      institutionName.trim().toLowerCase() !== String(HUB.name || "").trim().toLowerCase() &&
+      institutionName.trim().toLowerCase() !== "xander learning hub",
+  );
+  const institutionLogo =
+    resolvedPropLogo || (isInstitutionRoom ? null : logoUrl(LOGO.src));
   const selfAvatar = isHost
     ? resolveZoomBrandingLogoUrl(avatarUrl) || institutionLogo
     : resolveZoomBrandingLogoUrl(avatarUrl) || null;

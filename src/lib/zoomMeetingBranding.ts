@@ -31,7 +31,14 @@ type BuildBrandingOptions = {
 function enrichAuth(auth: ZoomMeetingBranding | null | undefined): ZoomMeetingBranding | null | undefined {
   if (!auth) return auth;
 
-  if (isMainPlatformZoomHost(auth) || auth.use_hub_branding || auth.is_main_platform_host) {
+  // Explicit institution session from API wins over hub defaults / leftover main-admin flags.
+  const forcedInstitution =
+    auth.use_institution_logo === true && Boolean(auth.institution?.id || auth.institution?.name);
+
+  if (
+    !forcedInstitution &&
+    (isMainPlatformZoomHost(auth) || auth.use_hub_branding || auth.is_main_platform_host)
+  ) {
     const hubName = getAppDisplayName();
     const zoomAvatar = resolveMainZoomProfile(auth);
     return {
@@ -51,7 +58,7 @@ function enrichAuth(auth: ZoomMeetingBranding | null | undefined): ZoomMeetingBr
     };
   }
 
-  if (auth.use_institution_logo === false) return auth;
+  if (auth.use_institution_logo === false && !auth.institution?.id) return auth;
 
   let next = auth;
 
