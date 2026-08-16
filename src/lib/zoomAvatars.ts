@@ -15,9 +15,13 @@ export function isHttpAvatarUrl(value?: string | null): boolean {
 export function resolveBrandingImageUrl(value?: string | null): string | null {
   if (!value?.trim()) return null;
   const trimmed = value.trim();
-  if (isHttpAvatarUrl(trimmed)) return trimmed;
+  // Keep Zoom CDN profiles untouched.
+  if (isZoomCdnAvatarUrl(trimmed)) return trimmed;
+  // Always normalize our /storage and absolute API logo URLs through the current
+  // public-storage base (fixes http:// mixed-content + stale academy hosts).
   const publicUrl = getPublicStorageUrl(trimmed);
   if (publicUrl) return publicUrl;
+  if (isHttpAvatarUrl(trimmed)) return trimmed;
   if (trimmed.startsWith("/")) return trimmed;
   return null;
 }

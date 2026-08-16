@@ -3,8 +3,10 @@ import App from "./App.tsx";
 import { AppErrorBoundary } from "./components/AppErrorBoundary";
 import { applyBrandIcons } from "./lib/applyBrandIcons";
 import { ensureFreshAppShell, startAppBuildWatcher } from "./lib/appBuildVersion";
+import { migrateParrotSessionKeys } from "./lib/migrateSessionKeys";
 import "./index.css";
 
+migrateParrotSessionKeys();
 ensureFreshAppShell();
 startAppBuildWatcher();
 applyBrandIcons();

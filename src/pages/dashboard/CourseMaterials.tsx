@@ -33,7 +33,7 @@ import { MaterialUploadZone } from "@/components/materials/MaterialUploadZone";
 import { MaterialFilesBrowser } from "@/components/materials/MaterialFilesBrowser";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { GraduationCap, UserRound, FolderOpen } from "lucide-react";
-import ParrotLogo from "@/components/ParrotLogo";
+import XanderLogo from "@/components/XanderLogo";
 import { isFileMaterial } from "@/lib/materialFileUtils";
 import { resolveInstructorEmail } from "@/lib/dashboardUser";
 
@@ -58,7 +58,7 @@ export default function CourseMaterials() {
   const [searchParams] = useSearchParams();
   const role =
     typeof window !== "undefined"
-      ? (localStorage.getItem("parrot_user_role") || "").toLowerCase()
+      ? (localStorage.getItem("xander_user_role") || "").toLowerCase()
       : "";
   const isAdmin = role === "admin" || role === "staff" || role === "partner_company";
 
@@ -290,7 +290,7 @@ export default function CourseMaterials() {
       <div className="rounded-2xl border border-border bg-gradient-to-r from-[#254D81] to-[#1D3B66] p-6 sm:p-8 shadow-strong">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="flex items-start gap-4">
-            <ParrotLogo size="lg" showRing={false} className="ring-2 ring-white/30 hidden sm:flex" />
+            <XanderLogo size="lg" showRing={false} className="ring-2 ring-white/30 hidden sm:flex" />
             <div>
             <p className="text-[11px] uppercase tracking-[0.25em] font-semibold text-white/80">Xander Global Scholars</p>
             <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white">Materials Dashboard</h1>

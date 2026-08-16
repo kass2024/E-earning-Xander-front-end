@@ -33,7 +33,7 @@ export default defineConfig(({ mode }) => {
         changeOrigin: true,
       },
       "/api": {
-        // Parrot-Learning Laravel API (E-learning-parrot-backend on :8000)
+        // Xander-Learning Laravel API (E-learning-parrot-backend on :8000)
         target: apiProxy,
         changeOrigin: true,
         // Large API payloads / slow Laravel responses (uploads go direct to pCloud, not here)

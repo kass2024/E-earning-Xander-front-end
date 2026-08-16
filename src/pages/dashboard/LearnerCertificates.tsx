@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, Award, Download, QrCode, ArrowLeft, ExternalLink } from "lucide-react";
-import ParrotLogo from "@/components/ParrotLogo";
+import XanderLogo from "@/components/XanderLogo";
 import { useToast } from "@/components/ui/use-toast";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { buildVerifyPath, buildVerifyUrl, downloadCertificatePdf } from "@/lib/certificatePdf";
@@ -22,7 +22,7 @@ const LearnerCertificates = () => {
   const handleDownload = async (cert: (typeof certificates)[number]) => {
     if (!cert.certificate_id || !cert.course_id) return;
 
-    const studentId = cert.student_id ?? Number(localStorage.getItem("parrot_student_id"));
+    const studentId = cert.student_id ?? Number(localStorage.getItem("xander_student_id"));
     if (!studentId) {
       toast({ variant: "destructive", title: "Error", description: "Student session not found." });
       return;
@@ -65,7 +65,7 @@ const LearnerCertificates = () => {
       ) : certificates.length === 0 ? (
         <Card>
           <CardContent className="pt-8 pb-8 text-center">
-            <ParrotLogo size="xl" className="mx-auto mb-4" />
+            <XanderLogo size="xl" className="mx-auto mb-4" />
             <p className="text-muted-foreground mb-4">
               No certificates yet. Complete and pay for a course to earn your digital certificate.
             </p>
@@ -75,7 +75,7 @@ const LearnerCertificates = () => {
       ) : (
         <div className="grid gap-4 md:grid-cols-2">
           {certificates.map((cert) => {
-            const studentId = cert.student_id ?? Number(localStorage.getItem("parrot_student_id"));
+            const studentId = cert.student_id ?? Number(localStorage.getItem("xander_student_id"));
             const verifyPath =
               cert.course_id && studentId ? buildVerifyPath(cert.course_id, studentId) : cert.verify_url ?? "#";
 

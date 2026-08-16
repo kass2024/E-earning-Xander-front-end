@@ -34,8 +34,8 @@ const PasswordChange = () => {
 
   const onSubmit = async (data: PasswordFormValues) => {
     try {
-      const role = localStorage.getItem("parrot_user_role") || "";
-      const email = localStorage.getItem("parrot_user_email") || "";
+      const role = localStorage.getItem("xander_user_role") || "";
+      const email = localStorage.getItem("xander_user_email") || "";
       if (!role || !email) {
         throw new Error("Missing login information. Please log in again.");
       }

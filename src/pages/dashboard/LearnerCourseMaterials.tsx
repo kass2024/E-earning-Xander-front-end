@@ -318,7 +318,7 @@ const LearnerCourseMaterials = () => {
 
   const [searchParams, setSearchParams] = useSearchParams();
 
-  const urlCourseId = Number(searchParams.get("courseId") || localStorage.getItem("parrot_selected_course_id"));
+  const urlCourseId = Number(searchParams.get("courseId") || localStorage.getItem("xander_selected_course_id"));
 
   const [selectedCourseId, setSelectedCourseId] = useState<number | null>(
 
@@ -360,7 +360,7 @@ const LearnerCourseMaterials = () => {
 
   useEffect(() => {
 
-    const studentId = Number(localStorage.getItem("parrot_student_id"));
+    const studentId = Number(localStorage.getItem("xander_student_id"));
 
     if (!studentId || Number.isNaN(studentId)) {
 
@@ -399,7 +399,7 @@ const LearnerCourseMaterials = () => {
 
         if (!selectedCourseId && applied.length > 0) {
 
-          const stored = Number(localStorage.getItem("parrot_selected_course_id"));
+          const stored = Number(localStorage.getItem("xander_selected_course_id"));
 
           const pick = applied.find((c) => c.id === stored)?.id ?? applied[0].id;
 
@@ -433,7 +433,7 @@ const LearnerCourseMaterials = () => {
 
   useEffect(() => {
 
-    const studentId = Number(localStorage.getItem("parrot_student_id"));
+    const studentId = Number(localStorage.getItem("xander_student_id"));
 
     if (!studentId || !selectedCourseId) {
 
@@ -449,7 +449,7 @@ const LearnerCourseMaterials = () => {
 
 
 
-    localStorage.setItem("parrot_selected_course_id", String(selectedCourseId));
+    localStorage.setItem("xander_selected_course_id", String(selectedCourseId));
 
     setLoading(true);
 
@@ -561,7 +561,7 @@ const LearnerCourseMaterials = () => {
 
   const openResourcePreview = (item: LearnerCourseMaterial) => {
     if (!selectedCourseId) return;
-    const studentId = Number(localStorage.getItem("parrot_student_id"));
+    const studentId = Number(localStorage.getItem("xander_student_id"));
     const preview = buildMaterialPreviewItem(
       item,
       selectedCourseId,
@@ -751,7 +751,7 @@ const LearnerCourseMaterials = () => {
                           materials={grouped.files}
                           loading={loading}
                           readOnly
-                          studentId={Number(localStorage.getItem("parrot_student_id")) || undefined}
+                          studentId={Number(localStorage.getItem("xander_student_id")) || undefined}
                           onDelete={async () => {}}
                         />
                       )}

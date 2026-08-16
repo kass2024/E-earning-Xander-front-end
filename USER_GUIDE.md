@@ -37,13 +37,13 @@ Open XAMPP Control Panel and start **MySQL**.
 
 ### Step 2 — Backend (CMD window 1)
 ```cmd
-cd /d "c:\methode\water_level\xander learning\parrot-backend"
+cd /d "c:\methode\water_level\xander learning\xander-backend"
 php artisan serve --host=127.0.0.1 --port=8000
 ```
 
 ### Step 3 — Frontend (CMD window 2)
 ```cmd
-cd /d "c:\methode\water_level\xander learning\parrot-frontend"
+cd /d "c:\methode\water_level\xander learning\xander-frontend"
 npm run dev
 ```
 

@@ -25,7 +25,7 @@ type Props = {
 type GradeDraft = { score: string; feedback: string };
 
 const staffMarkingAuth = (email: string) => {
-  const role = (typeof window !== "undefined" ? localStorage.getItem("parrot_user_role") : "")?.toLowerCase() ?? "";
+  const role = (typeof window !== "undefined" ? localStorage.getItem("xander_user_role") : "")?.toLowerCase() ?? "";
   if (["admin", "superadmin", "staff"].includes(role)) {
     return { adminEmail: email };
   }

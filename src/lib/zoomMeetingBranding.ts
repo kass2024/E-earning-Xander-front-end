@@ -31,7 +31,14 @@ type BuildBrandingOptions = {
 function enrichAuth(auth: ZoomMeetingBranding | null | undefined): ZoomMeetingBranding | null | undefined {
   if (!auth) return auth;
 
-  if (isMainPlatformZoomHost(auth) || auth.use_hub_branding || auth.is_main_platform_host) {
+  // Explicit institution session from API wins over hub defaults / leftover main-admin flags.
+  const forcedInstitution =
+    auth.use_institution_logo === true && Boolean(auth.institution?.id || auth.institution?.name);
+
+  if (
+    !forcedInstitution &&
+    (isMainPlatformZoomHost(auth) || auth.use_hub_branding || auth.is_main_platform_host)
+  ) {
     const hubName = getAppDisplayName();
     const zoomAvatar = resolveMainZoomProfile(auth);
     return {
@@ -51,12 +58,12 @@ function enrichAuth(auth: ZoomMeetingBranding | null | undefined): ZoomMeetingBr
     };
   }
 
-  if (auth.use_institution_logo === false) return auth;
+  if (auth.use_institution_logo === false && !auth.institution?.id) return auth;
 
   let next = auth;
 
   // Never hydrate partner branding from localStorage for hub sessions or main operators.
-  // Guests joining hub webinars often still have a leftover parrot_institution (e.g. Prime Gateway).
+  // Guests joining hub webinars often still have a leftover xander_institution (e.g. Prime Gateway).
   if (
     auth.use_institution_logo &&
     !auth.institution &&
@@ -87,7 +94,7 @@ function usesInstitutionBranding(auth: ZoomMeetingBranding | null | undefined): 
   if (isMainPlatformZoomHost(auth)) return false;
   if (auth?.use_institution_logo === true) return true;
   if (auth?.institution?.id && auth.use_institution_logo !== false) {
-    const role = (typeof window !== "undefined" ? localStorage.getItem("parrot_user_role") : "") ?? "";
+    const role = (typeof window !== "undefined" ? localStorage.getItem("xander_user_role") : "") ?? "";
     const roleLower = role.toLowerCase();
     if (roleLower === "instructor" || roleLower === "partner_company" || roleLower === "learner") {
       return true;

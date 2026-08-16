@@ -17,14 +17,14 @@ export function ZoomClientBrandOverlay({ branding, active = false }: Props) {
   if (!active || typeof document === "undefined") return null;
 
   return createPortal(
-    <div className="parrot-zoom-brand-header" role="banner">
-      <div className="parrot-zoom-brand-shield" aria-hidden="true" />
+    <div className="xander-zoom-brand-header" role="banner">
+      <div className="xander-zoom-brand-shield" aria-hidden="true" />
       <div
-        className={`parrot-zoom-brand-bar${branding.institutionMode ? " parrot-zoom-brand-bar--institution" : ""}`}
+        className={`xander-zoom-brand-bar${branding.institutionMode ? " xander-zoom-brand-bar--institution" : ""}`}
       >
         {resolvedLogo ? (
           <img
-            className="parrot-zoom-brand-bar__logo"
+            className="xander-zoom-brand-bar__logo"
             src={resolvedLogo}
             alt=""
             referrerPolicy="no-referrer"
@@ -33,7 +33,7 @@ export function ZoomClientBrandOverlay({ branding, active = false }: Props) {
             }}
           />
         ) : null}
-        <span className="parrot-zoom-brand-bar__name">{branding.companyName}</span>
+        <span className="xander-zoom-brand-bar__name">{branding.companyName}</span>
       </div>
     </div>,
     document.body,

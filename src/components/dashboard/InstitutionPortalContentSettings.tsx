@@ -19,7 +19,7 @@ const emptyFeature = (): InstitutionPortalFeature => ({ title: "", description: 
 
 const InstitutionPortalContentSettings = () => {
   const { toast } = useToast();
-  const email = localStorage.getItem("parrot_user_email") ?? "";
+  const email = localStorage.getItem("xander_user_email") ?? "";
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [tagline, setTagline] = useState("");

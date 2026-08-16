@@ -56,6 +56,7 @@ import {
   resolveMeetingMode,
   resolveMeetingRole,
   toDailyCanSendUpdate,
+  withScreenShareCanSend,
   type DailySdkPermissions,
   type DailySendPermission,
   type MeetingMode,
@@ -435,7 +436,15 @@ export function DailyMeetingRoom({
     String(userNameProp || sdk.user_name || "").trim() ||
     (isHost ? String(institutionName || HUB.name).trim() || "Host" : "Participant");
   // Host chrome/branding logo — never apply this to a guest's own tile (that swaps profiles).
-  const institutionLogo = resolveZoomBrandingLogoUrl(logoUrlProp) || logoUrl(LOGO.src);
+  // Never fall back to the hub mark when this room is branded as an institution.
+  const resolvedPropLogo = resolveZoomBrandingLogoUrl(logoUrlProp);
+  const isInstitutionRoom = Boolean(
+    institutionName?.trim() &&
+      institutionName.trim().toLowerCase() !== String(HUB.name || "").trim().toLowerCase() &&
+      institutionName.trim().toLowerCase() !== "xander learning hub",
+  );
+  const institutionLogo =
+    resolvedPropLogo || (isInstitutionRoom ? null : logoUrl(LOGO.src));
   const selfAvatar = isHost
     ? resolveZoomBrandingLogoUrl(avatarUrl) || institutionLogo
     : resolveZoomBrandingLogoUrl(avatarUrl) || null;
@@ -461,6 +470,7 @@ export function DailyMeetingRoom({
   const meetingKeyRef = useRef(meetingKey);
   const speakingGrantActiveRef = useRef(false);
   const localSessionIdRef = useRef<string | null>(null);
+  const tokenPermissionsRef = useRef<DailySdkPermissions | null>(sdk.permissions ?? null);
   trustedHostRef.current = trustedHost;
   meetingKeyRef.current = meetingKey;
 
@@ -841,6 +851,7 @@ export function DailyMeetingRoom({
         const perms = (local as { permissions?: DailySdkPermissions }).permissions;
         if (perms) {
           setLocalPermissions((prev) => {
+            let merged = perms;
             // Keep host-granted audio while Daily's participant permissions lag behind.
             if (
               speakingGrantActiveRef.current &&
@@ -848,9 +859,16 @@ export function DailyMeetingRoom({
               !canAdminParticipants(perms) &&
               (canSendMedia(prev, "audio") || prev?.canSend === true)
             ) {
-              return { ...perms, canSend: prev?.canSend ?? (["audio"] as DailySendPermission[]) };
+              merged = { ...perms, canSend: prev?.canSend ?? (["audio"] as DailySendPermission[]) };
             }
-            return perms;
+            // Meeting joiners always keep screen-share rights (independent of mic approval).
+            if (meetingMode === "meeting" && !trustedHost) {
+              merged = {
+                ...merged,
+                canSend: withScreenShareCanSend(merged.canSend, true),
+              };
+            }
+            return merged;
           });
           const maySendAudio = canSendMedia(perms, "audio") || canAdminParticipants(perms) || speakingGrantActiveRef.current;
           if (!maySendAudio && !trustedHost) {
@@ -1107,7 +1125,10 @@ export function DailyMeetingRoom({
                     : (["audio"] as DailySendPermission[]);
               setLocalPermissions((prev) => ({
                 ...(prev || {}),
-                canSend: granted === true ? true : granted.length > 0 ? granted : (["audio"] as DailySendPermission[]),
+                canSend: withScreenShareCanSend(
+                  granted === true ? true : granted.length > 0 ? granted : (["audio"] as DailySendPermission[]),
+                  meetingMode === "meeting",
+                ),
               }));
               toast({
                 title: "Speaking approved",
@@ -1161,7 +1182,10 @@ export function DailyMeetingRoom({
               setSpeakingState("revoked");
               setApprovalBanner(null);
               setSpeakingSecondsLeft(null);
-              setLocalPermissions((prev) => ({ ...(prev || {}), canSend: JOINER_SCREEN_SEND }));
+              setLocalPermissions((prev) => ({
+                ...(prev || {}),
+                canSend: withScreenShareCanSend(JOINER_SCREEN_SEND, true),
+              }));
               void call.setLocalAudio(false);
               void call.setLocalVideo(false);
               setMicOn(false);
@@ -1444,10 +1468,14 @@ export function DailyMeetingRoom({
         hand_raise_id: hand.id > 0 ? hand.id : undefined,
         audio: true,
         video: Boolean(opts?.video),
+        screen_share: meetingMode === "meeting",
         invite_to_stage: Boolean(opts?.stage) || meetingMode === "webinar",
         duration_seconds: duration > 0 ? duration : undefined,
       });
-      const canSend = res.daily_permissions?.canSend ?? ["audio"];
+      const canSend = withScreenShareCanSend(
+        res.daily_permissions?.canSend ?? ["audio"],
+        meetingMode === "meeting",
+      );
       const canSendUpdate = toDailyCanSendUpdate(canSend as boolean | string[]);
       try {
         call.updateParticipant(hand.daily_session_id, {
@@ -1510,7 +1538,10 @@ export function DailyMeetingRoom({
       if (action === "mute") {
         call.updateParticipant(sessionId, { setAudio: false });
       } else {
-        const canSend = res.daily_permissions?.canSend ?? JOINER_SCREEN_SEND;
+        const canSend = withScreenShareCanSend(
+          res.daily_permissions?.canSend ?? JOINER_SCREEN_SEND,
+          true,
+        );
         const canSendUpdate = toDailyCanSendUpdate(canSend as boolean | string[]);
         call.updateParticipant(sessionId, {
           setAudio: false,
@@ -1759,7 +1790,10 @@ export function DailyMeetingRoom({
         setSpeakingState("revoked");
         setSpeakingSecondsLeft(null);
         speakingGrantActiveRef.current = false;
-        setLocalPermissions((prev) => ({ ...(prev || {}), canSend: JOINER_SCREEN_SEND }));
+        setLocalPermissions((prev) => ({
+          ...(prev || {}),
+          canSend: withScreenShareCanSend(JOINER_SCREEN_SEND, true),
+        }));
         setApprovalBanner(null);
         toast({
           variant: "destructive",
@@ -1782,7 +1816,7 @@ export function DailyMeetingRoom({
           call.updateParticipant(row.daily_session_id, {
             setAudio: false,
             setVideo: false,
-            updatePermissions: { canSend: toDailyCanSendUpdate(JOINER_SCREEN_SEND) as boolean | Set<"audio" | "video" | "screenVideo" | "screenAudio"> },
+            updatePermissions: { canSend: toDailyCanSendUpdate(withScreenShareCanSend(JOINER_SCREEN_SEND, true)) as boolean | Set<"audio" | "video" | "screenVideo" | "screenAudio"> },
           });
           call.sendAppMessage({ type: "speaking-revoked", sessionId: row.daily_session_id }, "*");
         }

@@ -25,16 +25,16 @@ const UserProfile = () => {
   } = useForm<ProfileFormValues>({
     resolver: zodResolver(profileSchema),
     defaultValues: {
-      name: localStorage.getItem("parrot_user_name") || "",
-      email: localStorage.getItem("parrot_user_email") || "",
+      name: localStorage.getItem("xander_user_name") || "",
+      email: localStorage.getItem("xander_user_email") || "",
       currentPassword: "",
     },
   });
 
   const onSubmit = async (data: ProfileFormValues) => {
     try {
-      const role = localStorage.getItem("parrot_user_role") || "";
-      const email = localStorage.getItem("parrot_user_email") || data.email;
+      const role = localStorage.getItem("xander_user_role") || "";
+      const email = localStorage.getItem("xander_user_email") || data.email;
       if (!role || !email) {
         throw new Error("Missing login information. Please log in again.");
       }
@@ -61,8 +61,8 @@ const UserProfile = () => {
       }
 
       // Update local storage
-      localStorage.setItem("parrot_user_name", data.name);
-      localStorage.setItem("parrot_user_email", data.email);
+      localStorage.setItem("xander_user_name", data.name);
+      localStorage.setItem("xander_user_email", data.email);
 
       toast({
         title: "Profile updated",

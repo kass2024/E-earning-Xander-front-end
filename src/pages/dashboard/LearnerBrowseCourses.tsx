@@ -27,7 +27,7 @@ const LearnerBrowseCourses = () => {
         let filtered: any[] = [];
 
         if (typeof window !== "undefined") {
-          const storedStudentId = localStorage.getItem("parrot_student_id");
+          const storedStudentId = localStorage.getItem("xander_student_id");
           const studentIdNum = storedStudentId ? Number(storedStudentId) : NaN;
 
           if (studentIdNum && !Number.isNaN(studentIdNum)) {
@@ -59,7 +59,7 @@ const LearnerBrowseCourses = () => {
   }, [toast]);
 
   const goToPayment = (courseId: number) => {
-    localStorage.setItem("parrot_selected_course_id", String(courseId));
+    localStorage.setItem("xander_selected_course_id", String(courseId));
     navigate("/dashboard/learner/payment");
   };
 

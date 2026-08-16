@@ -3,7 +3,7 @@ import { getAdminImpersonation } from "@/lib/adminImpersonation";
 /** Read current dashboard user identifiers from localStorage. */
 export function getInstructorEmail(): string | null {
   if (typeof window === "undefined") return null;
-  return window.localStorage.getItem("parrot_user_email");
+  return window.localStorage.getItem("xander_user_email");
 }
 
 /** Instructor email for API calls — prefers admin view-as target when previewing. */
@@ -13,12 +13,12 @@ export function resolveInstructorEmail(): string {
   if (imp?.viewAsRole === "instructor" && imp.viewAsEmail?.trim()) {
     return imp.viewAsEmail.trim();
   }
-  return window.localStorage.getItem("parrot_user_email")?.trim() ?? "";
+  return window.localStorage.getItem("xander_user_email")?.trim() ?? "";
 }
 
 export function getStudentId(): number | null {
   if (typeof window === "undefined") return null;
-  const raw = window.localStorage.getItem("parrot_student_id");
+  const raw = window.localStorage.getItem("xander_student_id");
   if (!raw) return null;
   const id = Number(raw);
   return Number.isFinite(id) && id > 0 ? id : null;
@@ -43,7 +43,7 @@ export function resolveLearnerEmail(): string {
   if (imp?.viewAsRole === "learner" && imp.viewAsEmail) {
     return imp.viewAsEmail.trim();
   }
-  return window.localStorage.getItem("parrot_user_email")?.trim() ?? "";
+  return window.localStorage.getItem("xander_user_email")?.trim() ?? "";
 }
 
 export function dashboardCacheKey(prefix: string, id: string | number): string {

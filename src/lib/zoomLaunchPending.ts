@@ -10,8 +10,8 @@ export type ZoomLaunchPending = {
   logoUrl?: string | null;
 };
 
-const STORAGE_KEY = "parrot_zoom_launch_pending";
-export const ZOOM_LAUNCH_PENDING_EVENT = "parrot-zoom-launch-pending";
+const STORAGE_KEY = "xander_zoom_launch_pending";
+export const ZOOM_LAUNCH_PENDING_EVENT = "xander-zoom-launch-pending";
 
 function notifyZoomLaunchPendingChanged() {
   if (typeof window !== "undefined") {

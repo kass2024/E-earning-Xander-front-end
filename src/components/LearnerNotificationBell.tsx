@@ -9,7 +9,7 @@ import { formatClassTime, openCourseMaterials } from "@/lib/learnerNavigation";
 import { learnerEmbedRoomPath, materialEmbedRoom, openMeetingInNewTab } from "@/lib/zoomEmbedRoutes";
 import { getStudentId } from "@/lib/dashboardUser";
 
-const READ_KEY = "parrot_learner_notifications_read";
+const READ_KEY = "xander_learner_notifications_read";
 
 function getReadIds(): Set<string> {
   try {
@@ -43,7 +43,7 @@ const LearnerNotificationBell = () => {
   const [readIds, setReadIds] = useState<Set<string>>(() => getReadIds());
 
   useEffect(() => {
-    const studentId = Number(localStorage.getItem("parrot_student_id"));
+    const studentId = Number(localStorage.getItem("xander_student_id"));
     if (!studentId) return;
 
     getLearnerNotifications(studentId)

@@ -1,6 +1,6 @@
 const TTL_MS = 10 * 60 * 1000;
 const PREFIX = "xander_dash_";
-const INSTITUTION_KEY = "parrot_institution";
+const INSTITUTION_KEY = "xander_institution";
 
 type CacheEntry<T> = { ts: number; data: T };
 
@@ -22,8 +22,8 @@ function readStoredInstitutionId(): number | null {
 export function scopedDashboardCacheKey(base: string): string {
   if (typeof window === "undefined") return base;
 
-  const role = (localStorage.getItem("parrot_user_role") ?? "").toLowerCase();
-  const email = localStorage.getItem("parrot_user_email")?.trim() ?? "";
+  const role = (localStorage.getItem("xander_user_role") ?? "").toLowerCase();
+  const email = localStorage.getItem("xander_user_email")?.trim() ?? "";
   const institutionId = readStoredInstitutionId();
 
   if (role === "partner_company" && institutionId) {
@@ -135,8 +135,8 @@ export async function fetchDashboardCached<T>(
   return { data, fromCache: false };
 }
 
-export const DASHBOARD_CACHE_REFRESH_EVENT = "parrot-dashboard-cache-refresh";
-export const DASHBOARD_DATA_UPDATED_EVENT = "parrot-dashboard-data-updated";
+export const DASHBOARD_CACHE_REFRESH_EVENT = "xander-dashboard-cache-refresh";
+export const DASHBOARD_DATA_UPDATED_EVENT = "xander-dashboard-data-updated";
 
 export function notifyDashboardDataUpdated(key: string, scopeRevision?: string): void {
   if (typeof window === "undefined") return;

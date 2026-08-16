@@ -79,7 +79,7 @@ interface CourseRow extends CoursePayload {
 const StudentManagement = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
-  const isMainAdmin = (localStorage.getItem("parrot_user_role") ?? "").toLowerCase() === "admin";
+  const isMainAdmin = (localStorage.getItem("xander_user_role") ?? "").toLowerCase() === "admin";
 
   const {
     data: studentsData,
@@ -938,7 +938,7 @@ const StudentManagement = () => {
                         if (!id) return null;
                         const title = course.title ?? "";
                         const isChecked = selectedCreateCourseIds.includes(id);
-                        const isParrotAICourse = title.includes("Xander AI Mastery Class");
+                        const isXanderAICourse = title.includes("Xander AI Mastery Class");
                         const isFrenchCourse = title.toLowerCase().includes("french") ||
                           title.toLowerCase().includes("tcf") ||
                           title.toLowerCase().includes("tef");
@@ -957,7 +957,7 @@ const StudentManagement = () => {
                               </span>
                             </label>
 
-                            {isChecked && !isParrotAICourse && (
+                            {isChecked && !isXanderAICourse && (
                               <div className="mt-2 pl-5 space-y-1">
                                 <div className="flex items-center justify-between">
                                   <span className="text-[11px] text-muted-foreground">

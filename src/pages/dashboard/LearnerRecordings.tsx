@@ -8,7 +8,7 @@ const LearnerRecordings = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const storedCourseId = Number(localStorage.getItem("parrot_selected_course_id"));
+    const storedCourseId = Number(localStorage.getItem("xander_selected_course_id"));
     if (storedCourseId && !Number.isNaN(storedCourseId)) {
       openCourseMaterials(navigate, storedCourseId, "recordings");
       return;

@@ -129,9 +129,9 @@ const Dashboard = ({ initialRole }: DashboardProps) => {
 
   useEffect(() => {
     const syncSessionFromStorage = () => {
-      const storedRole = normalizeStoredRole(localStorage.getItem("parrot_user_role"));
-      const storedName = localStorage.getItem("parrot_user_name");
-      const storedEmail = localStorage.getItem("parrot_user_email");
+      const storedRole = normalizeStoredRole(localStorage.getItem("xander_user_role"));
+      const storedName = localStorage.getItem("xander_user_name");
+      const storedEmail = localStorage.getItem("xander_user_email");
 
       if (!storedRole && !initialRole) {
         navigate(getInstitutionLoginRedirect(), { replace: true });
@@ -148,7 +148,7 @@ const Dashboard = ({ initialRole }: DashboardProps) => {
         const formatted = formatUserDisplayName(storedName, storedEmail);
         setUserName(formatted);
         if (formatted !== storedName) {
-          localStorage.setItem("parrot_user_name", formatted);
+          localStorage.setItem("xander_user_name", formatted);
         }
       }
       if (storedEmail) setUserEmail(storedEmail);
@@ -160,8 +160,8 @@ const Dashboard = ({ initialRole }: DashboardProps) => {
     };
 
     syncSessionFromStorage();
-    window.addEventListener("parrot-session-refresh", syncSessionFromStorage);
-    return () => window.removeEventListener("parrot-session-refresh", syncSessionFromStorage);
+    window.addEventListener("xander-session-refresh", syncSessionFromStorage);
+    return () => window.removeEventListener("xander-session-refresh", syncSessionFromStorage);
   }, [initialRole, navigate]);
 
   useEffect(() => {
@@ -171,9 +171,9 @@ const Dashboard = ({ initialRole }: DashboardProps) => {
   }, [location.pathname, navigate]);
 
   useEffect(() => {
-    const loginFlag = localStorage.getItem("parrot_login_success");
+    const loginFlag = localStorage.getItem("xander_login_success");
     if (loginFlag) {
-      localStorage.removeItem("parrot_login_success");
+      localStorage.removeItem("xander_login_success");
       toast({
         variant: "success" as any,
         title: "Login successful",

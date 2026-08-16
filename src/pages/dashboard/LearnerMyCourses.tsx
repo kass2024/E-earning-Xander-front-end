@@ -152,7 +152,7 @@ const LearnerMyCourses = () => {
 
   const handleApply = async (courseId: number, studyShiftIds: number[] = []) => {
 
-    const studentId = Number(localStorage.getItem("parrot_student_id"));
+    const studentId = Number(localStorage.getItem("xander_student_id"));
 
     if (!studentId || Number.isNaN(studentId)) {
 
@@ -230,7 +230,7 @@ const LearnerMyCourses = () => {
 
   const goToPayment = (courseId: number) => {
 
-    localStorage.setItem("parrot_selected_course_id", String(courseId));
+    localStorage.setItem("xander_selected_course_id", String(courseId));
 
     navigate("/dashboard/learner/payment");
 

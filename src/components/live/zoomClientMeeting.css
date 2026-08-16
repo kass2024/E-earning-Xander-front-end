@@ -103,7 +103,7 @@ html.zoom-client-meeting-active .zoom-client-meeting-page {
  * Top-left header block — fully covers Zoom Workplace in the sidebar header.
  * Shield is opaque; bar shows institution logo + name on top.
  */
-.parrot-zoom-brand-header {
+.xander-zoom-brand-header {
   position: fixed;
   top: 0;
   left: 0;
@@ -113,14 +113,14 @@ html.zoom-client-meeting-active .zoom-client-meeting-page {
   pointer-events: none;
 }
 
-.parrot-zoom-brand-shield {
+.xander-zoom-brand-shield {
   position: absolute;
   inset: 0;
   background: #1a1a1a;
   z-index: 0;
 }
 
-.parrot-zoom-brand-bar {
+.xander-zoom-brand-bar {
   position: absolute;
   inset: 0;
   z-index: 1;
@@ -133,7 +133,7 @@ html.zoom-client-meeting-active .zoom-client-meeting-page {
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 }
 
-.parrot-zoom-brand-bar__logo {
+.xander-zoom-brand-bar__logo {
   width: 32px;
   height: 32px;
   border-radius: 9999px;
@@ -142,7 +142,7 @@ html.zoom-client-meeting-active .zoom-client-meeting-page {
   background: #2d2d2d;
 }
 
-.parrot-zoom-brand-bar__name {
+.xander-zoom-brand-bar__name {
   font-size: 0.8rem;
   font-weight: 600;
   line-height: 1.25;
@@ -153,12 +153,12 @@ html.zoom-client-meeting-active .zoom-client-meeting-page {
   word-break: break-word;
 }
 
-.parrot-zoom-brand-bar--institution .parrot-zoom-brand-bar__name {
+.xander-zoom-brand-bar--institution .xander-zoom-brand-bar__name {
   letter-spacing: 0.01em;
 }
 
 /* Hide Zoom Workplace nodes hidden by the DOM patcher */
-html.parrot-zoom-branded #zmmtg-root [data-parrot-zoom-brand-hidden="1"] {
+html.xander-zoom-branded #zmmtg-root [data-xander-zoom-brand-hidden="1"] {
   display: none !important;
   visibility: hidden !important;
   opacity: 0 !important;
@@ -166,7 +166,7 @@ html.parrot-zoom-branded #zmmtg-root [data-parrot-zoom-brand-hidden="1"] {
 }
 
 /* Native Zoom pre-join: institution logo over the preview panel */
-.parrot-zoom-native-prejoin-brand {
+.xander-zoom-native-prejoin-brand {
   position: fixed;
   top: 28%;
   left: 50%;
@@ -180,7 +180,7 @@ html.parrot-zoom-branded #zmmtg-root [data-parrot-zoom-brand-hidden="1"] {
   pointer-events: none;
 }
 
-.parrot-zoom-native-prejoin-brand__logo {
+.xander-zoom-native-prejoin-brand__logo {
   max-width: 180px;
   max-height: 100px;
   width: auto;
@@ -191,7 +191,7 @@ html.parrot-zoom-branded #zmmtg-root [data-parrot-zoom-brand-hidden="1"] {
   padding: 0.35rem;
 }
 
-.parrot-zoom-native-prejoin-brand--profile .parrot-zoom-native-prejoin-brand__logo {
+.xander-zoom-native-prejoin-brand--profile .xander-zoom-native-prejoin-brand__logo {
   width: 120px;
   height: 120px;
   max-width: 120px;
@@ -202,7 +202,7 @@ html.parrot-zoom-branded #zmmtg-root [data-parrot-zoom-brand-hidden="1"] {
   background: #2d2d2d;
 }
 
-.parrot-zoom-native-prejoin-brand__name {
+.xander-zoom-native-prejoin-brand__name {
   font-size: 0.75rem;
   font-weight: 600;
   letter-spacing: 0.03em;
@@ -213,7 +213,7 @@ html.parrot-zoom-branded #zmmtg-root [data-parrot-zoom-brand-hidden="1"] {
   text-shadow: 0 1px 4px rgba(0, 0, 0, 0.6);
 }
 
-html.parrot-zoom-branded #zmmtg-root [data-parrot-prejoin-name-hidden="1"] {
+html.xander-zoom-branded #zmmtg-root [data-xander-prejoin-name-hidden="1"] {
   display: none !important;
   visibility: hidden !important;
   opacity: 0 !important;

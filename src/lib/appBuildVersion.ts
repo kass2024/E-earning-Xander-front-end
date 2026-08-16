@@ -1,7 +1,7 @@
 import { invalidateDashboardCache } from "@/lib/dashboardCache";
 
-const STORAGE_KEY = "parrot_app_build_id";
-const RELOAD_GUARD_PREFIX = "parrot_build_reloaded_";
+const STORAGE_KEY = "xander_app_build_id";
+const RELOAD_GUARD_PREFIX = "xander_build_reloaded_";
 
 /** Read build id injected at compile time (changes every production build). */
 export function currentAppBuildId(): string {

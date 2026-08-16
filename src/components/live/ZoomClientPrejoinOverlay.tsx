@@ -17,14 +17,14 @@ export function ZoomClientPrejoinOverlay({ branding, active = false }: Props) {
   if (!active || !resolvedLogo) return null;
 
   const modeClass = branding.institutionMode
-    ? "parrot-zoom-native-prejoin-brand--institution"
-    : "parrot-zoom-native-prejoin-brand--profile";
+    ? "xander-zoom-native-prejoin-brand--institution"
+    : "xander-zoom-native-prejoin-brand--profile";
 
   return createPortal(
-    <div className={`parrot-zoom-native-prejoin-brand ${modeClass}`.trim()} aria-hidden="true">
-      <img className="parrot-zoom-native-prejoin-brand__logo" src={resolvedLogo} alt="" referrerPolicy="no-referrer" />
+    <div className={`xander-zoom-native-prejoin-brand ${modeClass}`.trim()} aria-hidden="true">
+      <img className="xander-zoom-native-prejoin-brand__logo" src={resolvedLogo} alt="" referrerPolicy="no-referrer" />
       {branding.institutionMode ? (
-        <span className="parrot-zoom-native-prejoin-brand__name">{branding.companyName}</span>
+        <span className="xander-zoom-native-prejoin-brand__name">{branding.companyName}</span>
       ) : null}
     </div>,
     document.body,

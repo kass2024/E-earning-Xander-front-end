@@ -25,7 +25,7 @@ export class AppErrorBoundary extends Component<Props, State> {
   }
 
   handleReload = () => {
-    sessionStorage.removeItem("parrot_chunk_reload_once");
+    sessionStorage.removeItem("xander_chunk_reload_once");
     window.location.reload();
   };
 

@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Loader2, ShieldCheck, ShieldX, Home } from "lucide-react";
 import { verifyCertificate, type VerifiedCertificate } from "@/api/axios";
-import ParrotLogo from "@/components/ParrotLogo";
+import XanderLogo from "@/components/XanderLogo";
 import { HUB } from "@/lib/hubConfig";
 
 const CertificateVerify = () => {
@@ -42,7 +42,7 @@ const CertificateVerify = () => {
       <div className="container max-w-2xl mx-auto py-12 px-4">
         <div className="text-center mb-8">
           <Link to="/" className="inline-flex items-center gap-2 text-primary font-semibold text-lg">
-            <ParrotLogo size="sm" alt={HUB.company} />
+            <XanderLogo size="sm" alt={HUB.company} />
             {HUB.company}
           </Link>
           <p className="text-sm text-muted-foreground mt-1">Certificate verification portal</p>
@@ -59,7 +59,7 @@ const CertificateVerify = () => {
           <Card className="border-emerald-200 shadow-lg overflow-hidden">
             <div className="bg-gradient-to-r from-[#254D81] to-[#1D3B66] px-6 py-8 text-center text-white">
               <div className="flex justify-center mb-3">
-                <ParrotLogo size="lg" showRing={false} className="ring-2 ring-white/30" />
+                <XanderLogo size="lg" showRing={false} className="ring-2 ring-white/30" />
               </div>
               <CardTitle className="text-2xl text-white">Certificate verified</CardTitle>
               <CardDescription className="text-white/80 mt-1">

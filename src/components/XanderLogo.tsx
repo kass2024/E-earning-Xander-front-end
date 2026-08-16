@@ -1,7 +1,7 @@
 import { cn } from "@/lib/utils";
 import { LOGO, logoUrl } from "@/lib/brandLogo";
 
-type ParrotLogoProps = {
+type XanderLogoProps = {
   className?: string;
   imgClassName?: string;
   alt?: string;
@@ -17,13 +17,13 @@ const sizeMap = {
   xl: "w-14 h-14",
 } as const;
 
-export function ParrotLogo({
+export function XanderLogo({
   className,
   imgClassName,
   alt = LOGO.alt,
   size = "md",
   showRing = true,
-}: ParrotLogoProps) {
+}: XanderLogoProps) {
   return (
     <span
       className={cn(
@@ -43,4 +43,4 @@ export function ParrotLogo({
   );
 }
 
-export default ParrotLogo;
+export default XanderLogo;

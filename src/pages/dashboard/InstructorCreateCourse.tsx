@@ -44,7 +44,7 @@ const InstructorCreateCourse = () => {
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    const email = localStorage.getItem("parrot_user_email");
+    const email = localStorage.getItem("xander_user_email");
     if (!email) {
       toast({ variant: "destructive", title: "Not logged in" });
       return;
