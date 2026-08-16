@@ -32,6 +32,8 @@ const CertificateVerify = lazyWithRetry(() => import("./pages/CertificateVerify"
 const Dashboard = lazyWithRetry(() => import("./pages/Dashboard"));
 const PublicCohortJoin = lazyWithRetry(() => import("./pages/PublicCohortJoin"));
 const MeetingRegistration = lazyWithRetry(() => import("./pages/MeetingRegistration"));
+const Pricing = lazyWithRetry(() => import("./pages/Pricing"));
+const SubscriptionSuccess = lazyWithRetry(() => import("./pages/SubscriptionSuccess"));
 const InstitutionSignup = lazyWithRetry(() => import("./pages/InstitutionSignup"));
 const InstitutionSignupSuccess = lazyWithRetry(() => import("./pages/InstitutionSignupSuccess"));
 
@@ -59,6 +61,8 @@ const App = () => (
           <Suspense fallback={<RouteFallback />}>
             <Routes>
               <Route path="/" element={<Index />} />
+              <Route path="/pricing" element={<Pricing />} />
+              <Route path="/subscription/success" element={<SubscriptionSuccess />} />
               <Route path="/courses" element={<Courses />} />
               <Route path="/about" element={<About />} />
               <Route path="/meeting-registration" element={<MeetingRegistration />} />

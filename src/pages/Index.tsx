@@ -39,6 +39,8 @@ import {
   Users,
   Video,
 } from "lucide-react";
+import IndexMeet from "@/pages/IndexMeet";
+import { isXanderMeet } from "@/lib/product";
 
 type CourseRow = {
   id: number;
@@ -64,7 +66,7 @@ const HERO_QUICK_LINKS = [
   { label: "Partner Institution Sign Up", to: "/institution-signup" },
 ] as const;
 
-const Index = () => {
+const AcademyIndex = () => {
   const navigate = useNavigate();
   const [courses, setCourses] = useState<CourseRow[]>([]);
   const [catalogLoading, setCatalogLoading] = useState(true);
@@ -666,5 +668,7 @@ const Index = () => {
     </div>
   );
 };
+
+const Index = () => (isXanderMeet() ? <IndexMeet /> : <AcademyIndex />);
 
 export default Index;

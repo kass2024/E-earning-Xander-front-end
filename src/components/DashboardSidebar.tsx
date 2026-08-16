@@ -44,6 +44,8 @@ import { isStoredMainAdmin, isPartnerInstitutionUser, useInstitutionBrandingRevi
 import { getAdminImpersonation } from "@/lib/adminImpersonation";
 import { performDashboardLogout } from "@/lib/dashboardLogout";
 import { InstitutionBrandLogo, dashboardBrandTitle, dashboardBrandSubtitle } from "@/components/InstitutionBrandLogo";
+import DashboardSidebarMeet from "@/components/DashboardSidebarMeet";
+import { isXanderMeet } from "@/lib/product";
 
 interface DashboardSidebarProps {
   userRole: HubRole;
@@ -177,7 +179,7 @@ const LEARNER_SECTIONS: Array<{ title: string; links: NavLinkItem[] }> = [
   },
 ];
 
-const DashboardSidebar = ({ userRole, isOpen, onClose }: DashboardSidebarProps) => {
+const AcademyDashboardSidebar = ({ userRole, isOpen, onClose }: DashboardSidebarProps) => {
   useInstitutionBrandingRevision();
   const [collapsed, setCollapsed] = useState(false);
   const location = useLocation();
@@ -469,5 +471,8 @@ const DashboardSidebar = ({ userRole, isOpen, onClose }: DashboardSidebarProps) 
     </aside>
   );
 };
+
+const DashboardSidebar = (props: DashboardSidebarProps) =>
+  isXanderMeet() ? <DashboardSidebarMeet {...props} /> : <AcademyDashboardSidebar {...props} />;
 
 export default DashboardSidebar;

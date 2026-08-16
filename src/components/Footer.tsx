@@ -3,7 +3,10 @@ import { Facebook, Twitter, Linkedin, Instagram, Phone, Mail, MapPin } from "luc
 import { HUB } from "@/lib/hubConfig";
 import FooterMap from "@/components/FooterMap";
 
-const Footer = () => {
+import FooterMeet from "@/components/FooterMeet";
+import { isXanderMeet } from "@/lib/product";
+
+const AcademyFooter = () => {
   const socialLinks = [
     { icon: Facebook, href: "https://facebook.com", label: "Facebook" },
     { icon: Twitter, href: "https://twitter.com", label: "Twitter" },
@@ -163,5 +166,7 @@ const Footer = () => {
     </footer>
   );
 };
+
+const Footer = () => (isXanderMeet() ? <FooterMeet /> : <AcademyFooter />);
 
 export default Footer;
