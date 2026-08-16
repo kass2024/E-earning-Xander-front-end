@@ -4,6 +4,7 @@ import PasswordChange from "./PasswordChange";
 import InstitutionBrandingSettings from "@/components/dashboard/InstitutionBrandingSettings";
 import MainPlatformMeetingSettings from "@/components/dashboard/MainPlatformMeetingSettings";
 import PaymentReceiverSettings from "@/components/dashboard/PaymentReceiverSettings";
+import MeetPromoCodeSettings from "@/components/dashboard/MeetPromoCodeSettings";
 import MeetSubscriptionPlanSettings from "@/components/admin/MeetSubscriptionPlanSettings";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -45,6 +46,7 @@ const Settings = () => {
           <Badge variant="secondary">Security</Badge>
           {showLiveMeetings && <Badge variant="secondary">Live meetings</Badge>}
           {showPayments && <Badge variant="secondary">Payments</Badge>}
+          {showPayments && <Badge variant="secondary">Promo codes</Badge>}
           {showSubscriptionPlans && <Badge variant="secondary">Subscription plans</Badge>}
           {showInstitution && <Badge variant="secondary">Institution</Badge>}
         </div>
@@ -54,7 +56,7 @@ const Settings = () => {
         <CardHeader className="border-b bg-gradient-to-r from-slate-50 to-white">
           <CardTitle className="text-xl">Settings</CardTitle>
           <CardDescription>
-            Use the tabs below to update your information, MoMo receiver, and platform defaults.
+            Use the tabs below to update your information, MoMo receiver, promo codes, and platform defaults.
           </CardDescription>
         </CardHeader>
 
@@ -113,8 +115,9 @@ const Settings = () => {
             )}
 
             {showPayments && (
-              <TabsContent value="payments" className="mt-0">
+              <TabsContent value="payments" className="mt-0 space-y-6">
                 <PaymentReceiverSettings />
+                <MeetPromoCodeSettings />
               </TabsContent>
             )}
 
