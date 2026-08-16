@@ -47,10 +47,29 @@ export function canSendMedia(
   return permissionAllows(permissions.canSend as Parameters<typeof permissionAllows>[0], kind);
 }
 
+/** Joiner links keep screen share unless Daily explicitly disabled it. */
+export function canShareScreen(
+  permissions: DailySdkPermissions | null | undefined,
+  options?: { isHost?: boolean; enableScreenshare?: boolean | null },
+): boolean {
+  if (options?.isHost) return true;
+  if (options?.enableScreenshare === false) return false;
+  if (!permissions || permissions.canSend === true) return true;
+  if (permissions.canSend === false) return true;
+  return (
+    canSendMedia(permissions, "screenVideo") ||
+    canSendMedia(permissions, "screenAudio") ||
+    options?.enableScreenshare !== false
+  );
+}
+
 export function canAdminParticipants(permissions: DailySdkPermissions | null | undefined): boolean {
   if (!permissions) return false;
   return permissionAllows(permissions.canAdmin as Parameters<typeof permissionAllows>[0], "participants");
 }
+
+/** Keep screen share on joiner links when mic/camera publish is revoked. */
+export const JOINER_SCREEN_SEND: DailySendPermission[] = ["screenVideo", "screenAudio"];
 
 export function resolveMeetingRole(sdk: {
   meeting_role?: string | null;

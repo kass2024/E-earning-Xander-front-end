@@ -144,6 +144,10 @@ const LiveCohortHostStudio = () => {
             room_name: raw.room_name || auth.daily?.room_name || undefined,
             user_name: hostName,
             role: 1,
+            meeting_role: raw.meeting_role || "host",
+            meeting_mode: raw.meeting_mode || "meeting",
+            permissions: raw.permissions ?? undefined,
+            enable_screenshare: raw.enable_screenshare !== false,
           });
         } else {
           setSdk({
