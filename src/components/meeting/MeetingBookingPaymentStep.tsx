@@ -136,6 +136,12 @@ export function MeetingBookingPaymentStep({
                 </span>
               )}
             </p>
+            {Number(paymentConfig.usd_rwf_rate || 0) > 0 && (
+              <p className="mt-1 text-xs text-slate-600">
+                RWF converted from USD at {paymentConfig.forex_live === false ? "cached" : "live"} rate: 1 USD ={" "}
+                {Number(paymentConfig.usd_rwf_rate).toLocaleString(undefined, { maximumFractionDigits: 2 })} RWF
+              </p>
+            )}
             {paymentConfig.receiver?.display_momo_phone && (
               <p className="mt-1 text-xs text-slate-600">
                 MoMo receive number: {paymentConfig.receiver.display_momo_phone}

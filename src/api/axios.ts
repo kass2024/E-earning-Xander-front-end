@@ -2323,6 +2323,10 @@ export type PaymentReceiverSettings = {
   display_whatsapp_phone?: string;
   meeting_fee_usd?: number;
   meeting_fee_rwf?: number;
+  usd_rwf_rate?: number;
+  forex_source?: string;
+  forex_as_of?: string | null;
+  forex_live?: boolean;
   meeting_payment_required?: boolean;
 };
 
@@ -2330,6 +2334,10 @@ export type MeetingPaymentConfig = {
   required: boolean;
   fee_usd: number;
   fee_rwf: number;
+  usd_rwf_rate?: number;
+  forex_source?: string;
+  forex_as_of?: string | null;
+  forex_live?: boolean;
   stripe_configured: boolean;
   mopay_configured: boolean;
   receiver?: {
@@ -2348,7 +2356,6 @@ export const updatePaymentReceiverSettings = async (data: {
   momo_receiver_name?: string;
   momo_whatsapp_phone?: string;
   meeting_fee_usd?: number;
-  meeting_fee_rwf?: number;
   meeting_payment_required?: boolean;
 }) => {
   const response = await api.put(`/site-settings/payment-receiver`, data);

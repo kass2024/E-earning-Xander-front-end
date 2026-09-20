@@ -590,7 +590,7 @@ const MeetingRegistration = () => {
           cfg ?? {
             required: true,
             fee_usd: 10,
-            fee_rwf: 10000,
+            fee_rwf: 0,
             stripe_configured: false,
             mopay_configured: false,
           }

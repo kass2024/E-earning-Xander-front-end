@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { CreditCard, Loader2, Smartphone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,7 +13,7 @@ import {
 
 /**
  * Xander's single MoMo receive number plus meeting booking fees (Settings → Payments).
- * Independent from F&R / other products — do not reuse another project's number or MoPay keys.
+ * RWF is converted from the USD fee at the live USD/RWF forex rate.
  * Stripe checkout uses Xander STRIPE_* keys from the backend .env.
  */
 export default function PaymentReceiverSettings() {
@@ -24,8 +24,18 @@ export default function PaymentReceiverSettings() {
   const [name, setName] = useState("");
   const [whatsapp, setWhatsapp] = useState("");
   const [meetingFeeUsd, setMeetingFeeUsd] = useState("10");
-  const [meetingFeeRwf, setMeetingFeeRwf] = useState("10000");
+  const [usdRwfRate, setUsdRwfRate] = useState(0);
+  const [forexLive, setForexLive] = useState(false);
+  const [forexAsOf, setForexAsOf] = useState<string | null>(null);
   const [meetingPaymentRequired, setMeetingPaymentRequired] = useState(true);
+
+  const liveRwf = useMemo(() => {
+    const usd = Number(meetingFeeUsd);
+    if (!Number.isFinite(usd) || usd <= 0 || !Number.isFinite(usdRwfRate) || usdRwfRate <= 0) {
+      return 0;
+    }
+    return Math.max(1, Math.round(usd * usdRwfRate));
+  }, [meetingFeeUsd, usdRwfRate]);
 
   useEffect(() => {
     let cancelled = false;
@@ -38,7 +48,9 @@ export default function PaymentReceiverSettings() {
         setName(data.momo_receiver_name || "");
         setWhatsapp(data.momo_whatsapp_phone || data.display_whatsapp_phone || "");
         setMeetingFeeUsd(String(data.meeting_fee_usd ?? 10));
-        setMeetingFeeRwf(String(data.meeting_fee_rwf ?? 10000));
+        setUsdRwfRate(Number(data.usd_rwf_rate ?? 0));
+        setForexLive(data.forex_live !== false && Number(data.usd_rwf_rate ?? 0) > 0);
+        setForexAsOf(data.forex_as_of ?? null);
         setMeetingPaymentRequired(data.meeting_payment_required !== false);
       } catch {
         if (!cancelled) {
@@ -62,9 +74,8 @@ export default function PaymentReceiverSettings() {
       return;
     }
     const usd = Number(meetingFeeUsd);
-    const rwf = Number(meetingFeeRwf);
-    if (Number.isNaN(usd) || usd < 0 || Number.isNaN(rwf) || rwf < 0) {
-      toast({ variant: "destructive", title: "Enter valid meeting fees" });
+    if (Number.isNaN(usd) || usd < 0) {
+      toast({ variant: "destructive", title: "Enter a valid Stripe fee in USD" });
       return;
     }
     setSaving(true);
@@ -74,18 +85,20 @@ export default function PaymentReceiverSettings() {
         momo_receiver_name: name.trim() || undefined,
         momo_whatsapp_phone: whatsapp.trim() || undefined,
         meeting_fee_usd: usd,
-        meeting_fee_rwf: Math.floor(rwf),
         meeting_payment_required: meetingPaymentRequired,
       });
       setPhone(data.momo_receiver_phone || data.display_momo_phone || phone);
       setName(data.momo_receiver_name || name);
       setWhatsapp(data.momo_whatsapp_phone || data.display_whatsapp_phone || whatsapp);
       setMeetingFeeUsd(String(data.meeting_fee_usd ?? usd));
-      setMeetingFeeRwf(String(data.meeting_fee_rwf ?? rwf));
+      setUsdRwfRate(Number(data.usd_rwf_rate ?? usdRwfRate));
+      setForexLive(data.forex_live !== false);
+      setForexAsOf(data.forex_as_of ?? null);
       setMeetingPaymentRequired(data.meeting_payment_required !== false);
+      const converted = Number(data.meeting_fee_rwf ?? liveRwf);
       toast({
         title: "Saved",
-        description: `MoMo receive ${data.display_momo_phone || phone}. Meeting fee $${data.meeting_fee_usd ?? usd} / ${data.meeting_fee_rwf ?? rwf} RWF.`,
+        description: `MoMo receive ${data.display_momo_phone || phone}. Meeting fee $${data.meeting_fee_usd ?? usd} → ${converted.toLocaleString()} RWF at live forex.`,
       });
     } catch (error: unknown) {
       const err = error as { response?: { data?: { message?: string } } };
@@ -107,6 +120,10 @@ export default function PaymentReceiverSettings() {
       </div>
     );
   }
+
+  const rateLabel = usdRwfRate > 0
+    ? `1 USD = ${usdRwfRate.toLocaleString(undefined, { maximumFractionDigits: 2 })} RWF`
+    : "Live rate unavailable";
 
   return (
     <div className="space-y-6">
@@ -165,8 +182,8 @@ export default function PaymentReceiverSettings() {
             Meeting booking fees
           </CardTitle>
           <CardDescription>
-            Learners must pay with Stripe (USD, Xander Stripe keys) or Mobile Money (RWF) before a meeting booking
-            is confirmed.
+            Set the Stripe amount in USD. Mobile Money (RWF) is converted automatically from that USD fee using
+            the live USD/RWF forex rate.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -184,16 +201,17 @@ export default function PaymentReceiverSettings() {
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="meeting-fee-rwf">Mobile Money fee (RWF)</Label>
+              <Label htmlFor="meeting-fee-rwf">Mobile Money fee (RWF, live forex)</Label>
               <Input
                 id="meeting-fee-rwf"
-                type="number"
-                min={0}
-                step={1}
-                className="h-11"
-                value={meetingFeeRwf}
-                onChange={(e) => setMeetingFeeRwf(e.target.value)}
+                readOnly
+                className="h-11 bg-slate-50"
+                value={liveRwf > 0 ? liveRwf.toLocaleString() : "—"}
               />
+              <p className="text-xs text-muted-foreground">
+                {forexLive ? "Live rate" : "Cached/fallback rate"}: {rateLabel}
+                {forexAsOf ? ` · updated ${forexAsOf}` : ""}
+              </p>
             </div>
           </div>
           <div className="flex items-center gap-2">
