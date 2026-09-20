@@ -1,8 +1,9 @@
+import { isXanderMeet } from "./product";
+
 /** Single source of truth for brand logo assets in public/ */
 export const LOGO = {
-  src: "/logo.png",
-  alt: "Xander Learning Hub",
-  /** Bump when replacing logo.png to bust browser favicon cache */
+  src: isXanderMeet() ? "/brand/xander-x-gold.png" : "/logo.png",
+  alt: isXanderMeet() ? "Xander Meet" : "Xander Learning Hub",
   version: "3",
 } as const;
 

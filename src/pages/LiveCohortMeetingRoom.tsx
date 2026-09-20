@@ -132,6 +132,10 @@ const LiveCohortMeetingRoom = () => {
             room_name: raw.room_name || undefined,
             user_name: raw.user_name || auth.participant?.name || displayName,
             role: 0,
+            meeting_role: raw.meeting_role || "attendee",
+            meeting_mode: raw.meeting_mode || "meeting",
+            permissions: raw.permissions ?? undefined,
+            enable_screenshare: raw.enable_screenshare !== false,
           };
         });
       } else {
@@ -253,7 +257,9 @@ const LiveCohortMeetingRoom = () => {
   return (
     <div
       className={`zoom-client-meeting-page${
-        meetingProvider === "daily" ? " zoom-client-meeting-page--interactive" : ""
+        meetingProvider === "daily" || Boolean(error) || waitingForHost
+          ? " zoom-client-meeting-page--interactive"
+          : ""
       }`}
     >
       {(loading && !waitingForHost && !sdk) || (connecting && !sdk) ? (
@@ -270,13 +276,15 @@ const LiveCohortMeetingRoom = () => {
           <ParticipantWaitingStage branding={branding} mode="host_waiting" />
         </div>
       ) : error && !sdk ? (
+          <div className="zoom-client-meeting-loading zoom-client-meeting-loading--interactive px-6">
           <div className="w-full max-w-md space-y-4 rounded-xl border border-red-900/50 bg-[#232323] p-8 text-center">
             <p className="text-red-300">{error}</p>
             <div className="flex flex-wrap justify-center gap-2">
-              <Button className="bg-[#0e72ed] hover:bg-[#0b5fc7]" onClick={() => void loadSdk()}>
+              <Button type="button" className="bg-[#0e72ed] hover:bg-[#0b5fc7]" onClick={() => void loadSdk()}>
                 Try again
               </Button>
               <Button
+                type="button"
                 variant="ghost"
                 className="text-zinc-300 hover:bg-white/10"
                 onClick={() => navigate(`/live-cohort/${id}/join`)}
@@ -284,6 +292,7 @@ const LiveCohortMeetingRoom = () => {
                 Return to waiting room
               </Button>
             </div>
+          </div>
           </div>
       ) : sdk && branding ? (
         <LiveMeetingExperience

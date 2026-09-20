@@ -4154,6 +4154,45 @@ export const deleteMeetAdminPlan = async (planId: number) => {
   return response.data as { message: string; soft_deleted?: boolean; plan?: MeetAdminPlan };
 };
 
+export type MeetPromoCode = {
+  id: number;
+  code: string;
+  label?: string | null;
+  max_uses: number;
+  uses_count: number;
+  is_active: boolean;
+  expires_at?: string | null;
+  plan_id?: number | null;
+  plan_name?: string | null;
+  created_by?: string | null;
+  created_at?: string | null;
+  redeemable: boolean;
+};
+
+export const getMeetPromoCodes = async () => {
+  const response = await api.get(`/meet/admin/promo-codes`);
+  return (response.data?.promo_codes ?? []) as MeetPromoCode[];
+};
+
+export const createMeetPromoCode = async (payload: {
+  code?: string;
+  label?: string;
+  max_uses?: number;
+  plan_id?: number | null;
+  expires_at?: string | null;
+}) => {
+  const response = await api.post(`/meet/admin/promo-codes`, payload);
+  return response.data.promo_code as MeetPromoCode;
+};
+
+export const updateMeetPromoCode = async (
+  id: number,
+  payload: { is_active?: boolean; label?: string; max_uses?: number; expires_at?: string | null },
+) => {
+  const response = await api.patch(`/meet/admin/promo-codes/${id}`, payload);
+  return response.data.promo_code as MeetPromoCode;
+};
+
 export const getZoomWebinars = async () => {
   const response = await api.get(`/zoom/webinars`);
   return response.data;

@@ -302,7 +302,10 @@ const ZoomEmbedMeetingRoom = () => {
         room_name: rawDaily.room_name || undefined,
         user_name: dailyDisplayName,
         role: isHost ? 1 : 0,
+        meeting_role: rawDaily.meeting_role || undefined,
         meeting_mode: rawDaily.meeting_mode || resolvedMode || undefined,
+        permissions: rawDaily.permissions ?? undefined,
+        enable_screenshare: rawDaily.enable_screenshare !== false,
       });
       if (auth.material) setMaterialMeta(auth.material);
       else if (webinarHost) setMaterialMeta(null);

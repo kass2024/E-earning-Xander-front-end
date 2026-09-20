@@ -1,11 +1,43 @@
-export const HUB = {
+import { isXanderMeet } from "./product";
+
+const ACADEMY_HUB = {
   name: "Xander Learning Hub",
   company: "Xander Global Scholars",
+  poweredBy: "Powered by Xander Global Scholars",
   slogan: "Study. Learn. Succeed Globally.",
   tagline: "Language training, exam preparation, and live online classes — all in one place.",
   supportEmail: "info@xanderglobalacademy.com",
   supportPhone: "+250 788 797 673",
+  logoFull: "/logo.png",
+  logoIcon: "/logo.png",
+  domain: "xanderglobalacademy.com",
 } as const;
+
+const MEET_HUB = {
+  name: "Xander Meet",
+  company: "Xander Tech LLC",
+  poweredBy: "Powered by Xander Tech",
+  slogan: "Meet. Connect. Collaborate.",
+  tagline: "Professional video meetings, webinars, and live events — multi-tenant, secure, and powered by Daily.co.",
+  supportEmail: "meet@xandertech.llc",
+  supportPhone: "+250 788 797 673",
+  logoFull: "/brand/xander-meet-logo.png",
+  logoIcon: "/brand/xander-x-gold.png",
+  domain: "meet.xandertech.llc",
+} as const;
+
+export const HUB = isXanderMeet() ? MEET_HUB : ACADEMY_HUB;
+
+export const MEET_FEATURES = [
+  "HD video meetings & webinars",
+  "Up to 1,000 participants",
+  "Cloud recording & storage",
+  "Meeting registrations & scheduling",
+  "Live cohorts & queue management",
+  "Q&A, polls & breakout rooms",
+  "Multi-tenant white-label portals",
+  "Mobile Money & Stripe billing",
+] as const;
 
 export const EXAM_CATEGORIES = [
   "IELTS Preparation",
@@ -56,9 +88,20 @@ export type HubRole =
   | "admin"
   | "staff"
   | "meeting_user"
-  | "partner_company";
+  | "partner_company"
+  | "host";
 
 export function dashboardPathForRole(role: string): string {
+  if (isXanderMeet()) {
+    switch (role) {
+      case "meeting_user":
+      case "host":
+        return "/dashboard/appointments";
+      default:
+        return "/dashboard/admin";
+    }
+  }
+
   switch (role) {
     case "admin":
     case "staff":

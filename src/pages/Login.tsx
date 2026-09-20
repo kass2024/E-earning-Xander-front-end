@@ -20,17 +20,24 @@ import {
 import { getInstitutionBySignupSlug, loginUnified, type PlatformInstitutionInfo } from "@/api/axios";
 import { useToast } from "@/components/ui/use-toast";
 import { HUB, dashboardPathForRole } from "@/lib/hubConfig";
+import { isXanderMeet } from "@/lib/product";
 import { saveInstitutionContext, refreshInstitutionBrandingFromApi, getStoredInstitution, rememberInstitutionLoginPath } from "@/lib/institutionContext";
 import { warmupDashboardAfterLogin } from "@/lib/loginDashboardWarmup";
 import { invalidateDashboardCache } from "@/lib/dashboardCache";
 import { clearAdminImpersonation } from "@/lib/adminImpersonation";
 import { cn } from "@/lib/utils";
 
-const PERKS = [
-  "Access courses, live classes, and materials",
-  "Track progress from your personal dashboard",
-  "Secure sign-in for learners, instructors, and staff",
-];
+const PERKS = isXanderMeet()
+  ? [
+      "HD video meetings, webinars, and live events",
+      "Cloud recording, registrations, and scheduling",
+      "Secure sign-in for hosts, staff, and tenants",
+    ]
+  : [
+      "Access courses, live classes, and materials",
+      "Track progress from your personal dashboard",
+      "Secure sign-in for learners, instructors, and staff",
+    ];
 
 const Login = () => {
   const navigate = useNavigate();

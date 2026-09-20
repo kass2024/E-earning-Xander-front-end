@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { HUB } from "@/lib/hubConfig";
-import { CheckCircle2, CreditCard, Loader2, Smartphone } from "lucide-react";
+import { CheckCircle2, CreditCard, Loader2, Smartphone, Ticket } from "lucide-react";
 import api from "@/api/axios";
 import { useToast } from "@/components/ui/use-toast";
 
@@ -34,6 +34,7 @@ const Pricing = () => {
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
   const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null);
+  const [promoCode, setPromoCode] = useState("");
   const [momoRef, setMomoRef] = useState<string | null>(null);
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -42,7 +43,11 @@ const Pricing = () => {
   const institutionId = localStorage.getItem("parrot_institution_id");
   const userId = localStorage.getItem("parrot_user_id");
   const isLoggedIn = Boolean(localStorage.getItem("parrot_login_success") && userId);
-  const [payments, setPayments] = useState<{ stripe?: { enabled: boolean }; mopay?: { enabled: boolean } } | null>(null);
+  const [payments, setPayments] = useState<{
+    stripe?: { enabled: boolean };
+    mopay?: { enabled: boolean };
+    promo?: { enabled: boolean };
+  } | null>(null);
 
   useEffect(() => {
     api.get("/meet/plans").then((res) => {
@@ -77,7 +82,7 @@ const Pricing = () => {
     return value.toLowerCase();
   };
 
-  const subscribePayload = (plan: Plan, provider: "stripe" | "mopay") => {
+  const subscribePayload = (plan: Plan, provider: "stripe" | "mopay" | "promo") => {
     const payload: Record<string, unknown> = {
       plan_id: plan.id,
       institution_id: institutionId ? parseInt(institutionId) : null,
@@ -108,6 +113,44 @@ const Pricing = () => {
       }
     } catch {
       toast({ title: "Error", description: "Stripe checkout failed.", variant: "destructive" });
+    } finally {
+      setSubscribing(null);
+    }
+  };
+
+  const subscribePromo = async (plan: Plan) => {
+    if (!promoCode.trim()) {
+      toast({ title: "Promo code required", description: "Enter the code from Account Settings.", variant: "destructive" });
+      return;
+    }
+
+    const payload = subscribePayload(plan, "promo");
+    if (!payload) return;
+    payload.promo_code = promoCode.trim();
+
+    setSubscribing(plan.id);
+    try {
+      const res = await api.post("/meet/subscribe", payload);
+      if (res.data?.ok) {
+        if (res.data.account) {
+          sessionStorage.setItem("meet_new_account", JSON.stringify(res.data.account));
+        }
+        toast({ title: "Promo applied", description: "Your subscription is active." });
+        navigate("/subscription/success?promo=1");
+        return;
+      }
+      toast({
+        title: "Invalid promo code",
+        description: res.data?.message ?? "This code cannot be used.",
+        variant: "destructive",
+      });
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string } } };
+      toast({
+        title: "Promo failed",
+        description: err?.response?.data?.message ?? "This code is invalid or already used.",
+        variant: "destructive",
+      });
     } finally {
       setSubscribing(null);
     }
@@ -250,13 +293,16 @@ const Pricing = () => {
                 </div>
               )}
 
-              <Tabs defaultValue={payments?.stripe?.enabled ? "stripe" : "momo"}>
-                <TabsList className="grid w-full grid-cols-2 bg-white/5">
+              <Tabs defaultValue={payments?.stripe?.enabled ? "stripe" : "promo"}>
+                <TabsList className="grid w-full grid-cols-3 bg-white/5">
                   <TabsTrigger value="stripe" disabled={!payments?.stripe?.enabled}>
                     <CreditCard className="h-4 w-4 mr-2" />Card (USD)
                   </TabsTrigger>
                   <TabsTrigger value="momo" disabled={!payments?.mopay?.enabled}>
                     <Smartphone className="h-4 w-4 mr-2" />Mobile Money
+                  </TabsTrigger>
+                  <TabsTrigger value="promo">
+                    <Ticket className="h-4 w-4 mr-2" />Promo
                   </TabsTrigger>
                 </TabsList>
                 <TabsContent value="stripe" className="mt-4">
@@ -300,6 +346,28 @@ const Pricing = () => {
                       </Button>
                     </>
                   )}
+                </TabsContent>
+                <TabsContent value="promo" className="mt-4 space-y-4">
+                  <p className="text-sm text-slate-400">
+                    Have a code from Xander Meet Settings? Activate {selectedPlan.name} without paying.
+                  </p>
+                  <div>
+                    <Label htmlFor="promo-code">Promo code</Label>
+                    <Input
+                      id="promo-code"
+                      placeholder="XMEET-XXXXXX"
+                      value={promoCode}
+                      onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
+                      className="bg-white/5 border-white/10 mt-1 font-mono tracking-wide"
+                    />
+                  </div>
+                  <Button
+                    className="w-full bg-[#D4AF37] text-black hover:bg-[#c9a030]"
+                    disabled={subscribing === selectedPlan.id || !promoCode.trim()}
+                    onClick={() => subscribePromo(selectedPlan)}
+                  >
+                    {subscribing === selectedPlan.id ? <Loader2 className="h-4 w-4 animate-spin" /> : "Activate with promo"}
+                  </Button>
                 </TabsContent>
               </Tabs>
             </CardContent>

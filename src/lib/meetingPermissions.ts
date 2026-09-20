@@ -47,7 +47,9 @@ export function canSendMedia(
   return permissionAllows(permissions.canSend as Parameters<typeof permissionAllows>[0], kind);
 }
 
-const SCREEN_SEND: DailySendPermission[] = ["screenVideo", "screenAudio"];
+/** Keep screen share on joiner links when mic/camera publish is revoked. */
+export const JOINER_SCREEN_SEND: DailySendPermission[] = ["screenVideo", "screenAudio"];
+const SCREEN_SEND = JOINER_SCREEN_SEND;
 
 /** Merge screen-share rights back into Daily canSend (speaking revoke must not block screen). */
 export function withScreenShareCanSend(
@@ -69,16 +71,27 @@ export function withScreenShareCanSend(
   return Array.from(merged) as DailySendPermission[];
 }
 
-/** Meetings: any joiner may share screen without host approval (webinars keep token rules). */
+/** Joiner links keep screen share unless Daily explicitly disabled it. */
+export function canShareScreen(
+  _permissions: DailySdkPermissions | null | undefined,
+  options?: { isHost?: boolean; enableScreenshare?: boolean | null },
+): boolean {
+  if (options?.enableScreenshare === false) return false;
+  return true;
+}
+
+/** Meetings and join links: guests may share screen without host approval. */
 export function canShareScreenInMeeting(
-  meetingMode: MeetingMode,
+  _meetingMode: MeetingMode,
   trustedHost: boolean,
   permissions: DailySdkPermissions | null | undefined,
   tokenPermissions?: DailySdkPermissions | null,
+  enableScreenshare?: boolean | null,
 ): boolean {
+  if (enableScreenshare === false) return false;
   if (trustedHost) return true;
-  if (meetingMode === "meeting") return true;
   return (
+    canShareScreen(permissions, { enableScreenshare }) ||
     canSendMedia(permissions, "screenVideo") ||
     canSendMedia(tokenPermissions, "screenVideo")
   );

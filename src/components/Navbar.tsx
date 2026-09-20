@@ -7,7 +7,10 @@ import { Menu, X, Search } from "lucide-react";
 import PromoBanner from "@/components/PromoBanner";
 import { HUB } from "@/lib/hubConfig";
 
-const Navbar = () => {
+import NavbarMeet from "@/components/NavbarMeet";
+import { isXanderMeet } from "@/lib/product";
+
+const AcademyNavbar = () => {
   const navigate = useNavigate();
   const headerRef = useRef<HTMLElement>(null);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -241,5 +244,7 @@ const Navbar = () => {
     </header>
   );
 };
+
+const Navbar = () => (isXanderMeet() ? <NavbarMeet /> : <AcademyNavbar />);
 
 export default Navbar;
