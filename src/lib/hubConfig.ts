@@ -5,7 +5,7 @@ const ACADEMY_HUB = {
   company: "Xander Global Scholars",
   poweredBy: "Powered by Xander Global Scholars",
   slogan: "Study. Learn. Succeed Globally.",
-  tagline: "Language training, exam preparation, and live online classes — all in one place.",
+  tagline: "Consultant for Study, Work, and Travel Abroad",
   supportEmail: "info@xanderglobalacademy.com",
   supportPhone: "+250 788 797 673",
   logoFull: "/logo.png",
