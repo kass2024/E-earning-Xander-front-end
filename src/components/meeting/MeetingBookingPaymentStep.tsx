@@ -123,34 +123,6 @@ export function MeetingBookingPaymentStep({
       <div className="px-6 md:px-8 py-8 space-y-6">
         <div>
           <h2 className="text-xl font-bold text-[var(--institution-primary,#012F6B)]">Pay to confirm booking</h2>
-          <p className="mt-1 text-sm text-slate-600">
-            Payment is required before your meeting is confirmed. Choose Stripe (card) or Mobile Money.
-          </p>
-          <div className="mt-4 rounded-2xl border border-[var(--institution-primary,#012F6B)]/15 bg-[var(--institution-primary,#012F6B)]/5 px-4 py-3 text-sm">
-            <p className="font-semibold text-[var(--institution-primary,#012F6B)]">
-              Fee: ${Number(paymentConfig.fee_usd || 0).toFixed(2)} USD
-              {paymentConfig.fee_rwf > 0 && (
-                <span className="text-slate-600 font-medium">
-                  {" "}
-                  · or {Number(paymentConfig.fee_rwf).toLocaleString()} RWF (MoMo)
-                </span>
-              )}
-            </p>
-            {Number(paymentConfig.usd_rwf_rate || 0) > 0 && (
-              <p className="mt-1 text-xs text-slate-600">
-                RWF converted from USD at {paymentConfig.forex_live === false ? "cached" : "live"} rate: 1 USD ={" "}
-                {Number(paymentConfig.usd_rwf_rate).toLocaleString(undefined, { maximumFractionDigits: 2 })} RWF
-              </p>
-            )}
-            {paymentConfig.receiver?.display_momo_phone && (
-              <p className="mt-1 text-xs text-slate-600">
-                MoMo receive number: {paymentConfig.receiver.display_momo_phone}
-                {paymentConfig.receiver.momo_receiver_name
-                  ? ` (${paymentConfig.receiver.momo_receiver_name})`
-                  : ""}
-              </p>
-            )}
-          </div>
         </div>
 
         <div className="flex gap-2">
@@ -187,17 +159,11 @@ export function MeetingBookingPaymentStep({
         </div>
 
         {!stripeOk && !momoOk && (
-          <p className="text-sm text-red-600">
-            Payments are not configured yet. Please contact the academy, or ask an admin to set Stripe keys and
-            the MoMo receive number under Settings → Payments.
-          </p>
+          <p className="text-sm text-red-600">Payments are not available right now. Please try again later.</p>
         )}
 
         {tab === "stripe" && stripeOk && (
-          <div className="space-y-4">
-            <p className="text-sm text-slate-600">
-              You will be redirected to Stripe Checkout to pay securely by card.
-            </p>
+          <div>
             <Button
               type="button"
               disabled={busy}
