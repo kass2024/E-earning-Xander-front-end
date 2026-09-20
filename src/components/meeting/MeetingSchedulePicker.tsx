@@ -180,10 +180,10 @@ export function MeetingSchedulePicker({
   })();
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl shadow-slate-200/40">
-      <div className="grid min-h-[520px] lg:grid-cols-[minmax(260px,300px)_1fr]">
+    <div className="w-full min-w-0 overflow-x-clip rounded-2xl border border-slate-200 bg-white shadow-xl shadow-slate-200/40">
+      <div className="grid min-h-0 w-full min-w-0 grid-cols-1 xl:grid-cols-[minmax(0,16.5rem)_minmax(0,1fr)]">
         {/* Left: event details (Calendly-style) */}
-        <aside className="border-b border-slate-200 bg-slate-50/50 p-6 lg:border-b-0 lg:border-r">
+        <aside className="border-b border-slate-200 bg-slate-50/50 p-4 sm:p-6 xl:border-b-0 xl:border-r">
           <div className="mb-4 flex justify-center lg:justify-start">
             {brandLogo ? (
               <img
@@ -216,7 +216,7 @@ export function MeetingSchedulePicker({
         </aside>
 
         {/* Right: date & time selection */}
-        <div className="flex flex-col p-6 md:p-8">
+        <div className="flex min-w-0 flex-col p-4 sm:p-6 md:p-8">
           <h3 className="text-lg font-bold text-[var(--institution-primary,#012F6B)]">Select a Date &amp; Time</h3>
 
           {!hasNoSchedules && upcomingDays.length > 0 && (
@@ -299,12 +299,12 @@ export function MeetingSchedulePicker({
           ) : (
             <div
               className={cn(
-                "mt-5 flex flex-1 flex-col gap-6 lg:flex-row lg:gap-0",
-                selectedDate && "lg:divide-x lg:divide-slate-200"
+                "mt-5 flex min-w-0 flex-1 flex-col gap-6 xl:flex-row xl:gap-0",
+                selectedDate && "xl:divide-x xl:divide-slate-200"
               )}
             >
               {/* Calendar column */}
-              <div className={cn("shrink-0", selectedDate ? "lg:pr-8" : "lg:pr-0")}>
+              <div className={cn("min-w-0 w-full shrink-0 xl:max-w-[22rem]", selectedDate ? "xl:pr-6" : "xl:pr-0")}>
                 <div className="mb-3 flex items-center justify-between">
                   <button
                     type="button"
@@ -349,17 +349,19 @@ export function MeetingSchedulePicker({
                     available:
                       "!relative !font-bold !text-[var(--institution-primary,#012F6B)] !bg-[var(--institution-primary,#012F6B)]/15 ring-2 ring-inset ring-[var(--institution-primary,#012F6B)]/40 hover:!bg-[var(--institution-primary,#012F6B)]/25 after:absolute after:bottom-1 after:left-1/2 after:h-1.5 after:w-1.5 after:-translate-x-1/2 after:rounded-full after:bg-[var(--institution-accent,#E01C21)] after:content-['']",
                   }}
-                  className="p-0"
+                  className="w-full min-w-0 p-0"
                   classNames={{
-                    months: "w-full",
-                    month: "w-full space-y-2",
+                    months: "w-full min-w-0",
+                    month: "w-full min-w-0 space-y-2",
                     caption: "hidden",
                     nav: "hidden",
-                    head_cell: "text-slate-500 w-10 font-medium text-xs uppercase",
+                    table: "w-full min-w-0",
+                    head_row: "flex w-full",
+                    head_cell: "flex-1 text-slate-500 font-medium text-[10px] sm:text-xs uppercase",
                     row: "flex w-full mt-1",
-                    cell: "relative h-10 w-10 text-center text-sm p-0",
+                    cell: "relative flex-1 p-0 text-center text-sm aspect-square max-h-10",
                     day: cn(
-                      "h-10 w-10 p-0 font-medium rounded-full hover:bg-[var(--institution-primary,#0069FF)]/10",
+                      "mx-auto flex h-9 w-full max-w-10 items-center justify-center p-0 font-medium rounded-full hover:bg-[var(--institution-primary,#0069FF)]/10",
                       "aria-selected:bg-[var(--institution-primary,#0069FF)] aria-selected:text-white aria-selected:hover:bg-[var(--institution-primary,#0069FF)]"
                     ),
                     day_disabled: "text-slate-300 opacity-55 hover:bg-transparent",
@@ -411,7 +413,7 @@ export function MeetingSchedulePicker({
 
               {/* Time slots column (Calendly-style) */}
               {selectedDate && (
-                <div className="flex min-h-[280px] flex-1 flex-col lg:pl-8">
+                <div className="flex min-h-[240px] min-w-0 w-full flex-1 flex-col xl:pl-6">
                   {!selectedDateLabel ? null : timeSlots.length === 0 ? (
                     <div className="flex flex-1 flex-col items-center justify-center text-center">
                       <p className="font-medium text-slate-700">No times left on this day</p>
@@ -445,7 +447,7 @@ export function MeetingSchedulePicker({
                       <p className="mb-3 text-sm font-semibold text-[var(--institution-primary,#012F6B)]">
                         {selectedDateLabel}
                       </p>
-                      <div className="max-h-[340px] flex-1 space-y-2 overflow-y-auto pr-1">
+                      <div className="grid max-h-[min(50vh,22rem)] min-w-0 flex-1 grid-cols-2 gap-2 overflow-y-auto overflow-x-hidden pr-0.5 sm:grid-cols-3 xl:grid-cols-1 xl:max-h-[340px] xl:space-y-0">
                         {timeSlots.map((slot) => {
                           const isSelected =
                             selectedSlot?.startsAt === slot.startsAt &&
@@ -456,7 +458,7 @@ export function MeetingSchedulePicker({
                               type="button"
                               onClick={() => onSelectSlot(isSelected ? null : slot)}
                               className={cn(
-                                "w-full rounded-md border px-4 py-3 text-sm font-semibold transition-all",
+                                "min-w-0 w-full truncate rounded-md border px-2 py-2.5 text-xs font-semibold transition-all sm:px-3 sm:text-sm",
                                 isSelected
                                   ? "border-[var(--institution-primary,#0069FF)] bg-[var(--institution-primary,#0069FF)] text-white shadow-sm"
                                   : "border-[var(--institution-primary,#0069FF)]/40 bg-white text-[var(--institution-primary,#0069FF)] hover:border-[var(--institution-primary,#0069FF)] hover:bg-[var(--institution-primary,#0069FF)]/5"

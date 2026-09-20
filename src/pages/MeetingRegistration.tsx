@@ -679,8 +679,8 @@ const MeetingRegistration = () => {
       className={cn("min-h-screen", isInstitutionPortal ? "bg-transparent" : "bg-gradient-to-b from-slate-50 via-white to-slate-50")}
       style={meetingThemeStyle}
     >
-      <main className={cn(isInstitutionPortal ? "pb-16 px-4 pt-10" : "public-page-offset pb-16 px-4")}>
-        <div className="container mx-auto max-w-5xl">
+      <main className={cn(isInstitutionPortal ? "pb-16 px-3 sm:px-4 pt-10" : "public-page-offset pb-16 px-3 sm:px-4 overflow-x-hidden")}>
+        <div className="container mx-auto max-w-5xl min-w-0">
           <motion.div
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
@@ -693,18 +693,19 @@ const MeetingRegistration = () => {
             <h1 className="text-3xl md:text-4xl font-bold text-[var(--institution-primary,#012F6B)] mb-2">{bookingTitle}</h1>
             <p className="text-slate-600 max-w-2xl mx-auto">{bookingSubtitle}</p>
 
-            <div className="mt-8 flex items-center justify-center gap-2 sm:gap-4 flex-wrap">
-              <div className={cn("flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold uppercase tracking-wider transition-colors", step === 1 ? "bg-[var(--institution-primary,#012F6B)] text-white shadow-md shadow-[var(--institution-primary,#012F6B)]/20" : "bg-white text-slate-500 border border-slate-200")}>
+            <div className="mt-8 flex w-full min-w-0 items-center justify-center gap-1.5 sm:gap-4">
+              <div className={cn("flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-2 rounded-full text-[10px] sm:text-xs font-semibold uppercase tracking-wider transition-colors", step === 1 ? "bg-[var(--institution-primary,#012F6B)] text-white shadow-md shadow-[var(--institution-primary,#012F6B)]/20" : "bg-white text-slate-500 border border-slate-200")}>
                 <span className="flex h-5 w-5 items-center justify-center rounded-full bg-white/20 text-[10px]">1</span>
-                Choose time
+                <span className="sm:hidden">Time</span>
+                <span className="hidden sm:inline">Choose time</span>
               </div>
-              <div className="h-px w-6 sm:w-10 bg-slate-200" />
-              <div className={cn("flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold uppercase tracking-wider transition-colors", step === 2 ? "bg-[var(--institution-primary,#012F6B)] text-white shadow-md shadow-[var(--institution-primary,#012F6B)]/20" : "bg-white text-slate-500 border border-slate-200")}>
+              <div className="h-px w-3 sm:w-10 bg-slate-200" />
+              <div className={cn("flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-2 rounded-full text-[10px] sm:text-xs font-semibold uppercase tracking-wider transition-colors", step === 2 ? "bg-[var(--institution-primary,#012F6B)] text-white shadow-md shadow-[var(--institution-primary,#012F6B)]/20" : "bg-white text-slate-500 border border-slate-200")}>
                 <span className="flex h-5 w-5 items-center justify-center rounded-full bg-white/20 text-[10px]">2</span>
-                Your info
+                Info
               </div>
-              <div className="h-px w-6 sm:w-10 bg-slate-200" />
-              <div className={cn("flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold uppercase tracking-wider transition-colors", step === 3 ? "bg-[var(--institution-primary,#012F6B)] text-white shadow-md shadow-[var(--institution-primary,#012F6B)]/20" : "bg-white text-slate-500 border border-slate-200")}>
+              <div className="h-px w-3 sm:w-10 bg-slate-200" />
+              <div className={cn("flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-2 rounded-full text-[10px] sm:text-xs font-semibold uppercase tracking-wider transition-colors", step === 3 ? "bg-[var(--institution-primary,#012F6B)] text-white shadow-md shadow-[var(--institution-primary,#012F6B)]/20" : "bg-white text-slate-500 border border-slate-200")}>
                 <span className="flex h-5 w-5 items-center justify-center rounded-full bg-white/20 text-[10px]">3</span>
                 Pay
               </div>
