@@ -2321,6 +2321,21 @@ export type PaymentReceiverSettings = {
   momo_whatsapp_phone?: string | null;
   display_momo_phone?: string;
   display_whatsapp_phone?: string;
+  meeting_fee_usd?: number;
+  meeting_fee_rwf?: number;
+  meeting_payment_required?: boolean;
+};
+
+export type MeetingPaymentConfig = {
+  required: boolean;
+  fee_usd: number;
+  fee_rwf: number;
+  stripe_configured: boolean;
+  mopay_configured: boolean;
+  receiver?: {
+    display_momo_phone?: string;
+    momo_receiver_name?: string;
+  };
 };
 
 export const getPaymentReceiverSettings = async () => {
@@ -2332,9 +2347,58 @@ export const updatePaymentReceiverSettings = async (data: {
   momo_receiver_phone: string;
   momo_receiver_name?: string;
   momo_whatsapp_phone?: string;
+  meeting_fee_usd?: number;
+  meeting_fee_rwf?: number;
+  meeting_payment_required?: boolean;
 }) => {
   const response = await api.put(`/site-settings/payment-receiver`, data);
   return (response.data?.payment_receiver ?? response.data) as PaymentReceiverSettings;
+};
+
+export const getMeetingPaymentConfig = async () => {
+  const response = await api.get(`/payments/meeting/config`);
+  return response.data as MeetingPaymentConfig;
+};
+
+export const createMeetingPaymentCheckout = async (meetingRegistrationId: number) => {
+  const response = await api.post(`/payments/meeting/create-checkout`, {
+    meeting_registration_id: meetingRegistrationId,
+  });
+  return response.data as { url: string; session_id?: string };
+};
+
+export const confirmMeetingPaymentCheckout = async (sessionId: string) => {
+  const response = await api.post(`/payments/meeting/confirm-checkout`, {
+    session_id: sessionId,
+  });
+  return response.data as {
+    ok: boolean;
+    message: string;
+    registration_id?: number;
+    email?: string;
+    schedule_label?: string;
+  };
+};
+
+export const requestMeetingMomoPayment = async (
+  meetingRegistrationId: number,
+  phone: string,
+  mno: "mtn" | "airtel" = "mtn"
+) => {
+  const response = await api.post(`/payments/meeting/momo/request`, {
+    meeting_registration_id: meetingRegistrationId,
+    phone,
+    mno,
+  });
+  return response.data as {
+    ok: boolean;
+    message: string;
+    payment_id?: number;
+    transaction_id?: string;
+    amount?: number;
+    currency?: string;
+    msisdn?: string;
+  };
 };
 
 export const requestMomoPayment = async (

@@ -1,12 +1,18 @@
-import { FormEvent, useEffect, useMemo, useState } from "react";
-import { useParams } from "react-router-dom";
+import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { useParams, useSearchParams } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
-import { getAvailableSchedules, submitMeetingRegistration } from "@/api/axios";
+import {
+  confirmMeetingPaymentCheckout,
+  getAvailableSchedules,
+  getMeetingPaymentConfig,
+  submitMeetingRegistration,
+  type MeetingPaymentConfig,
+} from "@/api/axios";
 import Swal from "sweetalert2";
 import {
   User,
@@ -21,6 +27,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { MeetingSchedulePicker } from "@/components/meeting/MeetingSchedulePicker";
+import { MeetingBookingPaymentStep } from "@/components/meeting/MeetingBookingPaymentStep";
 import { BookingConfirmedDialog } from "@/components/meeting/BookingConfirmedDialog";
 import InstitutionPortalShell from "@/components/institution-portal/InstitutionPortalShell";
 import { useInstitutionPortal } from "@/hooks/useInstitutionPortal";
@@ -196,6 +203,7 @@ const BOOKING_REASONS = [
 
 const MeetingRegistration = () => {
   const { slug: routeSlug = "" } = useParams<{ slug?: string }>();
+  const [searchParams, setSearchParams] = useSearchParams();
   const institutionSlug = routeSlug.trim().toLowerCase();
   const isInstitutionPortal = Boolean(institutionSlug);
   const {
@@ -226,8 +234,11 @@ const MeetingRegistration = () => {
   const [availableSchedules, setAvailableSchedules] = useState<any[]>([]);
   const [calendarConfig, setCalendarConfig] = useState<MeetingCalendarConfig>(DEFAULT_MEETING_CALENDAR);
   const [bookedSlots, setBookedSlots] = useState<BookedMeetingSlot[]>([]);
-  const [step, setStep] = useState<1 | 2>(1);
+  const [step, setStep] = useState<1 | 2 | 3>(1);
   const [selectedSlot, setSelectedSlot] = useState<MeetingTimeSlot | null>(null);
+  const [pendingRegistrationId, setPendingRegistrationId] = useState<number | null>(null);
+  const [paymentConfig, setPaymentConfig] = useState<MeetingPaymentConfig | null>(null);
+  const [confirmingStripe, setConfirmingStripe] = useState(false);
   const [confirmedBooking, setConfirmedBooking] = useState<{
     email: string;
     sessionLabel: string;
@@ -325,8 +336,14 @@ const MeetingRegistration = () => {
 
       if (parsed.selectedSlot) setSelectedSlot(parsed.selectedSlot as MeetingTimeSlot);
 
-      if (typeof parsed.step === "number" && (parsed.step === 1 || parsed.step === 2)) {
+      if (typeof parsed.step === "number" && (parsed.step === 1 || parsed.step === 2 || parsed.step === 3)) {
         setStep(parsed.step);
+      }
+      if (parsed.pendingRegistrationId) {
+        setPendingRegistrationId(Number(parsed.pendingRegistrationId) || null);
+      }
+      if (parsed.paymentConfig) {
+        setPaymentConfig(parsed.paymentConfig as MeetingPaymentConfig);
       }
 
       if (parsed.learnerTimezone && String(parsed.learnerTimezone).includes("/") && parsed.timezoneManuallySet) {
@@ -368,6 +385,8 @@ const MeetingRegistration = () => {
         reasonOption,
         otherReason,
         agree,
+        pendingRegistrationId,
+        paymentConfig,
       };
 
       localStorage.setItem("xander_meeting_registration_draft", JSON.stringify(draft));
@@ -389,6 +408,8 @@ const MeetingRegistration = () => {
     reasonOption,
     otherReason,
     agree,
+    pendingRegistrationId,
+    paymentConfig,
   ]);
 
 
@@ -430,51 +451,102 @@ const MeetingRegistration = () => {
 
 
   const clearDraft = () => {
-
     try {
-
       localStorage.removeItem("xander_meeting_registration_draft");
-
     } catch {
-
       // ignore
-
     }
-
   };
 
+  const finishPaidBooking = useCallback(
+    (info?: { email?: string; scheduleLabel?: string }) => {
+      const scheduleLabelText =
+        info?.scheduleLabel ||
+        (selectedSlot
+          ? formatBookingConfirmationLabel(selectedSlot.startsAt, learnerTimezone, selectedSlot.schedule)
+          : "");
+      const submittedEmail = (info?.email || email).trim();
 
+      clearDraft();
+      setConfirmedBooking({
+        email: submittedEmail,
+        sessionLabel: scheduleLabelText,
+        timezoneLabel: timezoneDisplayLabel(learnerTimezone),
+      });
+      setFullName("");
+      setEmail("");
+      setPhone("");
+      setSelectedSlot(null);
+      setPendingRegistrationId(null);
+      setPaymentConfig(null);
+      setStep(1);
+      setReasonOption("");
+      setOtherReason("");
+      setAgree(false);
+      setErrors({});
+    },
+    [email, learnerTimezone, selectedSlot]
+  );
 
-  const handleSubmit = async (e: FormEvent) => {
+  useEffect(() => {
+    const payment = searchParams.get("payment");
+    const sessionId = searchParams.get("session_id");
+    if (payment === "cancelled") {
+      toast.fire({ icon: "info", title: "Payment cancelled", text: "You can try again when ready." });
+      setSearchParams({}, { replace: true });
+      setStep(3);
+      return;
+    }
+    if (payment !== "stripe" || !sessionId) return;
 
-    e.preventDefault();
-
-
-
-    if (!validate()) {
-
-      toast.fire({
-
-        icon: "error",
-
-        title: "Please fix the form",
-
-        text: "Some fields are missing or invalid.",
-
+    let cancelled = false;
+    setConfirmingStripe(true);
+    setStep(3);
+    confirmMeetingPaymentCheckout(sessionId)
+      .then((res) => {
+        if (cancelled) return;
+        setSearchParams({}, { replace: true });
+        finishPaidBooking({
+          email: res.email,
+          scheduleLabel: res.schedule_label,
+        });
+        toast.fire({ icon: "success", title: "Payment confirmed" });
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        const e = err as { response?: { data?: { message?: string } }; message?: string };
+        toast.fire({
+          icon: "error",
+          title: "Payment confirmation failed",
+          text: e?.response?.data?.message || e?.message || "Please contact support if you were charged.",
+        });
+        setSearchParams({}, { replace: true });
+      })
+      .finally(() => {
+        if (!cancelled) setConfirmingStripe(false);
       });
 
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handleSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+
+    if (!validate()) {
+      toast.fire({
+        icon: "error",
+        title: "Please fix the form",
+        text: "Some fields are missing or invalid.",
+      });
       return;
-
     }
-
-
 
     setSubmitting(true);
 
-
-
     try {
-
       const scheduleLabelText = selectedSlot
         ? formatBookingConfirmationLabel(
             selectedSlot.startsAt,
@@ -487,7 +559,7 @@ const MeetingRegistration = () => {
       const bookingReason =
         reasonOption === "other" ? otherReason.trim() : reasonOption;
 
-      await submitMeetingRegistration({
+      const result = await submitMeetingRegistration({
         full_name: fullName.trim(),
         email: submittedEmail,
         phone: phone.trim(),
@@ -500,6 +572,33 @@ const MeetingRegistration = () => {
         platform_institution_id:
           isInstitutionPortal && institution?.id ? Number(institution.id) : null,
       });
+
+      const paymentRequired = Boolean(result?.payment_required ?? true);
+      const registrationId = Number(result?.registration?.id ?? 0);
+      let cfg = (result?.payment as MeetingPaymentConfig | undefined) ?? null;
+      if (!cfg) {
+        try {
+          cfg = await getMeetingPaymentConfig();
+        } catch {
+          cfg = null;
+        }
+      }
+
+      if (paymentRequired && registrationId > 0) {
+        setPendingRegistrationId(registrationId);
+        setPaymentConfig(
+          cfg ?? {
+            required: true,
+            fee_usd: 10,
+            fee_rwf: 10000,
+            stripe_configured: false,
+            mopay_configured: false,
+          }
+        );
+        setStep(3);
+        window.scrollTo({ top: 0, behavior: "smooth" });
+        return;
+      }
 
       clearDraft();
 
@@ -518,33 +617,20 @@ const MeetingRegistration = () => {
       setOtherReason("");
       setAgree(false);
       setErrors({});
-
     } catch (err: any) {
-
       const message =
-
         err?.response?.data?.message ||
-
         err?.message ||
-
         "Failed to submit meeting registration. Please try again.";
 
       toast.fire({
-
         icon: "error",
-
         title: "Submission failed",
-
         text: message,
-
       });
-
     } finally {
-
       setSubmitting(false);
-
     }
-
   };
 
 
@@ -607,15 +693,20 @@ const MeetingRegistration = () => {
             <h1 className="text-3xl md:text-4xl font-bold text-[var(--institution-primary,#012F6B)] mb-2">{bookingTitle}</h1>
             <p className="text-slate-600 max-w-2xl mx-auto">{bookingSubtitle}</p>
 
-            <div className="mt-8 flex items-center justify-center gap-2 sm:gap-4">
+            <div className="mt-8 flex items-center justify-center gap-2 sm:gap-4 flex-wrap">
               <div className={cn("flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold uppercase tracking-wider transition-colors", step === 1 ? "bg-[var(--institution-primary,#012F6B)] text-white shadow-md shadow-[var(--institution-primary,#012F6B)]/20" : "bg-white text-slate-500 border border-slate-200")}>
                 <span className="flex h-5 w-5 items-center justify-center rounded-full bg-white/20 text-[10px]">1</span>
                 Choose time
               </div>
-              <div className="h-px w-8 sm:w-12 bg-slate-200" />
+              <div className="h-px w-6 sm:w-10 bg-slate-200" />
               <div className={cn("flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold uppercase tracking-wider transition-colors", step === 2 ? "bg-[var(--institution-primary,#012F6B)] text-white shadow-md shadow-[var(--institution-primary,#012F6B)]/20" : "bg-white text-slate-500 border border-slate-200")}>
                 <span className="flex h-5 w-5 items-center justify-center rounded-full bg-white/20 text-[10px]">2</span>
                 Your info
+              </div>
+              <div className="h-px w-6 sm:w-10 bg-slate-200" />
+              <div className={cn("flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold uppercase tracking-wider transition-colors", step === 3 ? "bg-[var(--institution-primary,#012F6B)] text-white shadow-md shadow-[var(--institution-primary,#012F6B)]/20" : "bg-white text-slate-500 border border-slate-200")}>
+                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-white/20 text-[10px]">3</span>
+                Pay
               </div>
             </div>
           </motion.div>
@@ -646,7 +737,7 @@ const MeetingRegistration = () => {
                 {[
                   "Select a date on the calendar",
                   "Choose a time in your timezone",
-                  "Get email reminders before your session",
+                  "Pay with Stripe or Mobile Money to confirm",
                 ].map((text) => (
                   <li key={text} className="flex items-start gap-2 text-sm text-slate-600">
                     <CheckCircle2 className="h-4 w-4 text-[#E01C21] shrink-0 mt-0.5" />
@@ -654,6 +745,25 @@ const MeetingRegistration = () => {
                   </li>
                 ))}
               </ul>
+            </motion.div>
+          ) : step === 3 ? (
+            <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="max-w-xl mx-auto">
+              {confirmingStripe || !pendingRegistrationId || !paymentConfig ? (
+                <div className="flex flex-col items-center justify-center rounded-3xl border border-slate-200 bg-white p-12 text-center shadow-xl">
+                  <Loader2 className="h-8 w-8 animate-spin text-[var(--institution-primary,#012F6B)]" />
+                  <p className="mt-4 text-sm text-slate-600">
+                    {confirmingStripe ? "Confirming your Stripe payment…" : "Preparing payment…"}
+                  </p>
+                </div>
+              ) : (
+                <MeetingBookingPaymentStep
+                  registrationId={pendingRegistrationId}
+                  paymentConfig={paymentConfig}
+                  defaultPhone={phone}
+                  onPaid={(info) => finishPaidBooking(info)}
+                  onBack={() => setStep(2)}
+                />
+              )}
             </motion.div>
           ) : (
             <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
@@ -850,10 +960,10 @@ const MeetingRegistration = () => {
                         {submitting ? (
                           <span className="flex items-center justify-center gap-2">
                             <Loader2 className="h-4 w-4 animate-spin" />
-                            Confirming…
+                            Saving…
                           </span>
                         ) : (
-                          "Confirm booking"
+                          "Continue to payment"
                         )}
                       </Button>
                     </div>

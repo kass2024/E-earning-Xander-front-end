@@ -146,8 +146,8 @@ export function AdminMeetingAvailabilityCalendar({
     DateTime.now().setZone(displayZone).toJSDate()
   );
   const [range, setRange] = useState<DateRange | undefined>();
-  const [recurrence, setRecurrence] = useState<AvailabilityRecurrence>("once");
-  const [weeklyDays, setWeeklyDays] = useState<number[]>([1, 2, 3, 4, 5]);
+  const [recurrence, setRecurrence] = useState<AvailabilityRecurrence>("daily");
+  const [weeklyDays, setWeeklyDays] = useState<number[]>([0, 1, 2, 3, 4, 5, 6]);
   const [startTime, setStartTime] = useState("09:00");
   const [endTime, setEndTime] = useState("17:00");
   const [duration, setDuration] = useState(60);

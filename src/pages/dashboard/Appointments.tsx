@@ -53,7 +53,10 @@ function readStats(): AppointmentStats {
   const statusOf = (row: MeetingRegistrationRow) => (row.status || "pending").toLowerCase();
 
   return {
-    pending: rows.filter((row) => statusOf(row) === "pending").length,
+    pending: rows.filter((row) => {
+      const status = statusOf(row);
+      return status === "pending" || status === "pending_payment";
+    }).length,
     approved: rows.filter((row) => statusOf(row) === "approved").length,
     total: rows.length,
     openSlots: parseAvailableSchedulesResponse(bundle.schedules).schedules.length,
